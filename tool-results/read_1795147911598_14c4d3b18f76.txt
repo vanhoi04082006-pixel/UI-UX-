@@ -1,0 +1,835 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useState, type FormEvent, type ReactNode } from "react";
+     4→     4→import { motion } from "framer-motion";
+     5→     5→import { toast } from "sonner";
+     6→     6→import {
+     7→     7→  VAlert,
+     8→     8→  VArrowLeft,
+     9→     9→  VArrowRight,
+    10→    10→  VArrowUpRight,
+    11→    11→  VCheck,
+    12→    12→  VCircleCheck,
+    13→    13→  VClipboardCheck,
+    14→    14→  VEye,
+    15→    15→  VEyeOff,
+    16→    16→  VFolderKanban,
+    17→    17→  VInfo,
+    18→    18→  VLock,
+    19→    19→  VLogo,
+    20→    20→  VMail,
+    21→    21→  VTrend,
+    22→    22→  VUser,
+    23→    23→} from "@/components/icons/v-icons";
+    24→    24→import { MarginNote, PolaroidFrame, SketchCard, Tape } from "@/components/notebook/ui";
+    25→    25→import {
+    26→    26→  AsteriskDoodle,
+    27→    27→  InkSplat,
+    28→    28→  PaperclipDoodle,
+    29→    29→  SparkleDoodle,
+    30→    30→  SquiggleUnderline,
+    31→    31→  StarDoodle,
+    32→    32→} from "@/components/notebook/doodles";
+    33→    33→import { InkButton } from "@/components/notebook/reveal";
+    34→    34→import { ThemeToggle } from "@/components/shared/theme-toggle";
+    35→    35→import { DemoAccountPanel } from "./demo-account-panel";
+    36→    36→import { postMock } from "@/lib/use-mock";
+    37→    37→import { useApp } from "@/lib/store";
+    38→    38→import type { MockAccount, SessionUser } from "@/lib/mock/types";
+    39→    39→import { cn } from "@/lib/utils";
+    40→    40→
+    41→    41→/* =====================================================================
+    42→    42→ * AUTH SCREEN — trang "Đăng nhập / Đăng ký" theo thiết kế Sổ tay hành
+    43→    43→ * trình: giấy kẻ ô, lề đỏ, băng dính washi, tab gạch nguệch ngoằn.
+    44→    44→ * Bao gồm dải tài khoản demo bấm-vào-là-và (kèm case bị khóa 403).
+    45→    45→ * ===================================================================== */
+    46→    46→
+    47→    47→type TabKey = "login" | "register";
+    48→    48→type FormStatus = "idle" | "submitting" | "success" | "error";
+    49→    49→
+    50→    50→const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    51→    51→
+    52→    52→const INPUT_CLS =
+    53→    53→  "w-full rounded-[10px] border-2 border-[var(--ink)] bg-[var(--paper-raised)] px-3.5 py-3 text-sm text-[var(--ink)] transition-all placeholder:text-[var(--ink-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-60";
+    54→    54→
+    55→    55→const BENEFITS: { icon: ReactNode; title: string; desc: string }[] = [
+    56→    56→  {
+    57→    57→    icon: <VFolderKanban size={20} />,
+    58→    58→    title: "Dự án thực tế",
+    59→    59→    desc: "task, PR, code review như công ty thật",
+    60→    60→  },
+    61→    61→  {
+    62→    62→    icon: <VClipboardCheck size={20} />,
+    63→    63→    title: "Quy trình chuyên nghiệp",
+    64→    64→    desc: "sprint 2 tuần, KPI, lương ảo",
+    65→    65→  },
+    66→    66→  {
+    67→    67→    icon: <VTrend size={20} />,
+    68→    68→    title: "Phát triển kỹ năng",
+    69→    69→    desc: "AI Mentor đồng hành 24/7",
+    70→    70→  },
+    71→    71→];
+    72→    72→
+    73→    73→/* --------------------------- tiểu Handy --------------------------- */
+    74→    74→
+    75→    75→function GoogleMark() {
+    76→    76→  return (
+    77→    77→    <span
+    78→    78→      aria-hidden="true"
+    79→    79→      className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-[var(--royal)] text-[0.68rem] font-black leading-none text-[var(--royal)]"
+    80→    80→    >
+    81→    81→      G
+    82→    82→    </span>
+    83→    83→  );
+    84→    84→}
+    85→    85→
+    86→    86→function Spinner() {
+    87→    87→  return (
+    88→    88→    <span
+    89→    89→      aria-hidden="true"
+    90→    90→      className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white dark:border-[#101018]/40 dark:border-t-[#101018]"
+    91→    91→    />
+    92→    92→  );
+    93→    93→}
+    94→    94→
+    95→    95→/** Ô nhập mật khẩu: icon khóa bên trái + nút hiện/ẩn bên phải. */
+    96→    96→function PasswordInput({
+    97→    97→  id,
+    98→    98→  value,
+    99→    99→  onChange,
+   100→   100→  show,
+   101→   101→  onToggle,
+   102→   102→  placeholder,
+   103→   103→  autoComplete,
+   104→   104→}: {
+   105→   105→  id: string;
+   106→   106→  value: string;
+   107→   107→  onChange: (v: string) => void;
+   108→   108→  show: boolean;
+   109→   109→  onToggle: () => void;
+   110→   110→  placeholder: string;
+   111→   111→  autoComplete: string;
+   112→   112→}) {
+   113→   113→  return (
+   114→   114→    <div className="relative">
+   115→   115→      <VLock
+   116→   116→        size={17}
+   117→   117→        className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--ink-soft)]"
+   118→   118→      />
+   119→   119→      <input
+   120→   120→        id={id}
+   121→   121→        type={show ? "text" : "password"}
+   122→   122→        value={value}
+   123→   123→        onChange={(e) => onChange(e.target.value)}
+   124→   124→        placeholder={placeholder}
+   125→   125→        autoComplete={autoComplete}
+   126→   126→        className={cn(INPUT_CLS, "pl-10 pr-11")}
+   127→   127→      />
+   128→   128→      <button
+   129→   129→        type="button"
+   130→   130→        onClick={onToggle}
+   131→   131→        aria-label={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+   132→   132→        aria-pressed={show}
+   133→   133→        className="focus-ink absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[var(--ink-soft)] transition-colors hover:text-[var(--ink)]"
+   134→   134→      >
+   135→   135→        {show ? <VEyeOff size={17} /> : <VEye size={17} />}
+   136→   136→      </button>
+   137→   137→    </div>
+   138→   138→  );
+   139→   139→}
+   140→   140→
+   141→   141→/** Checkbox nét mực: ô vuông viền ink, đánh dấu khi chọn. */
+   142→   142→function InkCheckbox({
+   143→   143→  id,
+   144→   144→  checked,
+   145→   145→  onChange,
+   146→   146→  children,
+   147→   147→}: {
+   148→   148→  id: string;
+   149→   149→  checked: boolean;
+   150→   150→  onChange: (v: boolean) => void;
+   151→   151→  children: ReactNode;
+   152→   152→}) {
+   153→   153→  return (
+   154→   154→    <span className="flex cursor-pointer select-none items-start gap-2.5">
+   155→   155→      <span className="relative inline-flex h-5 w-5 shrink-0">
+   156→   156→        <input
+   157→   157→          id={id}
+   158→   158→          type="checkbox"
+   159→   159→          checked={checked}
+   160→   160→          onChange={(e) => onChange(e.target.checked)}
+   161→   161→          className="peer sr-only"
+   162→   162→        />
+   163→   163→        <span
+   164→   164→          aria-hidden="true"
+   165→   165→          className="h-5 w-5 rounded-[5px_6px_5px_6px] border-2 border-[var(--ink)] bg-[var(--paper-raised)] transition-colors duration-150 peer-checked:border-[var(--royal)] peer-checked:bg-[var(--royal)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--ink)]"
+   166→   166→        />
+   167→   167→        <VCheck
+   168→   168→          size={12}
+   169→   169→          strokeWidth={3.4}
+   170→   170→          className="pointer-events-none absolute left-1 top-1 text-white opacity-0 transition-opacity duration-150 peer-checked:opacity-100 dark:text-[#101018]"
+   171→   171→        />
+   172→   172→      </span>
+   173→   173→      <label htmlFor={id} className="cursor-pointer text-sm leading-snug text-[var(--ink)]">
+   174→   174→        {children}
+   175→   175→      </label>
+   176→   176→    </span>
+   177→   177→  );
+   178→   178→}
+   179→   179→
+   180→   180→function Field({
+   181→   181→  id,
+   182→   182→  label,
+   183→   183→  icon,
+   184→   184→  hint,
+   185→   185→  hintDanger,
+   186→   186→  error,
+   187→   187→  children,
+   188→   188→}: {
+   189→   189→  id: string;
+   190→   190→  label: string;
+   191→   191→  icon: ReactNode;
+   192→   192→  hint?: string;
+   193→   193→  hintDanger?: boolean;
+   194→   194→  error?: string | null;
+   195→   195→  children: ReactNode;
+   196→   196→}) {
+   197→   197→  return (
+   198→   198→    <div className="space-y-1.5">
+   199→   199→      <label
+   200→   200→        htmlFor={id}
+   201→   201→        className="flex items-center gap-1.5 text-sm font-semibold text-[var(--ink)]"
+   202→   202→      >
+   203→   203→        <span aria-hidden="true" className="text-[var(--ink-soft)]">
+   204→   204→          {icon}
+   205→   205→        </span>
+   206→   206→        {label}
+   207→   207→      </label>
+   208→   208→      {children}
+   209→   209→      {error ? (
+   210→   210→        <p role="alert" className="text-xs font-medium text-[var(--danger)]">
+   211→   211→          {error}
+   212→   212→        </p>
+   213→   213→      ) : hint ? (
+   214→   214→        <p className={cn("text-xs", hintDanger ? "font-medium text-[var(--danger)]" : "text-[var(--ink-soft)]")}>
+   215→   215→          {hint}
+   216→   216→        </p>
+   217→   217→      ) : null}
+   218→   218→    </div>
+   219→   219→  );
+   220→   220→}
+   221→   221→
+   222→   222→function InlineAlert({ tone, children }: { tone: "danger" | "info"; children: ReactNode }) {
+   223→   223→  return (
+   224→   224→    <motion.div
+   225→   225→      role={tone === "danger" ? "alert" : "status"}
+   226→   226→      initial={{ opacity: 0, y: -6 }}
+   227→   227→      animate={{ opacity: 1, y: 0 }}
+   228→   228→      transition={{ duration: 0.22, ease: "easeOut" }}
+   229→   229→      className={cn(
+   230→   230→        "flex items-start gap-2.5 rounded-[10px_12px_10px_12px] border-2 p-3 text-[0.83rem] font-medium leading-snug",
+   231→   231→        tone === "danger" &&
+   232→   232→          "border-[var(--danger)] bg-[color-mix(in_srgb,var(--danger)_9%,transparent)] text-[var(--danger)]",
+   233→   233→        tone === "info" && "border-[var(--royal)] bg-[var(--blue-mist)] text-[var(--ink)]",
+   234→   234→      )}
+   235→   235→    >
+   236→   236→      {tone === "danger" ? (
+   237→   237→        <VAlert size={17} className="mt-[1px] shrink-0" />
+   238→   238→      ) : (
+   239→   239→        <VInfo size={17} className="mt-[1px] shrink-0 text-[var(--royal)]" />
+   240→   240→      )}
+   241→   241→      <p className="min-w-0">{children}</p>
+   242→   242→    </motion.div>
+   243→   243→  );
+   244→   244→}
+   245→   245→
+   246→   246→function DividerHoac() {
+   247→   247→  return (
+   248→   248→    <div aria-hidden="true" className="flex items-center gap-3">
+   249→   249→      <span className="h-0 flex-1 border-t-2 border-dashed border-[color-mix(in_srgb,var(--ink)_22%,transparent)]" />
+   250→   250→      <span className="text-xs font-medium text-[var(--ink-soft)]">Hoặc</span>
+   251→   251→      <span className="h-0 flex-1 border-t-2 border-dashed border-[color-mix(in_srgb,var(--ink)_22%,transparent)]" />
+   252→   252→    </div>
+   253→   253→  );
+   254→   254→}
+   255→   255→
+   256→   256→/* ------------------------------ MÀN HÌNH ------------------------------ */
+   257→   257→
+   258→   258→export default function AuthScreen() {
+   259→   259→  const goLanding = useApp((s) => s.goLanding);
+   260→   260→  const login = useApp((s) => s.login);
+   261→   261→
+   262→   262→  const [tab, setTab] = useState<TabKey>("login");
+   263→   263→  const [demoBusyId, setDemoBusyId] = useState<string | null>(null);
+   264→   264→
+   265→   265→  /* --- đăng nhập --- */
+   266→   266→  const [email, setEmail] = useState("");
+   267→   267→  const [password, setPassword] = useState("");
+   268→   268→  const [remember, setRemember] = useState(false);
+   269→   269→  const [showLoginPass, setShowLoginPass] = useState(false);
+   270→   270→  const [loginStatus, setLoginStatus] = useState<FormStatus>("idle");
+   271→   271→  const [loginError, setLoginError] = useState<string | null>(null);
+   272→   272→  const [loginNotice, setLoginNotice] = useState<string | null>(null);
+   273→   273→
+   274→   274→  /* --- đăng ký --- */
+   275→   275→  const [regName, setRegName] = useState("");
+   276→   276→  const [regEmail, setRegEmail] = useState("");
+   277→   277→  const [regPass, setRegPass] = useState("");
+   278→   278→  const [regConfirm, setRegConfirm] = useState("");
+   279→   279→  const [showRegPass, setShowRegPass] = useState(false);
+   280→   280→  const [showRegConfirm, setShowRegConfirm] = useState(false);
+   281→   281→  const [agree, setAgree] = useState(false);
+   282→   282→  const [regStatus, setRegStatus] = useState<FormStatus>("idle");
+   283→   283→  const [regError, setRegError] = useState<string | null>(null);
+   284→   284→  const [regSuccess, setRegSuccess] = useState<string | null>(null);
+   285→   285→
+   286→   286→  /* ------------------------------ luồng ------------------------------ */
+   287→   287→
+   288→   288→  async function runLogin(nextEmail: string, nextPassword: string) {
+   289→   289→    setLoginStatus("submitting");
+   290→   290→    setLoginError(null);
+   291→   291→    setLoginNotice(null);
+   292→   292→    try {
+   293→   293→      const res = await postMock<
+   294→   294→        { email: string; password: string },
+   295→   295→        { user: SessionUser; token: string }
+   296→   296→      >("auth/login", {
+   297→   297→        email: nextEmail,
+   298→   298→        password: nextPassword,
+   299→   299→      });
+   300→   300→      setLoginStatus("success");
+   301→   301→      const first = res.data.user.name.trim().split(/\s+/).at(-1) ?? "bạn";
+   302→   302→      toast.success(`Chào ${first}!`);
+   303→   303→      login(res.data.user);
+   304→   304→    } catch (err) {
+   305→   305→      const msg =
+   306→   306→        err instanceof Error ? err.message : "Đăng nhập không thành công. Thử lại nhé.";
+   307→   307→      setLoginStatus("error");
+   308→   308→      setLoginError(msg);
+   309→   309→      if (/kh[oó]a/i.test(msg)) toast.error("Tài khoản đã bị khóa");
+   310→   310→    }
+   311→   311→  }
+   312→   312→
+   313→   313→  async function handleLoginSubmit(e: FormEvent<HTMLFormElement>) {
+   314→   314→    e.preventDefault();
+   315→   315→    if (loginStatus === "submitting") return;
+   316→   316→    const nextEmail = email.trim();
+   317→   317→    if (!nextEmail || !password) {
+   318→   318→      setLoginNotice(null);
+   319→   319→      setLoginError("Vui lòng nhập email và mật khẩu.");
+   320→   320→      return;
+   321→   321→    }
+   322→   322→    await runLogin(nextEmail, password);
+   323→   323→  }
+   324→   324→
+   325→   325→  async function handleDemoPick(account: MockAccount) {
+   326→   326→    if (demoBusyId !== null || loginStatus === "submitting") return;
+   327→   327→    setTab("login");
+   328→   328→    setEmail(account.email);
+   329→   329→    setPassword(account.password);
+   330→   330→    setLoginError(null);
+   331→   331→    setLoginNotice(null);
+   332→   332→    setDemoBusyId(account.id);
+   333→   333→    try {
+   334→   334→      await runLogin(account.email, account.password);
+   335→   335→    } finally {
+   336→   336→      setDemoBusyId(null);
+   337→   337→    }
+   338→   338→  }
+   339→   339→
+   340→   340→  async function handleRegisterSubmit(e: FormEvent<HTMLFormElement>) {
+   341→   341→    e.preventDefault();
+   342→   342→    if (!regValid || regStatus === "submitting") return;
+   343→   343→    setRegStatus("submitting");
+   344→   344→    setRegError(null);
+   345→   345→    try {
+   346→   346→      const res = await postMock<{ name: string; email: string }, { message: string }>(
+   347→   347→        "auth/register",
+   348→   348→        {
+   349→   349→          name: regName.trim(),
+   350→   350→          email: regEmail.trim(),
+   351→   351→        },
+   352→   352→      );
+   353→   353→      setRegStatus("success");
+   354→   354→      setRegSuccess(res.data.message);
+   355→   355→    } catch (err) {
+   356→   356→      setRegStatus("error");
+   357→   357→      setRegError(err instanceof Error ? err.message : "Đăng ký không thành công. Thử lại nhé.");
+   358→   358→    }
+   359→   359→  }
+   360→   360→
+   361→   361→  function switchTab(next: TabKey, prefillEmail?: string) {
+   362→   362→    setTab(next);
+   363→   363→    if (next === "login" && prefillEmail) {
+   364→   364→      setEmail(prefillEmail);
+   365→   365→      setPassword("");
+   366→   366→    }
+   367→   367→    if (next === "register") setRegSuccess(null);
+   368→   368→    setLoginError(null);
+   369→   369→    setLoginNotice(null);
+   370→   370→  }
+   371→   371→
+   372→   372→  /* --- kiểm tra hợp lệ phía client (nút đăng ký chỉ bật khi đủ) --- */
+   373→   373→  const regNameOk = regName.trim().length >= 2;
+   374→   374→  const regEmailOk = EMAIL_RE.test(regEmail.trim());
+   375→   375→  const regPassOk = regPass.length >= 8;
+   376→   376→  const confirmMismatch = regConfirm.length > 0 && regPass !== regConfirm;
+   377→   377→  const regValid = regNameOk && regEmailOk && regPassOk && regConfirm === regPass && agree;
+   378→   378→
+   379→   379→  const submittingLogin = loginStatus === "submitting";
+   380→   380→  const submittingRegister = regStatus === "submitting";
+   381→   381→
+   382→   382→  return (
+   383→   383→    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[var(--paper)] text-[var(--ink)]">
+   384→   384→      {/* Giấy kẻ ô xuyên suốt trang */}
+   385→   385→      <div aria-hidden="true" className="paper-grid pointer-events-none absolute inset-0" />
+   386→   386→
+   387→   387→      {/* Doodles trôi nhẹ — chỉ hiện từ md trở lên */}
+   388→   388→      <StarDoodle
+   389→   389→        className="animate-float-soft pointer-events-none absolute left-[5%] top-[13%] hidden h-9 w-9 text-[var(--royal)] opacity-25 md:block"
+   390→   390→        style={{ animationDelay: "0.3s" }}
+   391→   391→      />
+   392→   392→      <SparkleDoodle
+   393→   393→        className="animate-float-soft pointer-events-none absolute right-[6%] top-[17%] hidden h-7 w-7 text-[var(--royal)] opacity-20 md:block"
+   394→   394→        style={{ animationDelay: "1.4s" }}
+   395→   395→      />
+   396→   396→      <InkSplat
+   397→   397→        className="animate-float-soft pointer-events-none absolute bottom-[9%] left-[36%] hidden h-16 w-16 text-[var(--ink)] opacity-[0.07] md:block"
+   398→   398→        style={{ animationDelay: "0.8s" }}
+   399→   399→      />
+   400→   400→      <AsteriskDoodle
+   401→   401→        className="animate-float-soft pointer-events-none absolute bottom-[15%] right-[4%] hidden h-6 w-6 text-[var(--stamp-red)] opacity-30 md:block"
+   402→   402→        style={{ animationDelay: "2s" }}
+   403→   403→      />
+   404→   404→
+   405→   405→      {/* Hàng đầu trang: logo + quay lại + đổi theme */}
+   406→   406→      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-5 sm:px-6">
+   407→   407→        <div className="flex items-center gap-2.5">
+   408→   408→          <VLogo size={34} />
+   409→   409→          <div className="leading-none">
+   410→   410→            <p className="text-lg font-extrabold tracking-tight">V-Intern</p>
+   411→   411→            <p className="eyebrow mt-1 !text-[0.58rem]">sổ tay hành trình</p>
+   412→   412→          </div>
+   413→   413→        </div>
+   414→   414→        <div className="flex items-center gap-2.5 sm:gap-3">
+   415→   415→          <button
+   416→   416→            type="button"
+   417→   417→            onClick={goLanding}
+   418→   418→            aria-label="Quay lại trang chủ"
+   419→   419→            className="focus-ink inline-flex items-center gap-1.5 rounded-full border-2 border-[var(--ink)] bg-[var(--paper-raised)] px-3.5 py-2 text-[0.83rem] font-semibold shadow-ink-2 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-ink-3"
+   420→   420→          >
+   421→   421→            <VArrowLeft size={16} />
+   422→   422→            <span className="hidden sm:inline">Quay lại</span>
+   423→   423→          </button>
+   424→   424→          <ThemeToggle />
+   425→   425→        </div>
+   426→   426→      </header>
+   427→   427→
+   428→   428→      {/* Nội dung chính */}
+   429→   429→      <main className="relative z-10 mx-auto w-full max-w-5xl flex-1 px-4 pb-4 pt-6 sm:px-6 sm:pt-10 lg:pb-10 lg:pt-12">
+   430→   430→        <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-12">
+   431→   431→          {/* ---- Cột trái: bối cảnh hành trình (ẩn trên mobile) ---- */}
+   432→   432→          <section aria-label="Vì sao nên thực tập qua V-Intern" className="relative hidden lg:block">
+   433→   433→            <div className="dog-ear red-margin h-full pb-2 pl-7 pr-1 pt-1">
+   434→   434→              <p className="eyebrow">hành trình thực tập</p>
+   435→   435→              <h2 className="mt-3 max-w-md text-3xl font-bold leading-[1.25]">
+   436→   436→                Thực tập như một{" "}
+   437→   437→                <span className="marker animate-marker-blot font-extrabold">
+   438→   438→                  lập trình viên thực thụ
+   439→   439→                </span>
+   440→   440→                .
+   441→   441→              </h2>
+   442→   442→              <p className="mt-4 max-w-md text-sm leading-relaxed text-[var(--ink-soft)]">
+   443→   443→                V-Intern đặt bạn vào một công ty công nghệ thu nhỏ: nhận task thật,
+   444→   444→                mở pull request, được review code và chấm điểm sau mỗi sprint — tất
+   445→   445→                cả được ghi lại trung thực trong từng trang sổ.
+   446→   446→              </p>
+   447→   447→
+   448→   448→              <ul className="mt-7 space-y-4">
+   449→   449→                {BENEFITS.map((b) => (
+   450→   450→                  <li key={b.title} className="flex items-start gap-3.5">
+   451→   451→                    <span
+   452→   452→                      aria-hidden="true"
+   453→   453→                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px_12px_10px_12px] border-2 border-[var(--ink)] bg-[var(--blue-mist)] text-[var(--royal-deep)] shadow-ink-2"
+   454→   454→                    >
+   455→   455→                      {b.icon}
+   456→   456→                    </span>
+   457→   457→                    <span>
+   458→   458→                      <span className="block text-sm font-bold">{b.title}</span>
+   459→   459→                      <span className="mt-0.5 block text-xs text-[var(--ink-soft)]">{b.desc}</span>
+   460→   460→                    </span>
+   461→   461→                  </li>
+   462→   462→                ))}
+   463→   463→              </ul>
+   464→   464→
+   465→   465→              <MarginNote className="mt-7">
+   466→   466→                sổ tay này ghi lại từng bước của bạn
+   467→   467→              </MarginNote>
+   468→   468→
+   469→   469→              <button
+   470→   470→                type="button"
+   471→   471→                onClick={() =>
+   472→   472→                  toast.info("Đợt tuyển dụng mở đầu mỗi tháng — xem trang chủ để biết thêm")
+   473→   473→                }
+   474→   474→                className="focus-ink group/apply mt-6 inline-flex items-center gap-1.5 rounded-[8px] text-sm font-bold text-[var(--royal)] transition-colors hover:text-[var(--royal-deep)]"
+   475→   475→              >
+   476→   476→                Ứng tuyển chương trình thực tập
+   477→   477→                <VArrowUpRight
+   478→   478→                  size={16}
+   479→   479→                  className="transition-transform duration-150 group-hover/apply:-translate-y-0.5 group-hover/apply:translate-x-0.5"
+   480→   480→                />
+   481→   481→              </button>
+   482→   482→
+   483→   483→              <div className="mt-10 hidden xl:block">
+   484→   484→                <PolaroidFrame
+   485→   485→                  src="/images/characters/student-walker.png"
+   486→   486→                  alt="Vẽ tay sinh viên đeo balo bước trên hành trình thực tập"
+   487→   487→                  caption="trang đầu tiên bắt đầu từ đây →"
+   488→   488→                  rotate={2}
+   489→   489→                  tapeVariant="candy"
+   490→   490→                  className="w-52"
+   491→   491→                />
+   492→   492→              </div>
+   493→   493→            </div>
+   494→   494→          </section>
+   495→   495→
+   496→   496→          {/* ---- Cột phải: thẻ đăng nhập/đăng ký + dải tài khoản demo ---- */}
+   497→   497→          <div>
+   498→   498→            <div className="relative">
+   499→   499→              <SketchCard hover={false} className="p-6 pb-7 sm:p-8">
+   500→   500→                {/* Tab vẽ tay — gạch chân nguệch ngoằn khi đang chọn */}
+   501→   501→                <div
+   502→   502→                  role="tablist"
+   503→   503→                  aria-label="Chọn chế độ truy cập"
+   504→   504→                  className="mb-6 flex gap-1.5 border-b-2 border-[var(--ink)] sm:gap-5"
+   505→   505→                >
+   506→   506→                  {(["login", "register"] as const).map((key) => {
+   507→   507→                    const active = tab === key;
+   508→   508→                    return (
+   509→   509→                      <button
+   510→   510→                        key={key}
+   511→   511→                        role="tab"
+   512→   512→                        type="button"
+   513→   513→                        aria-selected={active}
+   514→   514→                        onClick={() => switchTab(key)}
+   515→   515→                        className={cn(
+   516→   516→                          "focus-ink relative rounded-t-[8px] px-3 pb-3 pt-1.5 text-[0.95rem] font-bold transition-colors sm:px-4",
+   517→   517→                          active
+   518→   518→                            ? "text-[var(--ink)]"
+   519→   519→                            : "text-[var(--ink-soft)] hover:text-[var(--ink)]",
+   520→   520→                        )}
+   521→   521→                      >
+   522→   522→                        {key === "login" ? "Đăng nhập" : "Đăng ký"}
+   523→   523→                        {active && (
+   524→   524→                          <SquiggleUnderline className="absolute inset-x-2 -bottom-[3px] h-2.5 text-[var(--royal)]" />
+   525→   525→                        )}
+   526→   526→                      </button>
+   527→   527→                    );
+   528→   528→                  })}
+   529→   529→                </div>
+   530→   530→
+   531→   531→                <motion.div
+   532→   532→                  key={tab}
+   533→   533→                  role="tabpanel"
+   534→   534→                  aria-label={tab === "login" ? "Đăng nhập" : "Đăng ký"}
+   535→   535→                  initial={{ opacity: 0, y: 10 }}
+   536→   536→                  animate={{ opacity: 1, y: 0 }}
+   537→   537→                  transition={{ duration: 0.28, ease: [0.21, 0.47, 0.32, 0.98] }}
+   538→   538→                >
+   539→   539→                  {tab === "login" ? (
+   540→   540→                    /* ------------------------- ĐĂNG NHẬP ------------------------- */
+   541→   541→                    <form onSubmit={handleLoginSubmit} noValidate className="space-y-5" aria-label="Form đăng nhập">
+   542→   542→                      <div>
+   543→   543→                        <h1 className="text-[1.55rem] font-extrabold leading-tight sm:text-[1.7rem]">
+   544→   544→                          Chào mừng trở lại!
+   545→   545→                        </h1>
+   546→   546→                        <p className="mt-1.5 text-sm leading-relaxed text-[var(--ink-soft)]">
+   547→   547→                          Đăng nhập để tiếp tục hành trình thực tập của bạn.
+   548→   548→                        </p>
+   549→   549→                      </div>
+   550→   550→
+   551→   551→                      <Field id="login-email" label="Email" icon={<VMail size={14} />}>
+   552→   552→                        <div className="relative">
+   553→   553→                          <VMail
+   554→   554→                            size={17}
+   555→   555→                            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--ink-soft)]"
+   556→   556→                          />
+   557→   557→                          <input
+   558→   558→                            id="login-email"
+   559→   559→                            name="email"
+   560→   560→                            type="email"
+   561→   561→                            value={email}
+   562→   562→                            onChange={(e) => setEmail(e.target.value)}
+   563→   563→                            placeholder="Nhập email — ví dụ: minh.nguyen@student.edu.vn"
+   564→   564→                            autoComplete="email"
+   565→   565→                            className={cn(INPUT_CLS, "pl-10")}
+   566→   566→                          />
+   567→   567→                        </div>
+   568→   568→                      </Field>
+   569→   569→
+   570→   570→                      <Field id="login-password" label="Mật khẩu" icon={<VLock size={14} />}>
+   571→   571→                        <PasswordInput
+   572→   572→                          id="login-password"
+   573→   573→                          value={password}
+   574→   574→                          onChange={setPassword}
+   575→   575→                          show={showLoginPass}
+   576→   576→                          onToggle={() => setShowLoginPass((v) => !v)}
+   577→   577→                          placeholder="Nhập mật khẩu"
+   578→   578→                          autoComplete="current-password"
+   579→   579→                        />
+   580→   580→                      </Field>
+   581→   581→
+   582→   582→                      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+   583→   583→                        <InkCheckbox id="remember" checked={remember} onChange={setRemember}>
+   584→   584→                          Ghi nhớ đăng nhập
+   585→   585→                        </InkCheckbox>
+   586→   586→                        <button
+   587→   587→                          type="button"
+   588→   588→                          onClick={() =>
+   589→   589→                            toast.info("Liên hệ quản trị viên để đặt lại mật khẩu (mô phỏng)")
+   590→   590→                          }
+   591→   591→                          className="focus-ink rounded-[6px] text-sm font-semibold text-[var(--royal)] underline decoration-dotted decoration-1 underline-offset-4 transition-colors hover:text-[var(--royal-deep)]"
+   592→   592→                        >
+   593→   593→                          Quên mật khẩu?
+   594→   594→                        </button>
+   595→   595→                      </div>
+   596→   596→
+   597→   597→                      {loginError ? <InlineAlert tone="danger">{loginError}</InlineAlert> : null}
+   598→   598→                      {loginNotice ? <InlineAlert tone="info">{loginNotice}</InlineAlert> : null}
+   599→   599→
+   600→   600→                      <InkButton
+   601→   601→                        type="submit"
+   602→   602→                        variant="royal"
+   603→   603→                        size="lg"
+   604→   604→                        className="w-full"
+   605→   605→                        disabled={submittingLogin}
+   606→   606→                        aria-busy={submittingLogin}
+   607→   607→                      >
+   608→   608→                        {submittingLogin ? (
+   609→   609→                          <>
+   610→   610→                            <Spinner />
+   611→   611→                            Đang đăng nhập...
+   612→   612→                          </>
+   613→   613→                        ) : (
+   614→   614→                          <>
+   615→   615→                            Đăng nhập
+   616→   616→                            <VArrowRight size={17} />
+   617→   617→                          </>
+   618→   618→                        )}
+   619→   619→                      </InkButton>
+   620→   620→
+   621→   621→                      <DividerHoac />
+   622→   622→
+   623→   623→                      <InkButton
+   624→   624→                        type="button"
+   625→   625→                        variant="outline"
+   626→   626→                        size="lg"
+   627→   627→                        className="w-full"
+   628→   628→                        onClick={() => {
+   629→   629→                          setLoginError(null);
+   630→   630→                          setLoginNotice("Đăng nhập Google chưa được kết nối với hệ thống demo.");
+   631→   631→                        }}
+   632→   632→                      >
+   633→   633→                        <GoogleMark />
+   634→   634→                        Đăng nhập với Google
+   635→   635→                      </InkButton>
+   636→   636→
+   637→   637→                      <p className="pt-1 text-center text-sm text-[var(--ink-soft)]">
+   638→   638→                        Chưa có tài khoản?{" "}
+   639→   639→                        <button
+   640→   640→                          type="button"
+   641→   641→                          onClick={() => switchTab("register")}
+   642→   642→                          className="focus-ink rounded-[6px] font-bold text-[var(--royal)] underline decoration-2 underline-offset-4 transition-colors hover:text-[var(--royal-deep)]"
+   643→   643→                        >
+   644→   644→                          Đăng ký ngay
+   645→   645→                        </button>
+   646→   646→                      </p>
+   647→   647→                    </form>
+   648→   648→                  ) : regSuccess ? (
+   649→   649→                    /* --------------------- ĐĂNG KÝ THÀNH CÔNG --------------------- */
+   650→   650→                    <div className="flex flex-col items-center py-6 text-center">
+   651→   651→                      <motion.span
+   652→   652→                        initial={{ scale: 0, rotate: -24 }}
+   653→   653→                        animate={{ scale: 1, rotate: 0 }}
+   654→   654→                        transition={{ type: "spring", stiffness: 300, damping: 16 }}
+   655→   655→                        className="inline-flex text-[var(--royal)]"
+   656→   656→                      >
+   657→   657→                        <VCircleCheck size={56} />
+   658→   658→                      </motion.span>
+   659→   659→                      <h2 className="nb-rise mt-4 text-2xl font-extrabold">Đăng ký thành công!</h2>
+   660→   660→                      <p className="nb-rise mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[var(--ink-soft)]">
+   661→   661→                        {regSuccess}
+   662→   662→                      </p>
+   663→   663→                      <p className="nb-rise mt-2 max-w-sm font-hand text-[0.95rem] text-[var(--pencil)]">
+   664→   664→                        email của bạn đã được điền sẵn ở tab đăng nhập ✎
+   665→   665→                      </p>
+   666→   666→                      <InkButton
+   667→   667→                        type="button"
+   668→   668→                        variant="royal"
+   669→   669→                        size="lg"
+   670→   670→                        className="mt-6"
+   671→   671→                        onClick={() => switchTab("login", regEmail.trim())}
+   672→   672→                      >
+   673→   673→                        Đăng nhập ngay
+   674→   674→                        <VArrowRight size={17} />
+   675→   675→                      </InkButton>
+   676→   676→                    </div>
+   677→   677→                  ) : (
+   678→   678→                    /* --------------------------- ĐĂNG KÝ --------------------------- */
+   679→   679→                    <form onSubmit={handleRegisterSubmit} noValidate className="space-y-5" aria-label="Form đăng ký">
+   680→   680→                      <div>
+   681→   681→                        <h1 className="text-[1.55rem] font-extrabold leading-tight sm:text-[1.7rem]">
+   682→   682→                          Tạo tài khoản mới
+   683→   683→                        </h1>
+   684→   684→                        <p className="mt-1.5 text-sm leading-relaxed text-[var(--ink-soft)]">
+   685→   685→                          Bắt đầu hành trình thực tập của bạn ngay hôm nay.
+   686→   686→                        </p>
+   687→   687→                      </div>
+   688→   688→
+   689→   689→                      <div className="grid gap-5 sm:grid-cols-2">
+   690→   690→                        <Field id="reg-name" label="Họ và tên" icon={<VUser size={14} />}>
+   691→   691→                          <div className="relative">
+   692→   692→                            <VUser
+   693→   693→                              size={17}
+   694→   694→                              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--ink-soft)]"
+   695→   695→                            />
+   696→   696→                            <input
+   697→   697→                              id="reg-name"
+   698→   698→                              name="name"
+   699→   699→                              type="text"
+   700→   700→                              value={regName}
+   701→   701→                              onChange={(e) => setRegName(e.target.value)}
+   702→   702→                              placeholder="Ví dụ: Nguyễn Văn A"
+   703→   703→                              autoComplete="name"
+   704→   704→                              className={cn(INPUT_CLS, "pl-10")}
+   705→   705→                            />
+   706→   706→                          </div>
+   707→   707→                        </Field>
+   708→   708→
+   709→   709→                        <Field id="reg-email" label="Email" icon={<VMail size={14} />}>
+   710→   710→                          <div className="relative">
+   711→   711→                            <VMail
+   712→   712→                              size={17}
+   713→   713→                              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--ink-soft)]"
+   714→   714→                            />
+   715→   715→                            <input
+   716→   716→                              id="reg-email"
+   717→   717→                              name="email"
+   718→   718→                              type="email"
+   719→   719→                              value={regEmail}
+   720→   720→                              onChange={(e) => setRegEmail(e.target.value)}
+   721→   721→                              placeholder="ten.ban@student.edu.vn"
+   722→   722→                              autoComplete="email"
+   723→   723→                              className={cn(INPUT_CLS, "pl-10")}
+   724→   724→                            />
+   725→   725→                          </div>
+   726→   726→                        </Field>
+   727→   727→
+   728→   728→                        <Field
+   729→   729→                          id="reg-password"
+   730→   730→                          label="Mật khẩu"
+   731→   731→                          icon={<VLock size={14} />}
+   732→   732→                          hint={regPass.length > 0 && !regPassOk ? "Mật khẩu cần tối thiểu 8 ký tự." : "Tối thiểu 8 ký tự."}
+   733→   733→                          hintDanger={regPass.length > 0 && !regPassOk}
+   734→   734→                        >
+   735→   735→                          <PasswordInput
+   736→   736→                            id="reg-password"
+   737→   737→                            value={regPass}
+   738→   738→                            onChange={setRegPass}
+   739→   739→                            show={showRegPass}
+   740→   740→                            onToggle={() => setShowRegPass((v) => !v)}
+   741→   741→                            placeholder="Chọn một mật khẩu"
+   742→   742→                            autoComplete="new-password"
+   743→   743→                          />
+   744→   744→                        </Field>
+   745→   745→
+   746→   746→                        <Field
+   747→   747→                          id="reg-confirm"
+   748→   748→                          label="Xác nhận mật khẩu"
+   749→   749→                          icon={<VLock size={14} />}
+   750→   750→                          error={confirmMismatch ? "Mật khẩu xác nhận chưa khớp." : null}
+   751→   751→                        >
+   752→   752→                          <PasswordInput
+   753→   753→                            id="reg-confirm"
+   754→   754→                            value={regConfirm}
+   755→   755→                            onChange={setRegConfirm}
+   756→   756→                            show={showRegConfirm}
+   757→   757→                            onToggle={() => setShowRegConfirm((v) => !v)}
+   758→   758→                            placeholder="Nhập lại mật khẩu"
+   759→   759→                            autoComplete="new-password"
+   760→   760→                          />
+   761→   761→                        </Field>
+   762→   762→                      </div>
+   763→   763→
+   764→   764→                      <InkCheckbox id="agree" checked={agree} onChange={setAgree}>
+   765→   765→                        Tôi đồng ý với <b>Điều khoản sử dụng</b> và <b>Chính sách bảo mật</b> của
+   766→   766→                        V-Intern.
+   767→   767→                      </InkCheckbox>
+   768→   768→
+   769→   769→                      {regError ? <InlineAlert tone="danger">{regError}</InlineAlert> : null}
+   770→   770→
+   771→   771→                      <InkButton
+   772→   772→                        type="submit"
+   773→   773→                        variant="royal"
+   774→   774→                        size="lg"
+   775→   775→                        className="w-full"
+   776→   776→                        disabled={!regValid || submittingRegister}
+   777→   777→                        aria-busy={submittingRegister}
+   778→   778→                      >
+   779→   779→                        {submittingRegister ? (
+   780→   780→                          <>
+   781→   781→                            <Spinner />
+   782→   782→                            Đang đăng ký...
+   783→   783→                          </>
+   784→   784→                        ) : (
+   785→   785→                          <>
+   786→   786→                            Đăng ký
+   787→   787→                            <VArrowRight size={17} />
+   788→   788→                          </>
+   789→   789→                        )}
+   790→   790→                      </InkButton>
+   791→   791→
+   792→   792→                      <p className="pt-1 text-center text-sm text-[var(--ink-soft)]">
+   793→   793→                        Đã có tài khoản?{" "}
+   794→   794→                        <button
+   795→   795→                          type="button"
+   796→   796→                          onClick={() => switchTab("login")}
+   797→   797→                          className="focus-ink rounded-[6px] font-bold text-[var(--royal)] underline decoration-2 underline-offset-4 transition-colors hover:text-[var(--royal-deep)]"
+   798→   798→                        >
+   799→   799→                          Đăng nhập ngay
+   800→   800→                        </button>
+   801→   801→                      </p>
+   802→   802→                    </form>
+   803→   803→                  )}
+   804→   804→                </motion.div>
+   805→   805→              </SketchCard>
+   806→   806→
+   807→   807→              {/* Băng dính kẹo + kẹp giấy trang trí trên mép thẻ */}
+   808→   808→              <Tape
+   809→   809→                variant="candy"
+   810→   810→                rotate={-3}
+   811→   811→                peel
+   812→   812→                className="z-10 -top-3.5 left-1/2 !h-7 !w-28 -translate-x-1/2"
+   813→   813→              />
+   814→   814→              <PaperclipDoodle className="absolute -right-3.5 -top-6 z-10 h-14 w-9 text-[var(--ink)] opacity-85" />
+   815→   815→            </div>
+   816→   816→
+   817→   817→            {/* Dải tài khoản demo — bấm để đăng nhập ngay */}
+   818→   818→            <DemoAccountPanel onPick={handleDemoPick} pendingId={demoBusyId} />
+   819→   819→          </div>
+   820→   820→        </div>
+   821→   821→      </main>
+   822→   822→
+   823→   823→      {/* Chân trang dính đáy */}
+   824→   824→      <footer className="relative z-10 mt-auto">
+   825→   825→        <div className="mx-auto w-full max-w-6xl px-4 pb-5 pt-6 text-center sm:px-6">
+   826→   826→          <p className="text-xs text-[var(--ink-soft)]">© 2026 V-Intern · Sổ tay hành trình</p>
+   827→   827→          <p className="font-hand mt-1 text-[0.92rem] text-[var(--pencil)]">
+   828→   828→            an toàn như cuốn sổ khóa bằng kẹp bấm ✎
+   829→   829→          </p>
+   830→   830→        </div>
+   831→   831→      </footer>
+   832→   832→    </div>
+   833→   833→  );
+   834→   834→}
+   835→   835→

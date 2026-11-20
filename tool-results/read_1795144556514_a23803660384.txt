@@ -1,0 +1,833 @@
+     1→     1→import type {
+     2→     2→  ActivityItem,
+     3→     3→  AdminUserRow,
+     4→     4→  Certificate,
+     5→     5→  Evaluation,
+     6→     6→  GradingItem,
+     7→     7→  InstructorSession,
+     8→     8→  InternOverview,
+     9→     9→  KpiRecord,
+    10→    10→  MockAccount,
+    11→    11→  MentorConversation,
+    12→    12→  NotificationItem,
+    13→    13→  QuestionRow,
+    14→    14→  ReportRow,
+    15→    15→  SalaryEntry,
+    16→    16→  SprintBoard,
+    17→    17→  Task,
+    18→    18→  TemplateRow,
+    19→    19→} from "./types";
+    20→    20→
+    21→    21→/* =====================================================================
+    22→    22→ * V-INTERN MOCK DATA — dữ liệu mẫu cho mọi trạng thái nghiệp vụ.
+    23→    23→ * Tài khoản demo dùng trong màn hình đăng nhập (one-click fill).
+    24→    24→ * ===================================================================== */
+    25→    25→
+    26→    26→const DAY = 86_400_000;
+    27→    27→const iso = (offsetDays: number, hour = 9, minute = 30) => {
+    28→    28→  const d = new Date(Date.now() + offsetDays * DAY);
+    29→    29→  d.setHours(hour, minute, 0, 0);
+    30→    30→  return d.toISOString();
+    31→    31→};
+    32→    32→const day = (offsetDays: number) => iso(offsetDays).slice(0, 10);
+    33→    33→
+    34→    34→/* ------------------------------ TÀI KHOẢN ---------------------------- */
+    35→    35→/* Mọi trường hợp: SV đang làm / chờ phân công / đã hoàn thành, giảng
+    36→    36→   viên, quản trị viên, và tài khoản bị khóa (case lỗi). */
+    37→    37→
+    38→    38→export const ACCOUNTS: MockAccount[] = [
+    39→    39→  {
+    40→    40→    id: "u-minh",
+    41→    41→    email: "minh.nguyen@student.edu.vn",
+    42→    42→    password: "Sv@2026",
+    43→    43→    name: "Nguyễn Minh",
+    44→    44→    role: "intern",
+    45→    45→    status: "active",
+    46→    46→    title: "Sinh viên · Frontend Intern",
+    47→    47→    internState: "active",
+    48→    48→    note: "Đang thực tập — Sprint 3 diễn ra, có task đang làm",
+    49→    49→  },
+    50→    50→  {
+    51→    51→    id: "u-linh",
+    52→    52→    email: "linh.tran@student.edu.vn",
+    53→    53→    password: "Sv@2026",
+    54→    54→    name: "Trần Bảo Linh",
+    55→    55→    role: "intern",
+    56→    56→    status: "active",
+    57→    57→    title: "Sinh viên · Đã đậu phỏng vấn",
+    58→    58→    internState: "waiting",
+    59→    59→    note: "Đã trúng tuyển — đang chờ phân công dự án",
+    60→    60→  },
+    61→    61→  {
+    62→    62→    id: "u-an",
+    63→    63→    email: "an.pham@student.edu.vn",
+    64→    64→    password: "Sv@2026",
+    65→    65→    name: "Phạm Gia An",
+    66→    66→    role: "intern",
+    67→    67→    status: "active",
+    68→    68→    title: "Sinh viên · Đã hoàn thành kỳ thực tập",
+    69→    69→    internState: "finished",
+    70→    70→    note: "Hoàn thành — có KPI, lương ảo và chứng nhận",
+    71→    71→  },
+    72→    72→  {
+    73→    73→    id: "u-lan",
+    74→    74→    email: "lan.pham@vintern.edu.vn",
+    75→    75→    password: "Gv@2026",
+    76→    76→    name: "TS. Phạm Thu Lan",
+    77→    77→    role: "instructor",
+    78→    78→    status: "active",
+    79→    79→    title: "Giảng viên hướng dẫn",
+    80→    80→    note: "2 phiên thực tập đang diễn ra",
+    81→    81→  },
+    82→    82→  {
+    83→    83→    id: "u-quantri",
+    84→    84→    email: "quan.tri@vintern.edu.vn",
+    85→    85→    password: "Adm@2026",
+    86→    86→    name: "Trần Vân Anh",
+    87→    87→    role: "admin",
+    88→    88→    status: "active",
+    89→    89→    title: "Quản trị viên hệ thống",
+    90→    90→    note: "Toàn quyền vận hành nền tảng",
+    91→    91→  },
+    92→    92→  {
+    93→    93→    id: "u-tuan",
+    94→    94→    email: "tuan.vo@student.edu.vn",
+    95→    95→    password: "Sv@2026",
+    96→    96→    name: "Võ Quốc Tuấn",
+    97→    97→    role: "intern",
+    98→    98→    status: "locked",
+    99→    99→    title: "Sinh viên · Đã khóa",
+   100→   100→    note: "Tài khoản bị khóa — thử đăng nhập để xem thông báo lỗi",
+   101→   101→  },
+   102→   102→];
+   103→   103→
+   104→   104→export const DEMO_ACCOUNTS_PUBLIC = ACCOUNTS.map(({ password, ...rest }) => ({
+   105→   105→  ...rest,
+   106→   106→  password, // FE demo cho phép hiển thị để thao tác nhanh
+   107→   107→}));
+   108→   108→
+   109→   109→/* --------------------------- INTERN: TASKS --------------------------- */
+   110→   110→
+   111→   111→const TASKS_ACTIVE: Task[] = [
+   112→   112→  {
+   113→   113→    id: "t-101",
+   114→   114→    code: "FE-101",
+   115→   115→    title: "Xây dựng layout khung sổ tay hành trình",
+   116→   116→    status: "done",
+   117→   117→    priority: "high",
+   118→   118→    sprint: "Sprint 2",
+   119→   119→    points: 5,
+   120→   120→    progress: 100,
+   121→   121→    dueDate: day(-9),
+   122→   122→    description:
+   123→   123→      "Dựng khung giao diện chính theo token thiết kế: nền giấy kem, viền mực 2px, bóng in lệch. Tách component SketchCard, InkButton dùng chung.",
+   124→   124→    acceptance: [
+   125→   125→      "Khung trang khớp token màu giấy/mực ở cả 2 theme",
+   126→   126→      "Component SketchCard tái dùng được ở 3 vùng khác nhau",
+   127→   127→      "Không có lỗi console khi chuyển dark mode",
+   128→   128→    ],
+   129→   129→    history: [
+   130→   130→      { at: iso(-14), label: "Tạo nhiệm vụ" },
+   131→   131→      { at: iso(-12), label: "Chuyển sang Đang làm" },
+   132→   132→      { at: iso(-10), label: "Nộp PR #128" },
+   133→   133→      { at: iso(-9), label: "Duyệt — Hoàn thành" },
+   134→   134→    ],
+   135→   135→  },
+   136→   136→  {
+   137→   137→    id: "t-102",
+   138→   138→    code: "FE-102",
+   139→   139→    title: "Kanban cá nhân kéo–thả với 4 cột trạng thái",
+   140→   140→    status: "doing",
+   141→   141→    priority: "urgent",
+   142→   142→    sprint: "Sprint 3",
+   143→   143→    points: 8,
+   144→   144→    progress: 55,
+   145→   145→    dueDate: day(2),
+   146→   146→    description:
+   147→   147→      "Bảng Kanban cá nhân: Cần làm → Đang làm → Chờ duyệt → Hoàn thành. Kéo-thả bằng dnd-kit, có fallback bàn phím và mobile.",
+   148→   148→    acceptance: [
+   149→   149→      "Kéo thẻ giữa các cột mượt trên desktop và mobile",
+   150→   150→      "Thả vào cột Chờ duyệt thì mở luồng nộp bài",
+   151→   151→      "Điều khiển được hoàn toàn bằng bàn phím",
+   152→   152→    ],
+   153→   153→    history: [
+   154→   154→      { at: iso(-4), label: "Tạo nhiệm vụ" },
+   155→   155→      { at: iso(-3), label: "Chuyển sang Đang làm" },
+   156→   156→    ],
+   157→   157→  },
+   158→   158→  {
+   159→   159→    id: "t-103",
+   160→   160→    code: "FE-103",
+   161→   161→    title: "Hiệu ứng reveal cuộn cho danh sách task",
+   162→   162→    status: "doing",
+   163→   163→    priority: "medium",
+   164→   164→    sprint: "Sprint 3",
+   165→   165→    points: 3,
+   166→   166→    progress: 30,
+   167→   167→    dueDate: day(4),
+   168→   168→    description:
+   169→   169→      "Danh sách nhiệm vụ xuất hiện lần lượt (stagger) khi cuộn tới; tôn trọng prefers-reduced-motion.",
+   170→   170→    acceptance: ["Chuyển động mượt ở 60fps", "Tắt hiệu ứng khi hệ điều hành yêu cầu reduced-motion"],
+   171→   171→    history: [
+   172→   172→      { at: iso(-2), label: "Tạo nhiệm vụ" },
+   173→   173→      { at: iso(-1), label: "Chuyển sang Đang làm" },
+   174→   174→    ],
+   175→   175→  },
+   176→   176→  {
+   177→   177→    id: "t-104",
+   178→   178→    code: "API-201",
+   179→   179→    title: "API danh sách nhiệm vụ kèm bộ lọc trạng thái",
+   180→   180→    status: "review",
+   181→   181→    priority: "high",
+   182→   182→    sprint: "Sprint 3",
+   183→   183→    points: 5,
+   184→   184→    progress: 90,
+   185→   185→    dueDate: day(0),
+   186→   186→    description:
+   187→   187→      "Endpoint GET /tasks hỗ trợ filter theo status, priority, sprint; trả về shape tương thích adapter FE hiện có.",
+   188→   188→    acceptance: ["Filter chính xác 100% ca kiểm thử", "Thời gian phản hồi < 200ms"],
+   189→   189→    history: [
+   190→   190→      { at: iso(-5), label: "Tạo nhiệm vụ" },
+   191→   191→      { at: iso(-4), label: "Chuyển sang Đang làm" },
+   192→   192→      { at: iso(-1, 16, 45), label: "Nộp PR #142 — chờ duyệt" },
+   193→   193→    ],
+   194→   194→  },
+   195→   195→  {
+   196→   196→    id: "t-105",
+   197→   197→    code: "FE-105",
+   198→   198→    title: "Trang thông báo phân loại theo nhóm",
+   199→   199→    status: "todo",
+   200→   200→    priority: "medium",
+   201→   201→    sprint: "Sprint 3",
+   202→   202→    points: 5,
+   203→   203→    progress: 0,
+   204→   204→    dueDate: day(6),
+   205→   205→    description: "Trang thông báo cá nhân: feed theo ngày, badge nhóm, lọc chỉ chưa đọc, đánh dấu từng cái hoặc tất cả.",
+   206→   206→    acceptance: ["Phân trang đúng", "Đánh dấu đã đọc cập nhật ngay không cần tải lại"],
+   207→   207→    history: [{ at: iso(0, 8, 15), label: "Tạo nhiệm vụ" }],
+   208→   208→  },
+   209→   209→  {
+   210→   210→    id: "t-106",
+   211→   211→    code: "FE-106",
+   212→   212→    title: "Biểu đồ phân bố trạng thái nhiệm vụ",
+   213→   213→    status: "todo",
+   214→   214→    priority: "low",
+   215→   215→    sprint: "Sprint 3",
+   216→   216→    points: 3,
+   217→   217→    progress: 0,
+   218→   218→    dueDate: day(8),
+   219→   219→    description: "Donut chart hiển thị tỷ lệ todo/doing/review/done của sprint hiện tại.",
+   220→   220→    acceptance: ["Chú giải đọc được bằng screen reader"],
+   221→   221→    history: [{ at: iso(0, 8, 20), label: "Tạo nhiệm vụ" }],
+   222→   222→  },
+   223→   223→  {
+   224→   224→    id: "t-107",
+   225→   225→    code: "FE-107",
+   226→   226→    title: "Khung thoại AI Mentor phiên bản di động",
+   227→   227→    status: "todo",
+   228→   228→    priority: "high",
+   229→   229→    sprint: "Sprint 4",
+   230→   230→    points: 8,
+   231→   231→    progress: 0,
+   232→   232→    dueDate: day(13),
+   233→   233→    description: "Tối ưu khu vực hội thoại AI Mentor cho màn hình 390px: bàn phím ảo, cuộn tin nhắn, nút gửi nổi.",
+   234→   234→    acceptance: ["Thao tác được bằng một tay", "Không che mất tin cuối khi bàn phím mở"],
+   235→   235→    history: [{ at: iso(0, 8, 25), label: "Tạo nhiệm vụ" }],
+   236→   236→  },
+   237→   237→  {
+   238→   238→    id: "t-108",
+   239→   239→    code: "QA-301",
+   240→   240→    title: "Bộ kiểm thử tương tác kanban",
+   241→   241→    status: "done",
+   242→   242→    priority: "medium",
+   243→   243→    sprint: "Sprint 2",
+   244→   244→    points: 3,
+   245→   245→    progress: 100,
+   246→   246→    dueDate: day(-6),
+   247→   247→    description: "Viết test kéo–thả kanban: happy path, thả sai cột, hoàn tác.",
+   248→   248→    acceptance: ["Đủ 6 ca kiểm thử", "CI xanh 3 lần liên tiếp"],
+   249→   249→    history: [
+   250→   250→      { at: iso(-9), label: "Tạo nhiệm vụ" },
+   251→   251→      { at: iso(-7), label: "Nộp PR #135" },
+   252→   252→      { at: iso(-6), label: "Duyệt — Hoàn thành" },
+   253→   253→    ],
+   254→   254→  },
+   255→   255→];
+   256→   256→
+   257→   257→export function tasksForIntern(email: string): Task[] {
+   258→   258→  if (email === "u-an" || email === "an.pham@student.edu.vn") {
+   259→   259→    return TASKS_ACTIVE.map((t) => ({ ...t, status: "done" as const, progress: 100 }));
+   260→   260→  }
+   261→   261→  return TASKS_ACTIVE;
+   262→   262→}
+   263→   263→
+   264→   264→/* -------------------------- INTERN: OVERVIEW ------------------------- */
+   265→   265→
+   266→   266→export function overviewForIntern(email: string): InternOverview {
+   267→   267→  const account = ACCOUNTS.find((a) => a.email === email) ?? ACCOUNTS[0];
+   268→   268→  const finished = account.internState === "finished";
+   269→   269→  const waiting = account.internState === "waiting";
+   270→   270→  const tasks = tasksForIntern(email);
+   271→   271→  const summary = {
+   272→   272→    total: tasks.length,
+   273→   273→    todo: tasks.filter((t) => t.status === "todo").length,
+   274→   274→    doing: tasks.filter((t) => t.status === "doing").length,
+   275→   275→    review: tasks.filter((t) => t.status === "review").length,
+   276→   276→    done: tasks.filter((t) => t.status === "done").length,
+   277→   277→  };
+   278→   278→  const firstName = account.name.split(" ").slice(-1)[0];
+   279→   279→
+   280→   280→  if (waiting) {
+   281→   281→    return {
+   282→   282→      greeting: `Chào ${firstName}, đã thấy bạn ở đây rồi!`,
+   283→   283→      userName: account.name,
+   284→   284→      internState: "waiting",
+   285→   285→      placement: null,
+   286→   286→      taskSummary: { total: 0, todo: 0, doing: 0, review: 0, done: 0 },
+   287→   287→      nextTasks: [],
+   288→   288→      focusedTask: null,
+   289→   289→      recentActivity: [
+   290→   290→        { at: iso(-3), label: "Đã đậu phỏng vấn AI — 78/100 điểm", kind: "Tuyển dụng" },
+   291→   291→        { at: iso(-3, 10, 5), label: "Hồ sơ chuyển sang hàng chờ phân công", kind: "Tuyển dụng" },
+   292→   292→        { at: iso(-1), label: "Hệ thống xác minh email thành công", kind: "Hệ thống" },
+   293→   293→      ],
+   294→   294→    };
+   295→   295→  }
+   296→   296→
+   297→   297→  return {
+   298→   298→    greeting: `Một buổi sáng tốt lành, ${firstName}!`,
+   299→   299→    userName: account.name,
+   300→   300→    internState: finished ? "finished" : "active",
+   301→   301→    placement: {
+   302→   302→      project: "Sổ tay hành trình thực tập số",
+   303→   303→      projectCode: "PRJ-2026-NB",
+   304→   304→      session: "SS-2026-01 · Khóa 2026",
+   305→   305→      sprint: "Sprint 3",
+   306→   306→      sprintStatus: finished ? "Đã kết thúc" : "Đang diễn ra · Tuần 1/2",
+   307→   307→      progressPct: finished ? 100 : 58,
+   308→   308→      weekLabel: finished ? "8/8 tuần" : "5/8 tuần",
+   309→   309→    },
+   310→   310→    taskSummary: summary,
+   311→   311→    nextTasks: tasks.filter((t) => t.status !== "done").slice(0, 4),
+   312→   312→    focusedTask: tasks.find((t) => t.id === "t-102") ?? null,
+   313→   313→    recentActivity: finished
+   314→   314→      ? [
+   315→   315→          { at: iso(-12), label: "Chứng nhận CRT-2026-0042 được cấp", kind: "Chứng nhận" },
+   316→   316→          { at: iso(-13), label: "KPI kỳ cuối: 84/100 — Đạt", kind: "KPI" },
+   317→   317→          { at: iso(-14), label: "Đánh giá Sprint 4 được chốt: 8.6/10", kind: "Đánh giá" },
+   318→   318→        ]
+   319→   319→      : [
+   320→   320→          { at: iso(-1, 16, 45), label: "PR #142 chuyển sang chờ duyệt", kind: "Nhiệm vụ" },
+   321→   321→          { at: iso(-1, 9, 10), label: "AI Mentor gợi ý cách tách component cho FE-103", kind: "Nhiệm vụ" },
+   322→   322→          { at: iso(-2, 15, 0), label: "Sprint 3 mở — nhận 6 nhiệm vụ mới", kind: "Phiên thực tập" },
+   323→   323→        ],
+   324→   324→  };
+   325→   325→}
+   326→   326→
+   327→   327→/* ------------------------- INTERN: EVALUATIONS ----------------------- */
+   328→   328→
+   329→   329→export function evaluationsForIntern(email: string): Evaluation[] {
+   330→   330→  const finished = email.includes("an.pham");
+   331→   331→  // Sinh viên chờ phân công (linh) chưa có kỳ đánh giá nào — trả sổ trống.
+   332→   332→  if (!finished && email.includes("linh.tran")) return [];
+   333→   333→  const base: Evaluation[] = [
+   334→   334→    {
+   335→   335→      id: "ev-2",
+   336→   336→      sprint: "Sprint 2",
+   337→   337→      instructor: "TS. Phạm Thu Lan",
+   338→   338→      aiScore: 8.1,
+   339→   339→      finalScore: 8.0,
+   340→   340→      comment:
+   341→   341→        "Tiến bộ rõ về tư duy component. Lần tới chú ý viết test song song với tính năng thay vì dồn vào cuối sprint nhé.",
+   342→   342→      criteria: [
+   343→   343→        { label: "Chất lượng mã nguồn", score: 8.5, max: 10 },
+   344→   344→        { label: "Quy trình làm việc", score: 8.0, max: 10 },
+   345→   345→        { label: "Tự chủ & chủ động", score: 7.5, max: 10 },
+   346→   346→        { label: "Hợp tác nhóm", score: 8.0, max: 10 },
+   347→   347→      ],
+   348→   348→      finalizedAt: iso(-6),
+   349→   349→    },
+   350→   350→    {
+   351→   351→      id: "ev-1",
+   352→   352→      sprint: "Sprint 1",
+   353→   353→      instructor: "TS. Phạm Thu Lan",
+   354→   354→      aiScore: 7.2,
+   355→   355→      finalScore: 7.0,
+   356→   356→      comment:
+   357→   357→        "Khởi đầu ổn. Cần kiểm tra kỹ hơn trước khi gửi review — có vài lỗi nhỏ vốn có thể tránh được.",
+   358→   358→      criteria: [
+   359→   359→        { label: "Chất lượng mã nguồn", score: 7.0, max: 10 },
+   360→   360→        { label: "Quy trình làm việc", score: 6.5, max: 10 },
+   361→   361→        { label: "Tự chủ & chủ động", score: 7.5, max: 10 },
+   362→   362→        { label: "Hợp tác nhóm", score: 7.0, max: 10 },
+   363→   363→      ],
+   364→   364→      finalizedAt: iso(-20),
+   365→   365→    },
+   366→   366→  ];
+   367→   367→  if (finished) {
+   368→   368→    base.unshift({
+   369→   369→      id: "ev-3",
+   370→   370→      sprint: "Sprint 4 · Chốt kỳ",
+   371→   371→      instructor: "TS. Phạm Thu Lan",
+   372→   372→      aiScore: 8.8,
+   373→   373→      finalScore: 8.6,
+   374→   374→      comment:
+   375→   375→        "Kỳ thực tập khép lại rất đẹp. An đã tự chạy được một tính năng lớn end-to-end — giữ đà này cho dự án thật nhé!",
+   376→   376→      criteria: [
+   377→   377→        { label: "Chất lượng mã nguồn", score: 8.5, max: 10 },
+   378→   378→        { label: "Quy trình làm việc", score: 9.0, max: 10 },
+   379→   379→        { label: "Tự chủ & chủ động", score: 8.5, max: 10 },
+   380→   380→        { label: "Hợp tác nhóm", score: 8.5, max: 10 },
+   381→   381→      ],
+   382→   382→      finalizedAt: iso(-14),
+   383→   383→    });
+   384→   384→  }
+   385→   385→  return base;
+   386→   386→}
+   387→   387→
+   388→   388→/* ---------------------------- INTERN: KPI ---------------------------- */
+   389→   389→
+   390→   390→export function kpiForIntern(email: string): KpiRecord[] {
+   391→   391→  const finished = email.includes("an.pham");
+   392→   392→  // Sinh viên chờ phân công (linh) chưa có kỳ KPI nào — trả sổ trống.
+   393→   393→  if (!finished && email.includes("linh.tran")) return [];
+   394→   394→  const records: KpiRecord[] = [
+   395→   395→    {
+   396→   396→      id: "kpi-2",
+   397→   397→      period: "Sprint 2 · Tuần 3–4",
+   398→   398→      score: 81,
+   399→   399→      ruleVersion: "v2.1",
+   400→   400→      calculatedAt: iso(-6),
+   401→   401→      metrics: [
+   402→   402→        { code: "TASK_DONE", label: "Nhiệm vụ hoàn thành đúng hạn", value: 5, display: "5/6 nhiệm vụ", weight: 35, contribution: 29.2 },
+   403→   403→        { code: "REVIEW_PASS", label: "PR vượt qua review lần đầu", value: 80, display: "80%", weight: 25, contribution: 20.0 },
+   404→   404→        { code: "AI_SCORE", label: "Điểm AI đánh giá trung bình", value: 81, display: "8.1/10", weight: 20, contribution: 16.2 },
+   405→   405→        { code: "ON_TIME", label: "Điểm đúng giờ", value: 90, display: "Chuẩn giờ 90%", weight: 10, contribution: 9.0 },
+   406→   406→        { code: "MENTOR_USE", label: "Tương tác AI Mentor hữu ích", value: 65, display: "12 hội thoại", weight: 10, contribution: 6.5 },
+   407→   407→      ],
+   408→   408→    },
+   409→   409→    {
+   410→   410→      id: "kpi-1",
+   411→   411→      period: "Sprint 1 · Tuần 1–2",
+   412→   412→      score: 74,
+   413→   413→      ruleVersion: "v2.1",
+   414→   414→      calculatedAt: iso(-20),
+   415→   415→      metrics: [
+   416→   416→        { code: "TASK_DONE", label: "Nhiệm vụ hoàn thành đúng hạn", value: 3, display: "3/4 nhiệm vụ", weight: 35, contribution: 26.3 },
+   417→   417→        { code: "REVIEW_PASS", label: "PR vượt qua review lần đầu", value: 66, display: "66%", weight: 25, contribution: 16.5 },
+   418→   418→        { code: "AI_SCORE", label: "Điểm AI đánh giá trung bình", value: 72, display: "7.2/10", weight: 20, contribution: 14.4 },
+   419→   419→        { code: "ON_TIME", label: "Điểm đúng giờ", value: 85, display: "Chuẩn giờ 85%", weight: 10, contribution: 8.5 },
+   420→   420→        { code: "MENTOR_USE", label: "Tương tác AI Mentor hữu ích", value: 80, display: "9 hội thoại", weight: 10, contribution: 8.0 },
+   421→   421→      ],
+   422→   422→    },
+   423→   423→  ];
+   424→   424→  if (finished) {
+   425→   425→    records.unshift({
+   426→   426→      id: "kpi-3",
+   427→   427→      period: "Kỳ cuối · Tổng hợp 4 sprint",
+   428→   428→      score: 84,
+   429→   429→      ruleVersion: "v2.1",
+   430→   430→      calculatedAt: iso(-13),
+   431→   431→      metrics: [
+   432→   432→        { code: "TASK_DONE", label: "Nhiệm vụ hoàn thành đúng hạn", value: 19, display: "19/21 nhiệm vụ", weight: 35, contribution: 31.7 },
+   433→   433→        { code: "REVIEW_PASS", label: "PR vượt qua review lần đầu", value: 86, display: "86%", weight: 25, contribution: 21.5 },
+   434→   434→        { code: "AI_SCORE", label: "Điểm AI đánh giá trung bình", value: 82, display: "8.2/10", weight: 20, contribution: 16.4 },
+   435→   435→        { code: "ON_TIME", label: "Điểm đúng giờ", value: 92, display: "Chuẩn giờ 92%", weight: 10, contribution: 9.2 },
+   436→   436→        { code: "MENTOR_USE", label: "Tương tác AI Mentor hữu ích", value: 55, display: "24 hội thoại", weight: 10, contribution: 5.5 },
+   437→   437→      ],
+   438→   438→    });
+   439→   439→  }
+   440→   440→  return records;
+   441→   441→}
+   442→   442→
+   443→   443→/* ------------------------ INTERN: LƯƠNG ẢO --------------------------- */
+   444→   444→
+   445→   445→export function salaryForIntern(email: string): SalaryEntry[] {
+   446→   446→  const finished = email.includes("an.pham");
+   447→   447→  // Sinh viên chờ phân công (linh) chưa có giao dịch nào — trả sổ trống.
+   448→   448→  if (!finished && email.includes("linh.tran")) return [];
+   449→   449→  if (finished) {
+   450→   450→    return [
+   451→   451→      { id: "sal-6", at: iso(-13), type: "KPI", amount: 2_590_000, note: "Tổng hợp KPI kỳ cuối · 84 điểm" },
+   452→   452→      { id: "sal-5", at: iso(-27), type: "KPI", amount: 2_430_000, note: "Sprint 4 · 81 điểm" },
+   453→   453→      { id: "sal-4", at: iso(-41), type: "Thưởng", amount: 400_000, note: "PR được highlight tuần" },
+   454→   454→      { id: "sal-3", at: iso(-42), type: "KPI", amount: 2_380_000, note: "Sprint 3 · 79 điểm" },
+   455→   455→      { id: "sal-2", at: iso(-56), type: "KPI", amount: 2_200_000, note: "Sprint 2 · 73 điểm" },
+   456→   456→      { id: "sal-1", at: iso(-70), type: "KPI", amount: 1_980_000, note: "Sprint 1 · 66 điểm" },
+   457→   457→      { id: "sal-0", at: iso(-72), type: "Điều chỉnh", amount: 400_000, note: "Trợ giá kỳ thực tập đầu tiên" },
+   458→   458→    ];
+   459→   459→  }
+   460→   460→  return [
+   461→   461→    { id: "sal-2", at: iso(-6), type: "KPI", amount: 2_430_000, note: "Sprint 2 · 81 điểm" },
+   462→   462→    { id: "sal-1", at: iso(-20), type: "KPI", amount: 2_220_000, note: "Sprint 1 · 74 điểm" },
+   463→   463→    { id: "sal-0", at: iso(-22), type: "Điều chỉnh", amount: 400_000, note: "Trợ giá kỳ thực tập đầu tiên" },
+   464→   464→  ];
+   465→   465→}
+   466→   466→
+   467→   467→/* ------------------------ INTERN: CHỨNG NHẬN ------------------------ */
+   468→   468→
+   469→   469→export function certificatesForIntern(email: string): Certificate[] {
+   470→   470→  if (email.includes("an.pham")) {
+   471→   471→    return [
+   472→   472→      {
+   473→   473→        id: "crt-1",
+   474→   474→        code: "CRT-2026-0042",
+   475→   475→        project: "Sổ tay hành trình thực tập số",
+   476→   476→        session: "SS-2026-01 · Khóa 2026",
+   477→   477→        issuedAt: iso(-12),
+   478→   478→        verifyCode: "VINT-2026-QX4T8N",
+   479→   479→        status: "valid",
+   480→   480→      },
+   481→   481→      {
+   482→   482→        id: "crt-2",
+   483→   483→        code: "CRT-2026-0043",
+   484→   484→        project: "Chứng nhận component · Micro-credential",
+   485→   485→        session: "SS-2026-01 · Khóa 2026",
+   486→   486→        issuedAt: iso(-11),
+   487→   487→        verifyCode: "VINT-2026-LM2K9P",
+   488→   488→        status: "valid",
+   489→   489→      },
+   490→   490→    ];
+   491→   491→  }
+   492→   492→  return [];
+   493→   493→}
+   494→   494→
+   495→   495→/* -------------------------- INTERN: AI MENTOR ------------------------ */
+   496→   496→
+   497→   497→export function mentorForIntern(email: string): MentorConversation[] {
+   498→   498→  void email;
+   499→   499→  return [
+   500→   500→    {
+   501→   501→      id: "mc-1",
+   502→   502→      title: "Tách component cho FE-103",
+   503→   503→      archived: false,
+   504→   504→      messages: [
+   505→   505→        {
+   506→   506→          id: "mm-1",
+   507→   507→          from: "ai",
+   508→   508→          text: "Chào Minh! Mình thấy bạn đang làm FE-103 — hiệu ứng reveal cho danh sách task. Bạn muốn hỏi gì hôm nay?",
+   509→   509→          at: iso(-1, 9, 0),
+   510→   510→        },
+   511→   511→        {
+   512→   512→          id: "mm-2",
+   513→   513→          from: "me",
+   514→   514→          text: "Mình nên tách component thế nào để list item không bị render lại toàn bộ khi scroll?",
+   515→   515→          at: iso(-1, 9, 2),
+   516→   516→        },
+   517→   517→        {
+   518→   518→          id: "mm-3",
+   519→   519→          from: "ai",
+   520→   520→          text: "Gợi ý nhỏ: dùng React.memo cho item + truyền key ổn định (id nhiệm vụ, không dùng index). Vùng animate chỉ nên bọc phần xuất hiện, đừng bọc cả danh sách. Cuối cùng nhớ tôn trọng prefers-reduced-motion — bạn có thể đọc qua hook useReducedMotion của framer-motion.",
+   521→   521→          at: iso(-1, 9, 3),
+   522→   522→        },
+   523→   523→      ],
+   524→   524→    },
+   525→   525→    {
+   526→   526→      id: "mc-2",
+   527→   527→      title: "Review codegen dnd-kit",
+   528→   528→      archived: false,
+   529→   529→      messages: [
+   530→   530→        {
+   531→   531→          id: "mm-4",
+   532→   532→          from: "ai",
+   533→   533→          text: "Hôm nay bạn định hỏi gì về kanban kéo–thả nhỉ?",
+   534→   534→          at: iso(-2, 14, 0),
+   535→   535→        },
+   536→   536→        {
+   537→   537→          id: "mm-5",
+   538→   538→          from: "me",
+   539→   539→          text: "DragOverlay có cần thiết không, hay dùng transform trực tiếp?",
+   540→   540→          at: iso(-2, 14, 1),
+   541→   541→        },
+   542→   542→        {
+   543→   543→          id: "mm-6",
+   544→   544→          from: "ai",
+   545→   545→          text: "Nên dùng DragOverlay: bản thẻ gốc giữ chỗ (không giật layout), bản overlay bay theo con trỏ. Đây cũng là pattern chính thức của dnd-kit cho sortable list.",
+   546→   546→          at: iso(-2, 14, 2),
+   547→   547→        },
+   548→   548→      ],
+   549→   549→    },
+   550→   550→    {
+   551→   551→      id: "mc-3",
+   552→   552→      title: "Tuần trước · Kế hoạch học test",
+   553→   553→      archived: true,
+   554→   554→      messages: [
+   555→   555→        {
+   556→   556→          id: "mm-7",
+   557→   557→          from: "ai",
+   558→   558→          text: "Gợi ý lộ trình 3 buổi: buổi 1 viết test thuần logic, buổi 2 test component với Testing Library, buổi 3 lồng vào CI.",
+   559→   559→          at: iso(-8, 10, 0),
+   560→   560→        },
+   561→   561→      ],
+   562→   562→    },
+   563→   563→  ];
+   564→   564→}
+   565→   565→
+   566→   566→/* --------------------------- INSTRUCTOR ------------------------------ */
+   567→   567→
+   568→   568→export const INSTRUCTOR_SESSIONS: InstructorSession[] = [
+   569→   569→  {
+   570→   570→    id: "ss-1",
+   571→   571→    code: "SS-2026-01",
+   572→   572→    project: "Sổ tay hành trình thực tập số",
+   573→   573→    members: 5,
+   574→   574→    memberNames: ["Nguyễn Minh", "Trần Bảo Linh", "Lê Hoàng", "Phan Chi", "Đỗ Kha"],
+   575→   575→    sprint: "Sprint 3",
+   576→   576→    sprintStatus: "Đang diễn ra · Tuần 1/2",
+   577→   577→    progress: 58,
+   578→   578→    startDate: day(-34),
+   579→   579→    endDate: day(22),
+   580→   580→    status: "active",
+   581→   581→  },
+   582→   582→  {
+   583→   583→    id: "ss-2",
+   584→   584→    code: "SS-2026-02",
+   585→   585→    project: "Kho tri thức Agent nội bộ",
+   586→   586→    members: 4,
+   587→   587→    memberNames: ["Phạm Gia An", "Vũ Thanh", "Bùi Diễm", "Ngô Phong"],
+   588→   588→    sprint: "Sprint 5",
+   589→   589→    sprintStatus: "Đang diễn ra · Tuần 2/2",
+   590→   590→    progress: 76,
+   591→   591→    startDate: day(-48),
+   592→   592→    endDate: day(8),
+   593→   593→    status: "active",
+   594→   594→  },
+   595→   595→  {
+   596→   596→    id: "ss-3",
+   597→   597→    code: "SS-2025-11",
+   598→   598→    project: "Cổng xác minh chứng nhận",
+   599→   599→    members: 6,
+   600→   600→    memberNames: ["Tôn Nữ Mai", "Hà Vy", "Trịnh Khanh", "Dương Thiện", "Lý Tường", "Cao Uyên"],
+   601→   601→    sprint: "Kết thúc",
+   602→   602→    sprintStatus: "Đã chốt KPI",
+   603→   603→    progress: 100,
+   604→   604→    startDate: day(-120),
+   605→   605→    endDate: day(-28),
+   606→   606→    status: "closed",
+   607→   607→  },
+   608→   608→];
+   609→   609→
+   610→   610→export const INSTRUCTOR_SPRINT_BOARD: SprintBoard = {
+   611→   611→  id: "sp-3",
+   612→   612→  name: "Sprint 3 · SS-2026-01",
+   613→   613→  goal: "Hoàn thiện bảng Kanban cá nhân và API nhiệm vụ",
+   614→   614→  week: "Tuần 1/2",
+   615→   615→  daysLeft: 9,
+   616→   616→  columns: [
+   617→   617→    {
+   618→   618→      key: "todo",
+   619→   619→      label: "Cần làm",
+   620→   620→      tasks: [
+   621→   621→        { id: "sb-1", code: "FE-105", title: "Trang thông báo phân loại theo nhóm", status: "todo", assignee: "Nguyễn Minh", priority: "medium", points: 5 },
+   622→   622→        { id: "sb-2", code: "FE-106", title: "Biểu đồ phân bố trạng thái nhiệm vụ", status: "todo", assignee: "Lê Hoàng", priority: "low", points: 3 },
+   623→   623→        { id: "sb-3", code: "BE-202", title: "Seed dữ liệu mẫu cho môi trường demo", status: "todo", assignee: "Phan Chi", priority: "medium", points: 3 },
+   624→   624→      ],
+   625→   625→    },
+   626→   626→    {
+   627→   627→      key: "doing",
+   628→   628→      label: "Đang làm",
+   629→   629→      tasks: [
+   630→   630→        { id: "sb-4", code: "FE-102", title: "Kanban cá nhân kéo–thả với 4 cột", status: "doing", assignee: "Nguyễn Minh", priority: "urgent", points: 8 },
+   631→   631→        { id: "sb-5", code: "FE-103", title: "Hiệu ứng reveal cuộn cho danh sách", status: "doing", assignee: "Nguyễn Minh", priority: "medium", points: 3 },
+   632→   632→        { id: "sb-6", code: "FE-110", title: "Khu vực hồ sơ thành viên", status: "doing", assignee: "Đỗ Kha", priority: "high", points: 5 },
+   633→   633→      ],
+   634→   634→    },
+   635→   635→    {
+   636→   636→      key: "review",
+   637→   637→      label: "Chờ duyệt",
+   638→   638→      tasks: [
+   639→   639→        { id: "sb-7", code: "API-201", title: "API danh sách nhiệm vụ kèm bộ lọc", status: "review", assignee: "Nguyễn Minh", priority: "high", points: 5 },
+   640→   640→        { id: "sb-8", code: "BE-190", title: "Webhook sự kiện nộp bài", status: "review", assignee: "Phan Chi", priority: "high", points: 8 },
+   641→   641→      ],
+   642→   642→    },
+   643→   643→    {
+   644→   644→      key: "done",
+   645→   645→      label: "Hoàn thành",
+   646→   646→      tasks: [
+   647→   647→        { id: "sb-9", code: "FE-101", title: "Xây dựng layout khung sổ tay", status: "done", assignee: "Nguyễn Minh", priority: "high", points: 5 },
+   648→   648→        { id: "sb-10", code: "QA-301", title: "Bộ kiểm thử tương tác kanban", status: "done", assignee: "Trần Bảo Linh", priority: "medium", points: 3 },
+   649→   649→      ],
+   650→   650→    },
+   651→   651→  ],
+   652→   652→  burndown: [34, 34, 31, 29, 29, 26, 24, 24, 21, 18, 14, 12, 9, 4],
+   653→   653→};
+   654→   654→
+   655→   655→export const INSTRUCTOR_GRADING: GradingItem[] = [
+   656→   656→  {
+   657→   657→    id: "gr-1",
+   658→   658→    taskCode: "API-201",
+   659→   659→    taskTitle: "API danh sách nhiệm vụ kèm bộ lọc",
+   660→   660→    student: "Nguyễn Minh",
+   661→   661→    submittedAt: iso(-1, 16, 45),
+   662→   662→    aiScore: 8.4,
+   663→   663→    prLink: "https://github.com/v-intern/journey-notebook/pull/142",
+   664→   664→    status: "pending",
+   665→   665→    notes: "AI: response shape khớp adapter; còn 1 test case thiếu cho filter rỗng.",
+   666→   666→  },
+   667→   667→  {
+   668→   668→    id: "gr-2",
+   669→   669→    taskCode: "BE-190",
+   670→   670→    taskTitle: "Webhook sự kiện nộp bài",
+   671→   671→    student: "Phan Chi",
+   672→   672→    submittedAt: iso(-1, 11, 20),
+   673→   673→    aiScore: 7.9,
+   674→   674→    prLink: "https://github.com/v-intern/journey-notebook/pull/141",
+   675→   675→    status: "pending",
+   676→   676→    notes: "AI: retry logic ổn; nên bọc payload bằng schema validation.",
+   677→   677→  },
+   678→   678→  {
+   679→   679→    id: "gr-3",
+   680→   680→    taskCode: "FE-109",
+   681→   681→    taskTitle: "Form nộp bài kèm link PR",
+   682→   682→    student: "Đỗ Kha",
+   683→   683→    submittedAt: iso(-2, 15, 10),
+   684→   684→    aiScore: 8.8,
+   685→   685→    prLink: "https://github.com/v-intern/journey-notebook/pull/138",
+   686→   686→    status: "approved",
+   687→   687→    notes: "Đã duyệt — giao tiếp rõ ràng, edge case tốt.",
+   688→   688→  },
+   689→   689→  {
+   690→   690→    id: "gr-4",
+   691→   691→    taskCode: "FE-099",
+   692→   692→    taskTitle: "Empty state mascots cho các trang",
+   693→   693→    student: "Trần Bảo Linh",
+   694→   694→    submittedAt: iso(-3, 10, 5),
+   695→   695→    aiScore: 6.9,
+   696→   696→    prLink: "https://github.com/v-intern/journey-notebook/pull/131",
+   697→   697→    status: "changes",
+   698→   698→    notes: "Yêu cầu sửa: tỉ lệ mascot lệch ở 390px, thiếu alt text.",
+   699→   699→  },
+   700→   700→];
+   701→   701→
+   702→   702→export const INSTRUCTOR_REPORTS: ReportRow[] = [
+   703→   703→  { id: "rp-1", period: "Sprint 3 · SS-2026-01", scope: "5 sinh viên", avgScore: 7.9, completion: 58, kpiAvg: 76, students: 5 },
+   704→   704→  { id: "rp-2", period: "Sprint 5 · SS-2026-02", scope: "4 sinh viên", avgScore: 8.3, completion: 76, kpiAvg: 81, students: 4 },
+   705→   705→  { id: "rp-3", period: "Sprint 2 · SS-2026-01", scope: "5 sinh viên", avgScore: 7.6, completion: 100, kpiAvg: 74, students: 5 },
+   706→   706→  { id: "rp-4", period: "Kỳ 2025-11 · SS-2025-11", scope: "6 sinh viên", avgScore: 8.1, completion: 100, kpiAvg: 80, students: 6 },
+   707→   707→];
+   708→   708→
+   709→   709→/* ------------------------------- ADMIN ------------------------------- */
+   710→   710→
+   711→   711→export const ADMIN_USERS: AdminUserRow[] = [
+   712→   712→  { id: "u-01", name: "Nguyễn Minh", email: "minh.nguyen@student.edu.vn", role: "intern", status: "active", createdAt: day(-40), lastActive: iso(0, 8, 30) },
+   713→   713→  { id: "u-02", name: "Trần Bảo Linh", email: "linh.tran@student.edu.vn", role: "intern", status: "active", createdAt: day(-38), lastActive: iso(0, 7, 45) },
+   714→   714→  { id: "u-03", name: "Phạm Gia An", email: "an.pham@student.edu.vn", role: "intern", status: "active", createdAt: day(-120), lastActive: iso(-12) },
+   715→   715→  { id: "u-04", name: "TS. Phạm Thu Lan", email: "lan.pham@vintern.edu.vn", role: "instructor", status: "active", createdAt: day(-200), lastActive: iso(0, 9, 10) },
+   716→   716→  { id: "u-05", name: "Trần Vân Anh", email: "quan.tri@vintern.edu.vn", role: "admin", status: "active", createdAt: day(-365), lastActive: iso(0, 9, 0) },
+   717→   717→  { id: "u-06", name: "Võ Quốc Tuấn", email: "tuan.vo@student.edu.vn", role: "intern", status: "locked", createdAt: day(-30), lastActive: iso(-9) },
+   718→   718→  { id: "u-07", name: "Lê Hoàng", email: "hoang.le@student.edu.vn", role: "intern", status: "pending", createdAt: day(-2), lastActive: iso(-2) },
+   719→   719→  { id: "u-08", name: "ThS. Nguyễn Quốc Bảo", email: "bao.nguyen@vintern.edu.vn", role: "instructor", status: "active", createdAt: day(-90), lastActive: iso(-1, 16, 0) },
+   720→   720→  { id: "u-09", name: "Đỗ Kha", email: "kha.do@student.edu.vn", role: "intern", status: "active", createdAt: day(-36), lastActive: iso(0, 8, 5) },
+   721→   721→  { id: "u-10", name: "Phan Chi", email: "chi.phan@student.edu.vn", role: "intern", status: "active", createdAt: day(-36), lastActive: iso(-1, 17, 30) },
+   722→   722→];
+   723→   723→
+   724→   724→export const ADMIN_QUESTIONS: QuestionRow[] = [
+   725→   725→  { id: "q-01", code: "Q-FE-014", role: "Frontend", content: "Khi nào bạn chọn Server Component thay vì Client Component?", difficulty: "Vừa", type: "Tư duy", status: "Đang dùng" },
+   726→   726→  { id: "q-02", code: "Q-FE-021", role: "Frontend", content: "Giải thích hydration mismatch và cách bạn debug lỗi này.", difficulty: "Khó", type: "Kỹ thuật", status: "Đang dùng" },
+   727→   727→  { id: "q-03", code: "Q-FE-007", role: "Frontend", content: "Accessibility: bạn kiểm tra contrast màu bằng công cụ gì?", difficulty: "Dễ", type: "Kiến thức", status: "Đang dùng" },
+   728→   728→  { id: "q-04", code: "Q-BE-011", role: "Backend", content: "Thiết kế idempotency cho API thanh toán như thế nào?", difficulty: "Khó", type: "Thiết kế", status: "Đang dùng" },
+   729→   729→  { id: "q-05", code: "Q-BE-003", role: "Backend", content: "Khác biệt giữa optimistic concurrency và pessimistic concurrency?", difficulty: "Vừa", type: "Kiến thức", status: "Đang dùng" },
+   730→   730→  { id: "q-06", code: "Q-QA-002", role: "QA", content: "Viết test case cho form đăng nhập có 2FA.", difficulty: "Vừa", type: "Thực hành", status: "Ngưng" },
+   731→   731→  { id: "q-07", code: "Q-BA-005", role: "Business Analyst", content: "Khi stakeholder muốn 'nhanh nhưng chất lượng', bạn xử lý thế nào?", difficulty: "Khó", type: "Tình huống", status: "Đang dùng" },
+   732→   732→  { id: "q-08", code: "Q-FE-030", role: "Frontend", content: "Tối ưu animation 60fps trên thiết bị yếu — chiến lược của bạn?", difficulty: "Khó", type: "Tư duy", status: "Bản nháp" },
+   733→   733→];
+   734→   734→
+   735→   735→export const ADMIN_TEMPLATES: TemplateRow[] = [
+   736→   736→  {
+   737→   737→    id: "tpl-1",
+   738→   738→    code: "TPL-NB-01",
+   739→   739→    name: "Sổ tay hành trình số",
+   740→   740→    domain: "Frontend · Next.js",
+   741→   741→    description: "Dự án giáo trình nền tảng: design system, component library và ứng dụng notebook.",
+   742→   742→    blueprints: 6,
+   743→   743→    tasks: 34,
+   744→   744→    status: "Công khai",
+   745→   745→  },
+   746→   746→  {
+   747→   747→    id: "tpl-2",
+   748→   748→    code: "TPL-KT-04",
+   749→   749→    name: "Kho tri thức Agent",
+   750→   750→    domain: "Backend · NestJS",
+   751→   751→    description: "Xây dựng kho tài liệu có AI truy xuất: embedding, retrieval và pipeline đánh giá.",
+   752→   752→    blueprints: 4,
+   753→   753→    tasks: 28,
+   754→   754→    status: "Công khai",
+   755→   755→  },
+   756→   756→  {
+   757→   757→    id: "tpl-3",
+   758→   758→    code: "TPL-VF-02",
+   759→   759→    name: "Cổng xác minh chứng nhận",
+   760→   760→    domain: "Fullstack",
+   761→   761→    description: "Trang tra cứu công khai + API mã hóa một chiều, có trang in chứng nhận.",
+   762→   762→    blueprints: 3,
+   763→   763→    tasks: 22,
+   764→   764→    status: "Công khai",
+   765→   765→  },
+   766→   766→  {
+   767→   767→    id: "tpl-4",
+   768→   768→    code: "TPL-DX-07",
+   769→   769→    name: "Bảng điều phối sự kiện nội bộ",
+   770→   770→    domain: "Frontend · Realtime",
+   771→   771→    description: "Đề tài thử nghiệm: WebSocket, hàng đợi và canvas trực quan.",
+   772→   772→    blueprints: 2,
+   773→   773→    tasks: 18,
+   774→   774→    status: "Nội bộ",
+   775→   775→  },
+   776→   776→];
+   777→   777→
+   778→   778→export const ADMIN_ACTIVITY: ActivityItem[] = [
+   779→   779→  { id: "ac-1", module: "Tuyển dụng", label: "Đợt phỏng vấn 2026-02 mở đăng ký", at: iso(0, 8, 40), ok: true },
+   780→   780→  { id: "ac-2", module: "Ngân hàng câu hỏi", label: "Nhập 12 câu hỏi Frontend mới", at: iso(0, 8, 12), ok: true },
+   781→   781→  { id: "ac-3", module: "Cấu hình AI", label: "Điều chỉnh nhiệt độ sinh câu phỏng vấn 0.7 → 0.6", at: iso(-1, 17, 5), ok: true },
+   782→   782→  { id: "ac-4", module: "Người dùng", label: "Khóa tài khoản tuan.vo@student.edu.vn (vi phạm quy định nộp bài)", at: iso(-1, 15, 30), ok: true },
+   783→   783→  { id: "ac-5", module: "Chứng nhận", label: "Cấp CRT-2026-0042 cho Phạm Gia An", at: iso(-12), ok: true },
+   784→   784→  { id: "ac-6", module: "Dịch vụ", label: "Grading runner khởi động lại sau bản vá", at: iso(-3, 6, 2), ok: true },
+   785→   785→  { id: "ac-7", module: "Email", label: "Gửi lịch nhắc nộp bài Sprint 3 cho 9 người dùng", at: iso(-2, 7, 0), ok: true },
+   786→   786→  { id: "ac-8", module: "Kho tri thức", label: "Đăng bài 'Quy ước đặt tên branch' lên kho Agent", at: iso(-4, 10, 15), ok: true },
+   787→   787→];
+   788→   788→
+   789→   789→export const ADMIN_STATS = {
+   790→   790→  users: 128,
+   791→   791→  interns: 104,
+   792→   792→  instructors: 12,
+   793→   793→  admins: 5,
+   794→   794→  pendingAccounts: 3,
+   795→   795→  lockedAccounts: 2,
+   796→   796→  activeSessions: 2,
+   797→   797→  certificatesIssued: 61,
+   798→   798→  questions: 148,
+   799→   799→  templates: 4,
+   800→   800→  aiCallsToday: 342,
+   801→   801→  uptime: 99.7,
+   802→   802→};
+   803→   803→
+   804→   804→/* --------------------------- NOTIFICATIONS --------------------------- */
+   805→   805→
+   806→   806→export const NOTIFICATIONS: NotificationItem[] = [
+   807→   807→  // intern — active (minh)
+   808→   808→  { id: "n-01", role: "intern", category: "Nhiệm vụ", title: "API-201 đã vào hàng chờ duyệt", body: "PR #142 của bạn đã được AI chấm nháp 8.4/10. Giảng viên sẽ xem xét trong 48 giờ.", at: iso(-1, 16, 45), read: false },
+   809→   809→  { id: "n-02", role: "intern", category: "Đánh giá", title: "Đánh giá Sprint 2 đã chốt", body: "Điểm chính thức 8.0/10 — đọc nhận xét của giảng viên để chuẩn bị sprint tới.", at: iso(-6), read: true },
+   810→   810→  { id: "n-03", role: "intern", category: "KPI", title: "KPI Sprint 2 đã tổng hợp", body: "Điểm kỳ này: 81/100. Chi tiết nguồn tính đã sẵn sàng.", at: iso(-6, 1), read: true },
+   811→   811→  { id: "n-04", role: "intern", category: "Lương ảo", title: "Số dư được cộng 2.430.000 đ ảo", body: "Từ KPI Sprint 2 · 81 điểm. Sổ giao dịch đã đối chiếu.", at: iso(-6, 2), read: true },
+   812→   812→  { id: "n-05", role: "intern", category: "Hệ thống", title: "Bảo trì định kỳ cuối tuần", body: "Hệ thống tạm dừng 22:00–23:00 thứ Bảy. Task đang soạn sẽ được giữ nguyên.", at: iso(-2, 9, 0), read: false },
+   813→   813→  // intern — waiting (linh)
+   814→   814→  { id: "n-11", role: "intern", category: "Tuyển dụng", title: "Chúc mừng! Bạn đã đậu phỏng vấn AI", body: "78/100 điểm. Hồ sơ của bạn đã vào hàng chờ phân công dự án.", at: iso(-3), read: false },
+   815→   815→  { id: "n-12", role: "intern", category: "Hệ thống", title: "Xác minh email thành công", body: "Tài khoản đã sẵn sàng. Bạn sẽ nhận thông báo khi có dự án phù hợp.", at: iso(-1), read: false },
+   816→   816→  // intern — finished (an)
+   817→   817→  { id: "n-21", role: "intern", category: "Chứng nhận", title: "Chứng nhận CRT-2026-0042 đã được cấp", body: "Tải bản PDF hoặc chia sẻ mã xác minh VINT-2026-QX4T8N.", at: iso(-12), read: true },
+   818→   818→  { id: "n-22", role: "intern", category: "KPI", title: "KPI kỳ cuối: 84/100 — Đạt", body: "Tổng hợp 4 sprint. Xem chi tiết từng nguồn tính trong trang KPI.", at: iso(-13), read: true },
+   819→   819→  // instructor
+   820→   820→  { id: "n-31", role: "instructor", category: "Nhiệm vụ", title: "2 bài nộp đang chờ duyệt", body: "API-201 (Nguyễn Minh) và BE-190 (Phan Chi) — AI đã chấm nháp sẵn.", at: iso(-1, 16, 50), read: false },
+   821→   821→  { id: "n-32", role: "instructor", category: "Phiên thực tập", title: "Sprint 5 sắp kết thúc", body: "SS-2026-02 còn 8 ngày. Nhắc nhóm hoàn tất cột Chờ duyệt sớm.", at: iso(-1, 8, 0), read: false },
+   822→   822→  { id: "n-33", role: "instructor", category: "Đánh giá", title: "Đề xuất điểm AI đã sẵn", body: "4 hồ sơ sprint 5 có thể duyệt một chặp trong trang Đánh giá.", at: iso(-2, 10, 30), read: true },
+   823→   823→  { id: "n-34", role: "instructor", category: "Hệ thống", title: "Bản vá grading runner", body: "Chấm nháp giờ hỗ trợ repo riêng tư. Không cần thao tác gì thêm.", at: iso(-3, 6, 5), read: true },
+   824→   824→  // admin
+   825→   825→  { id: "n-41", role: "admin", category: "Người dùng", title: "1 tài khoản chờ duyệt", body: "hoang.le@student.edu.vn vừa đăng ký — xem trong trang Người dùng.", at: iso(-2, 8, 0), read: false },
+   826→   826→  { id: "n-42", role: "admin", category: "Hệ thống", title: "AI dùng 342 lượt gọi hôm nay", body: "Trong hạn mức 500. Biểu đồ chi tiết ở trang Trạng thái dịch vụ.", at: iso(0, 8, 5), read: false },
+   827→   827→  { id: "n-43", role: "admin", category: "Chứng nhận", title: "Cấp chứng nhận thành công", body: "CRT-2026-0042 đã ký số và gửi email cho sinh viên.", at: iso(-12), read: true },
+   828→   828→];
+   829→   829→
+   830→   830→export function notificationsFor(role: string): NotificationItem[] {
+   831→   831→  return NOTIFICATIONS.filter((n) => n.role === role);
+   832→   832→}
+   833→   833→
