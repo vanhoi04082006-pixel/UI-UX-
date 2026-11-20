@@ -9,11 +9,19 @@ import type {
   KpiRecord,
   MockAccount,
   MentorConversation,
+  NotificationCategory,
   NotificationItem,
+  Priority,
   QuestionRow,
   ReportRow,
+  Role,
   SalaryEntry,
+  SessionMember,
+  SessionStatus,
+  Sprint,
   SprintBoard,
+  SprintBoardTask,
+  SprintStatus,
   Task,
   TemplateRow,
 } from "./types";
@@ -911,25 +919,25 @@ export function kpiForIntern(email: string): KpiRecord[] {
 /* ------------------------ INTERN: LƯƠNG ẢO --------------------------- */
 
 const SALARY_MINH: SalaryEntry[] = [
-  { id: "sal-8", at: iso(-1, 10, 15), type: "Thưởng", amount: 250_000, note: "Góp ý cải thiện luồng review được ghi nhận" },
-  { id: "sal-7", at: iso(-6, 1, 0), type: "KPI", amount: 2_180_000, note: "Sprint 2 · 74 điểm" },
-  { id: "sal-6", at: iso(-7, 9, 0), type: "Thưởng", amount: 400_000, note: "PR #135 được highlight tuần Sprint 2" },
+  { id: "sal-8", at: iso(-1, 10, 15), type: "Thưởng", amount: 250_000, note: "Góp ý cải thiện luồng review được ghi nhận", period: "Sprint 3 · Tuần 5–6" },
+  { id: "sal-7", at: iso(-6, 1, 0), type: "KPI", amount: 2_180_000, note: "Sprint 2 · 74 điểm", period: "Sprint 2 · Tuần 3–4" },
+  { id: "sal-6", at: iso(-7, 9, 0), type: "Thưởng", amount: 400_000, note: "PR #135 được highlight tuần Sprint 2", period: "Sprint 2 · Tuần 3–4" },
   { id: "sal-5", at: iso(-9, 9, 0), type: "Điều chỉnh", amount: 180_000, note: "Trợ cấp đi lại buổi onsite" },
-  { id: "sal-4", at: iso(-16, 9, 0), type: "Thưởng", amount: 250_000, note: "Top tương tác AI Mentor tuần 3–4" },
-  { id: "sal-3", at: iso(-20, 1, 0), type: "KPI", amount: 1_960_000, note: "Sprint 1 · 68 điểm" },
+  { id: "sal-4", at: iso(-16, 9, 0), type: "Thưởng", amount: 250_000, note: "Top tương tác AI Mentor tuần 3–4", period: "Sprint 2 · Tuần 3–4" },
+  { id: "sal-3", at: iso(-20, 1, 0), type: "KPI", amount: 1_960_000, note: "Sprint 1 · 68 điểm", period: "Sprint 1 · Tuần 1–2" },
   { id: "sal-2", at: iso(-22, 9, 0), type: "Điều chỉnh", amount: 400_000, note: "Trợ giá kỳ thực tập đầu tiên" },
-  { id: "sal-1", at: iso(-25, 9, 0), type: "Thưởng", amount: 300_000, note: "Hoàn thành sớm nhiệm vụ khung FE-101" },
+  { id: "sal-1", at: iso(-25, 9, 0), type: "Thưởng", amount: 300_000, note: "Hoàn thành sớm nhiệm vụ khung FE-101", period: "Sprint 1 · Tuần 1–2" },
   { id: "sal-0", at: iso(-28, 9, 0), type: "Điều chỉnh", amount: 120_000, note: "Điểm danh đủ 10 buổi đầu tiên" },
 ];
 
 const SALARY_AN: SalaryEntry[] = [
-  { id: "sal-a7", at: iso(-13, 1, 0), type: "KPI", amount: 2_640_000, note: "Tổng hợp KPI kỳ cuối · 88 điểm" },
-  { id: "sal-a6", at: iso(-27, 1, 0), type: "KPI", amount: 2_550_000, note: "Sprint 4 · 85 điểm" },
-  { id: "sal-a5", at: iso(-40, 9, 0), type: "Thưởng", amount: 450_000, note: "PR được highlight tuần cuối kỳ" },
-  { id: "sal-a4", at: iso(-41, 1, 0), type: "KPI", amount: 2_340_000, note: "Sprint 3 · 78 điểm" },
-  { id: "sal-a3", at: iso(-55, 9, 0), type: "Thưởng", amount: 350_000, note: "PR được highlight giữa kỳ" },
-  { id: "sal-a2", at: iso(-56, 1, 0), type: "KPI", amount: 2_200_000, note: "Sprint 2 · 73 điểm" },
-  { id: "sal-a1", at: iso(-70, 1, 0), type: "KPI", amount: 1_980_000, note: "Sprint 1 · 66 điểm" },
+  { id: "sal-a7", at: iso(-13, 1, 0), type: "KPI", amount: 2_640_000, note: "Tổng hợp KPI kỳ cuối · 88 điểm", period: "Kỳ cuối · Tổng hợp 4 sprint" },
+  { id: "sal-a6", at: iso(-27, 1, 0), type: "KPI", amount: 2_550_000, note: "Sprint 4 · 85 điểm", period: "Sprint 4 · Tuần 7–8" },
+  { id: "sal-a5", at: iso(-40, 9, 0), type: "Thưởng", amount: 450_000, note: "PR được highlight tuần cuối kỳ", period: "Sprint 4 · Tuần 7–8" },
+  { id: "sal-a4", at: iso(-41, 1, 0), type: "KPI", amount: 2_340_000, note: "Sprint 3 · 78 điểm", period: "Sprint 3 · Tuần 5–6" },
+  { id: "sal-a3", at: iso(-55, 9, 0), type: "Thưởng", amount: 350_000, note: "PR được highlight giữa kỳ", period: "Sprint 3 · Tuần 5–6" },
+  { id: "sal-a2", at: iso(-56, 1, 0), type: "KPI", amount: 2_200_000, note: "Sprint 2 · 73 điểm", period: "Sprint 2 · Tuần 3–4" },
+  { id: "sal-a1", at: iso(-70, 1, 0), type: "KPI", amount: 1_980_000, note: "Sprint 1 · 66 điểm", period: "Sprint 1 · Tuần 1–2" },
   { id: "sal-a0", at: iso(-72, 9, 0), type: "Điều chỉnh", amount: 400_000, note: "Trợ giá kỳ thực tập đầu tiên" },
 ];
 
@@ -1106,6 +1114,13 @@ export const INSTRUCTOR_SESSIONS: InstructorSession[] = [
     project: "Sổ tay hành trình thực tập số",
     members: 5,
     memberNames: ["Nguyễn Minh", "Lê Hoàng", "Phan Chi", "Đỗ Kha", "Trịnh Gia Bảo"],
+    memberDetails: [
+      { name: "Nguyễn Minh", email: "minh.nguyen@student.edu.vn", assignmentStatus: "active" },
+      { name: "Lê Hoàng", email: "hoang.le@student.edu.vn", assignmentStatus: "active" },
+      { name: "Phan Chi", email: "chi.phan@student.edu.vn", assignmentStatus: "active" },
+      { name: "Đỗ Kha", email: "kha.do@student.edu.vn", assignmentStatus: "active" },
+      { name: "Trịnh Gia Bảo", email: "bao.trinh@student.edu.vn", assignmentStatus: "active" },
+    ],
     sprint: "Sprint 3",
     sprintStatus: "Đang diễn ra · Tuần 1/2",
     progress: 58,
@@ -1119,6 +1134,13 @@ export const INSTRUCTOR_SESSIONS: InstructorSession[] = [
     project: "Kho tri thức Agent nội bộ",
     members: 5,
     memberNames: ["Nguyễn Minh", "Vũ Thanh", "Bùi Diễm", "Ngô Phong", "Trương Mỹ Nhi"],
+    memberDetails: [
+      { name: "Nguyễn Minh", email: "minh.nguyen@student.edu.vn", assignmentStatus: "active" },
+      { name: "Vũ Thanh", email: "thanh.vu@student.edu.vn", assignmentStatus: "active" },
+      { name: "Bùi Diễm", email: "diem.bui@student.edu.vn", assignmentStatus: "active" },
+      { name: "Ngô Phong", email: "phong.ngo@student.edu.vn", assignmentStatus: "active" },
+      { name: "Trương Mỹ Nhi", email: "nhi.truong@student.edu.vn", assignmentStatus: "active" },
+    ],
     sprint: "Sprint 5",
     sprintStatus: "Đang diễn ra · Tuần 2/2",
     progress: 76,
@@ -1132,6 +1154,14 @@ export const INSTRUCTOR_SESSIONS: InstructorSession[] = [
     project: "Cổng thông tin sự nghiệp UEH",
     members: 6,
     memberNames: ["Trần Bảo Linh", "Đặng Khánh Vy", "Tôn Nữ Mai", "Hà Vy", "Trịnh Khanh", "Lý Tường"],
+    memberDetails: [
+      { name: "Trần Bảo Linh", email: "linh.tran@student.edu.vn", assignmentStatus: "active" },
+      { name: "Đặng Khánh Vy", email: "vy.dang@student.edu.vn", assignmentStatus: "active" },
+      { name: "Tôn Nữ Mai", email: "mai.tonnu@student.edu.vn", assignmentStatus: "active" },
+      { name: "Hà Vy", email: "vy.ha@student.edu.vn", assignmentStatus: "active" },
+      { name: "Trịnh Khanh", email: "khanh.trinh@student.edu.vn", assignmentStatus: "active" },
+      { name: "Lý Tường", email: "tuong.ly@student.edu.vn", assignmentStatus: "active" },
+    ],
     sprint: "Sprint 1",
     sprintStatus: "Chưa mở — khởi động sau 9 ngày",
     progress: 0,
@@ -1145,6 +1175,14 @@ export const INSTRUCTOR_SESSIONS: InstructorSession[] = [
     project: "Cổng xác minh chứng nhận",
     members: 6,
     memberNames: ["Tôn Nữ Mai", "Hà Vy", "Trịnh Khanh", "Dương Thiện", "Lý Tường", "Cao Uyên"],
+    memberDetails: [
+      { name: "Tôn Nữ Mai", email: "mai.tonnu@student.edu.vn", assignmentStatus: "completed" },
+      { name: "Hà Vy", email: "vy.ha@student.edu.vn", assignmentStatus: "completed" },
+      { name: "Trịnh Khanh", email: "khanh.trinh@student.edu.vn", assignmentStatus: "completed" },
+      { name: "Dương Thiện", email: "thien.duong@student.edu.vn", assignmentStatus: "completed" },
+      { name: "Lý Tường", email: "tuong.ly@student.edu.vn", assignmentStatus: "completed" },
+      { name: "Cao Uyên", email: "uyen.cao@student.edu.vn", assignmentStatus: "completed" },
+    ],
     sprint: "Kết thúc",
     sprintStatus: "Đã chốt KPI",
     progress: 100,
@@ -1160,6 +1198,7 @@ export const INSTRUCTOR_SPRINT_BOARD: SprintBoard = {
   goal: "Hoàn thiện bảng Kanban cá nhân và API nhiệm vụ",
   week: "Tuần 1/2",
   daysLeft: 9,
+  status: "active",
   columns: [
     {
       key: "todo",
@@ -1202,6 +1241,337 @@ export const INSTRUCTOR_SPRINT_BOARD: SprintBoard = {
   ],
   burndown: [68, 68, 67, 65, 63, 61, 60, 58, 57, 55, 54, 53, 53, 53],
 };
+
+/* --------- SPRINTS: vòng đời đầy đủ (codex: sprint lifecycle) ---------- */
+
+export const INSTRUCTOR_SPRINTS: Sprint[] = [
+  {
+    id: "sp-3",
+    sessionId: "ss-1",
+    name: "Sprint 3",
+    goal: "Hoàn thiện bảng Kanban cá nhân và API nhiệm vụ",
+    startsAt: day(-5),
+    endsAt: day(9),
+    status: "active",
+    totalTasks: 14,
+    openTasks: 10,
+  },
+  {
+    id: "sp-4",
+    sessionId: "ss-1",
+    name: "Sprint 4",
+    goal: "Ra mắt bản demo giữa kỳ cho giảng viên phản hồi",
+    startsAt: day(10),
+    endsAt: day(23),
+    status: "planned",
+    totalTasks: 0,
+    openTasks: 0,
+  },
+  {
+    id: "sp-5",
+    sessionId: "ss-2",
+    name: "Sprint 5",
+    goal: "Tích hợp tìm kiếm ngữ nghĩa cho kho tri thức",
+    startsAt: day(-6),
+    endsAt: day(8),
+    status: "active",
+    totalTasks: 12,
+    openTasks: 4,
+  },
+  {
+    id: "sp-2",
+    sessionId: "ss-1",
+    name: "Sprint 2",
+    goal: "Xây khung giao diện sổ tay và component dùng chung",
+    startsAt: day(-19),
+    endsAt: day(-6),
+    status: "completed",
+    totalTasks: 11,
+    openTasks: 0,
+  },
+  {
+    id: "sp-1",
+    sessionId: "ss-1",
+    name: "Sprint 1",
+    goal: "Khởi tạo dự án, cấu hình CI và quy tắc làm việc",
+    startsAt: day(-33),
+    endsAt: day(-20),
+    status: "completed",
+    totalTasks: 8,
+    openTasks: 0,
+  },
+  {
+    id: "sp-6",
+    sessionId: "ss-3",
+    name: "Sprint 1",
+    goal: "Phân tích yêu cầu và thiết kế cơ sở dữ liệu ban đầu",
+    startsAt: day(9),
+    endsAt: day(22),
+    status: "planned",
+    totalTasks: 0,
+    openTasks: 0,
+  },
+];
+
+const SESSION_STATUS_LABEL: Record<SessionStatus, string> = {
+  active: "Đang diễn ra",
+  upcoming: "Sắp khởi động",
+  ending: "Sắp kết thúc",
+  closed: "Đã hoàn thành",
+  cancelled: "Đã hủy",
+};
+
+const SPRINT_STATUS_LABEL: Record<SprintStatus, string> = {
+  planned: "Đã lập kế hoạch",
+  active: "Đang diễn ra",
+  completed: "Đã hoàn thành",
+  cancelled: "Đã hủy",
+};
+
+export function sessionStatusLabel(status: SessionStatus): string {
+  return SESSION_STATUS_LABEL[status] ?? status;
+}
+
+export function sprintStatusLabel(status: SprintStatus): string {
+  return SPRINT_STATUS_LABEL[status] ?? status;
+}
+
+/** Codex sessionTransitions: các trạng thái kế tiếp hợp lệ của phiên.
+ *  "closed" = đã hoàn thành (tương đương completed của codex). */
+export function sessionTransitions(status: SessionStatus): SessionStatus[] {
+  switch (status) {
+    case "upcoming":
+      return ["cancelled"];
+    case "active":
+      return ["ending", "closed", "cancelled"];
+    case "ending":
+      return ["closed", "cancelled"];
+    default:
+      return [];
+  }
+}
+
+/** Codex sprintTransitions: planned → active; active → completed/cancelled. */
+export function sprintTransitions(status: SprintStatus): SprintStatus[] {
+  switch (status) {
+    case "planned":
+      return ["active", "cancelled"];
+    case "active":
+      return ["completed", "cancelled"];
+    default:
+      return [];
+  }
+}
+
+/** Đổi trạng thái phiên (codex: SessionLifecycleActions). */
+export function transitionSession(
+  sessionId: string,
+  next: SessionStatus,
+): { session: InstructorSession } {
+  const session = INSTRUCTOR_SESSIONS.find((s) => s.id === sessionId);
+  if (!session) throw new Error("Không tìm thấy phiên thực tập này.");
+  const choices = sessionTransitions(session.status);
+  if (!choices.includes(next)) {
+    throw new Error(
+      `Không thể chuyển phiên từ "${sessionStatusLabel(session.status)}" sang "${sessionStatusLabel(next)}".`,
+    );
+  }
+  session.status = next;
+  if (next === "closed") {
+    session.progress = 100;
+    session.sprintStatus = "Đã hoàn thành — lịch sử được giữ lại";
+  } else if (next === "cancelled") {
+    session.sprintStatus = "Đã hủy — lịch sử được giữ lại";
+  } else if (next === "ending") {
+    session.sprintStatus = `${session.sprintStatus} · Sắp kết thúc`;
+  }
+  pushNotification("instructor", {
+    category: "Phiên thực tập",
+    title: `${session.code} — ${sessionStatusLabel(next)}`,
+    body:
+      next === "closed"
+        ? "Phiên đã hoàn thành. Nhiệm vụ, đánh giá và lịch sử phân công được giữ lại."
+        : next === "cancelled"
+          ? "Phiên đã hủy theo xác nhận của giảng viên. Lịch sử được giữ lại để đối chiếu."
+          : "Phiên chuyển sang giai đoạn sắp kết thúc — kiểm soát tiến độ các phân công còn lại.",
+  });
+  return { session };
+}
+
+/** Hoàn thành phân công của một sinh viên trong phiên (codex: AssignmentCompletion). */
+export function completeAssignment(
+  sessionId: string,
+  memberEmail: string,
+): { member: SessionMember } {
+  const session = INSTRUCTOR_SESSIONS.find((s) => s.id === sessionId);
+  if (!session) throw new Error("Không tìm thấy phiên thực tập này.");
+  if (!["active", "ending", "closed"].includes(session.status)) {
+    throw new Error("Phiên đã đóng hoặc bị hủy — không thể đổi trạng thái phân công.");
+  }
+  const member = session.memberDetails.find(
+    (m) => m.email.toLowerCase() === memberEmail.toLowerCase(),
+  );
+  if (!member) throw new Error("Thành viên không nằm trong phiên này.");
+  if (member.assignmentStatus !== "active") {
+    throw new Error(
+      "Phân công của thành viên này đã kết thúc. Hãy tải lại danh sách để đối chiếu.",
+    );
+  }
+  member.assignmentStatus = "completed";
+  pushNotification("instructor", {
+    category: "Phiên thực tập",
+    title: `Phân công đã hoàn thành — ${member.name}`,
+    body: `${member.name} đã hoàn tất công việc được giao trong ${session.code}. Thành viên, bài nộp và lịch sử của phiên được giữ lại.`,
+  });
+  return { member };
+}
+
+/** Đổi trạng thái sprint (codex: SprintLifecycleActions). */
+export function transitionSprint(
+  sprintId: string,
+  next: SprintStatus,
+): { sprint: Sprint } {
+  const sprint = INSTRUCTOR_SPRINTS.find((s) => s.id === sprintId);
+  if (!sprint) throw new Error("Không tìm thấy Sprint này.");
+  const choices = sprintTransitions(sprint.status);
+  if (!choices.includes(next)) {
+    throw new Error(
+      `Sprint đã ${sprintStatusLabel(sprint.status).toLowerCase()} — không thể chuyển sang trạng thái mới.`,
+    );
+  }
+  if (next === "completed" && sprint.openTasks > 0) {
+    throw new Error(
+      "Sprint còn nhiệm vụ chưa hoàn thành. Hãy xử lý hết trước khi kết thúc Sprint.",
+    );
+  }
+  sprint.status = next;
+  // Đồng bộ bảng Kanban + phiên chứa sprint này.
+  if (INSTRUCTOR_SPRINT_BOARD.id === sprintId) {
+    INSTRUCTOR_SPRINT_BOARD.status = next;
+    if (next === "cancelled" || next === "completed") {
+      INSTRUCTOR_SPRINT_BOARD.week = next === "completed" ? "Hoàn thành" : "Đã hủy";
+    }
+  }
+  const session = INSTRUCTOR_SESSIONS.find((s) => s.id === sprint.sessionId);
+  if (session && session.sprint === sprint.name) {
+    if (next === "active") session.sprintStatus = "Đang diễn ra";
+    else if (next === "completed") session.sprintStatus = "Đã hoàn thành — chờ chốt KPI";
+    else if (next === "cancelled") session.sprintStatus = "Sprint đã hủy";
+  }
+  pushNotification("instructor", {
+    category: "Nhiệm vụ",
+    title: `${sprint.name} (${session?.code ?? sprint.sessionId}) — ${sprintStatusLabel(next)}`,
+    body:
+      next === "completed"
+        ? "Sprint đã hoàn thành. Điểm KPI của kỳ này sẵn sàng để tính và chốt."
+        : next === "cancelled"
+          ? "Sprint đã hủy theo xác nhận của giảng viên. Sprint không thể kích hoạt lại."
+          : "Sprint đã kích hoạt — nhiệm vụ trong kế hoạch bắt đầu chạy theo hạn đã đặt.",
+  });
+  return { sprint };
+}
+
+/** Sửa thông tin sprint (codex: SprintEditDialog) — chỉ khi chưa kết thúc/hủy. */
+export function updateSprint(
+  sprintId: string,
+  patch: { name?: string; goal?: string; startsAt?: string; endsAt?: string },
+): { sprint: Sprint } {
+  const sprint = INSTRUCTOR_SPRINTS.find((s) => s.id === sprintId);
+  if (!sprint) throw new Error("Không tìm thấy Sprint này.");
+  if (sprint.status === "completed" || sprint.status === "cancelled") {
+    throw new Error(
+      "Sprint đã hoàn thành hoặc hủy. Hãy chọn Sprint khác để tạo hoặc chuyển nhiệm vụ mới.",
+    );
+  }
+  if (patch.name !== undefined) sprint.name = patch.name;
+  if (patch.goal !== undefined) sprint.goal = patch.goal;
+  if (patch.startsAt !== undefined) sprint.startsAt = patch.startsAt;
+  if (patch.endsAt !== undefined) sprint.endsAt = patch.endsAt;
+  if (INSTRUCTOR_SPRINT_BOARD.id === sprintId) {
+    if (patch.goal !== undefined) INSTRUCTOR_SPRINT_BOARD.goal = patch.goal;
+    if (patch.name !== undefined) {
+      const session = INSTRUCTOR_SESSIONS.find((s) => s.id === sprint.sessionId);
+      INSTRUCTOR_SPRINT_BOARD.name = `${patch.name}${session ? ` · ${session.code}` : ""}`;
+    }
+  }
+  return { sprint };
+}
+
+/** Tạo sprint mới trong phiên (codex: DeliveryOverview "Tạo Sprint"). */
+export function createSprint(input: {
+  sessionId: string;
+  name: string;
+  goal?: string;
+  startsAt: string;
+  endsAt: string;
+}): { sprint: Sprint } {
+  const session = INSTRUCTOR_SESSIONS.find((s) => s.id === input.sessionId);
+  if (!session) throw new Error("Không tìm thấy phiên thực tập cho Sprint mới.");
+  if (session.status === "cancelled") {
+    throw new Error("Phiên đã hủy — không thể tạo Sprint mới.");
+  }
+  if (!input.name.trim() || !input.startsAt || !input.endsAt) {
+    throw new Error("Vui lòng điền tên Sprint và khoảng thời gian.");
+  }
+  const sprint: Sprint = {
+    id: `sp-${Date.now()}`,
+    sessionId: input.sessionId,
+    name: input.name.trim(),
+    goal: input.goal?.trim() || "Chưa đặt mục tiêu",
+    startsAt: input.startsAt,
+    endsAt: input.endsAt,
+    status: "planned",
+    totalTasks: 0,
+    openTasks: 0,
+  };
+  INSTRUCTOR_SPRINTS.unshift(sprint);
+  pushNotification("instructor", {
+    category: "Nhiệm vụ",
+    title: `Đã tạo ${sprint.name} — ${session.code}`,
+    body: "Sprint ở trạng thái đã lập kế hoạch. Kích hoạt khi đội hình sẵn sàng.",
+  });
+  return { sprint };
+}
+
+/** Tạo nhiệm vụ trong sprint (codex: TaskManagement allowCreate). */
+export function createBoardTask(input: {
+  sprintId: string;
+  title: string;
+  assignee: string;
+  priority?: Priority;
+  points?: number;
+}): { task: SprintBoardTask } {
+  const sprint = INSTRUCTOR_SPRINTS.find((s) => s.id === input.sprintId);
+  if (!sprint) throw new Error("Không tìm thấy Sprint này.");
+  if (sprint.status === "completed" || sprint.status === "cancelled") {
+    throw new Error(
+      "Sprint đã hoàn thành hoặc hủy. Hãy chọn Sprint khác để tạo hoặc chuyển nhiệm vụ mới.",
+    );
+  }
+  if (!input.title.trim() || !input.assignee.trim()) {
+    throw new Error("Vui lòng điền tên nhiệm vụ và người nhận.");
+  }
+  const task: SprintBoardTask = {
+    id: `sb-${Date.now()}`,
+    code: `NEW-${Math.floor(Math.random() * 900 + 100)}`,
+    title: input.title.trim(),
+    status: "todo",
+    assignee: input.assignee.trim(),
+    priority: input.priority ?? "medium",
+    points: input.points ?? 3,
+  };
+  if (INSTRUCTOR_SPRINT_BOARD.id === input.sprintId) {
+    INSTRUCTOR_SPRINT_BOARD.columns[0].tasks.push(task);
+  }
+  sprint.totalTasks += 1;
+  sprint.openTasks += 1;
+  pushNotification("instructor", {
+    category: "Nhiệm vụ",
+    title: `Đã giao nhiệm vụ ${task.code} — ${task.assignee}`,
+    body: `${task.title} (${task.points} điểm, ưu tiên ${task.priority}) đã vào cột Cần làm của ${sprint.name}.`,
+  });
+  return { task };
+}
 
 export const INSTRUCTOR_GRADING: GradingItem[] = [
   {
@@ -1453,6 +1823,25 @@ export const NOTIFICATIONS: NotificationItem[] = [
 /* Trạng thái đã đọc ghi nhớ phía máy chủ (mỗi lần khởi động lại sạch).
    read = giá trị gốc CÓ thêm id nằm trong READ_STATE. */
 const READ_STATE = new Map<string, Set<string>>();
+
+/** Đẩy thông báo mới vào đầu danh sách của một vai trò (codex sync:
+ *  hành động vòng đời sprint/phiên/phân công đều báo tới người dùng). */
+export function pushNotification(
+  role: Role,
+  item: { category: NotificationCategory; title: string; body: string },
+): NotificationItem {
+  const notification: NotificationItem = {
+    id: `n-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
+    role,
+    category: item.category,
+    title: item.title,
+    body: item.body,
+    at: new Date().toISOString(),
+    read: false,
+  };
+  NOTIFICATIONS.unshift(notification);
+  return notification;
+}
 
 export function notificationsFor(role: string): NotificationItem[] {
   const r = role.toLowerCase();

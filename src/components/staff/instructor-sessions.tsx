@@ -13,10 +13,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
+  VBan,
   VCalendar,
   VChartColumn,
+  VCheck,
+  VClipboardCheck,
   VClock,
+  VFlag,
   VGraduation,
+  VHourglass,
   VKanban,
   VPlus,
   VStopwatch,
@@ -32,37 +37,60 @@ import {
   FilterChips,
   MiniBar,
   PageHeading,
-  SESSION_STATUS,
   SkeletonBlock,
   initialsOf,
 } from "@/components/staff/instructor-shared";
 import { useApp } from "@/lib/store";
-import { useMock } from "@/lib/use-mock";
-import type { InstructorSession } from "@/lib/mock/types";
+import { postMock, useMock } from "@/lib/use-mock";
+import { sessionStatusLabel } from "@/lib/mock/data";
+import type { InstructorSession, SessionMember, SessionStatus } from "@/lib/mock/types";
 
 /* =====================================================================
  * PHIÊN THỰC TẬP — quản lý các phiên đang mở / đã kết thúc.
+ * Codex đồng bộ: trạng thái ending + cancelled, hành động vòng đời
+ * phiên (SessionLifecycleActions) và hoàn thành phân công
+ * (AssignmentCompletion) ngay trong hộp thoại chi tiết.
  * ===================================================================== */
 
-type SessionFilter = "all" | "active" | "upcoming" | "closed";
+type SessionFilter = "all" | "active" | "upcoming" | "ending" | "closed" | "cancelled";
+type BusyAction = "ending" | "closed" | "cancelled" | "assignment";
 
 const MEMBER_ROLES = ["Frontend", "Backend", "QA", "Tài liệu", "DevOps", "Thiết kế"];
 
-/** Dữ liệu từng thành viên — sinh nhất quán theo vị trí trong danh sách. */
-function memberRowsOf(session: InstructorSession) {
-  return session.memberNames.map((name, i) => {
-    const progress =
-      session.status === "closed" ? 100 : (i * 13 + 40) % 100;
-    const status =
-      session.status === "closed"
-        ? { label: "Hoàn thành", tone: "green" as const }
-        : progress >= 85
-          ? { label: "Hoàn thành", tone: "green" as const }
-          : progress >= 10
-            ? { label: "Đang làm", tone: "blue" as const }
-            : { label: "Cần bắt đầu", tone: "neutral" as const };
-    return { name, role: MEMBER_ROLES[i % MEMBER_ROLES.length], progress, status };
-  });
+/** Màu tem theo trạng thái — ending vàng hổ phách, cancelled đỏ mực. */
+const STATUS_TONE: Record<SessionStatus, string> = {
+  active: "green",
+  upcoming: "blue",
+  ending: "amber",
+  closed: "neutral",
+  cancelled: "red",
+};
+
+const FILTER_KEYS: SessionFilter[] = ["active", "upcoming", "ending", "closed", "cancelled"];
+
+interface MemberRow {
+  name: string;
+  email: string;
+  role: string;
+  assignmentStatus: SessionMember["assignmentStatus"];
+}
+
+/** Thành viên lấy từ memberDetails (email + trạng thái phân công), thiếu thì fallback memberNames. */
+function memberRowsOf(session: InstructorSession): MemberRow[] {
+  const details: SessionMember[] =
+    session.memberDetails.length > 0
+      ? session.memberDetails
+      : session.memberNames.map((name) => ({
+          name,
+          email: "",
+          assignmentStatus: "active" as const,
+        }));
+  return details.map((m, i) => ({
+    name: m.name,
+    email: m.email,
+    assignmentStatus: m.assignmentStatus,
+    role: MEMBER_ROLES[i % MEMBER_ROLES.length],
+  }));
 }
 
 export default function InstructorSessions() {
@@ -76,6 +104,19 @@ export default function InstructorSessions() {
   const [form, setForm] = useState({ project: "", start: "", desc: "" });
   const [formError, setFormError] = useState<string | null>(null);
   const [creatingBusy, setCreatingBusy] = useState(false);
+
+  /* ---- Vòng đời phiên + hoàn thành phân công (codex đồng bộ) ---- */
+  const [busyAction, setBusyAction] = useState<BusyAction | null>(null);
+  const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+  const [confirmTransition, setConfirmTransition] = useState<{
+    session: InstructorSession;
+    next: Extract<SessionStatus, "closed" | "cancelled">;
+  } | null>(null);
+  const [assignmentTarget, setAssignmentTarget] = useState<{
+    session: InstructorSession;
+    member: SessionMember;
+  } | null>(null);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
 
   /** Gói confetti bung khi tạo phiên thành công (JS thêm class `play`). */
   const burstRef = useRef<HTMLSpanElement>(null);
@@ -97,10 +138,11 @@ export default function InstructorSessions() {
   const detail = sessions.find((s) => s.id === detailId) ?? null;
   const detailRows = useMemo(() => (detail ? memberRowsOf(detail) : []), [detail]);
   const memberSummary = useMemo(() => {
-    const done = detailRows.filter((m) => m.progress >= 85).length;
-    const working = detailRows.filter((m) => m.progress >= 10 && m.progress < 85).length;
-    return { done, working, idle: detailRows.length - done - working };
+    const done = detailRows.filter((m) => m.assignmentStatus === "completed").length;
+    const active = detailRows.filter((m) => m.assignmentStatus === "active").length;
+    return { done, active, total: detailRows.length };
   }, [detailRows]);
+  const busy = busyAction !== null;
 
   function openCreate() {
     setForm({ project: "", start: "", desc: "" });
@@ -132,6 +174,7 @@ export default function InstructorSessions() {
           project: form.project.trim(),
           members: 0,
           memberNames: [],
+          memberDetails: [],
           sprint: "Chưa mở sprint",
           sprintStatus: "Đang chuẩn bị",
           progress: 0,
@@ -146,6 +189,50 @@ export default function InstructorSessions() {
       setCreatingBusy(false);
       toast.success("Đã tạo phiên (mô phỏng)");
     }, 700);
+  }
+
+  /** Chuyển trạng thái phiên qua mock API — ending đi thẳng, closed/cancelled đã có modal xác nhận. */
+  async function runTransition(session: InstructorSession, next: "ending" | "closed" | "cancelled") {
+    setBusyAction(next);
+    setLifecycleError(null);
+    try {
+      await postMock<{ sessionId: string; status: SessionStatus }, { session: InstructorSession }>(
+        "instructor/session-transition",
+        { sessionId: session.id, status: next },
+      );
+      setConfirmTransition(null);
+      reload();
+      toast.success(
+        next === "ending"
+          ? `Đã chuyển ${session.code} sang Sắp kết thúc`
+          : next === "closed"
+            ? `Phiên ${session.code} đã hoàn thành — lịch sử được giữ lại`
+            : `Đã hủy phiên ${session.code} — lịch sử được giữ lại`,
+      );
+    } catch (err) {
+      setLifecycleError(err instanceof Error ? err.message : "Không đổi được trạng thái phiên.");
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  /** Chốt phân công của một thành viên — sinh viên có thể được giao vào phiên khác. */
+  async function runAssignmentComplete(session: InstructorSession, member: SessionMember) {
+    setBusyAction("assignment");
+    setAssignmentError(null);
+    try {
+      await postMock<
+        { sessionId: string; memberEmail: string },
+        { member: SessionMember }
+      >("instructor/assignment-complete", { sessionId: session.id, memberEmail: member.email });
+      setAssignmentTarget(null);
+      reload();
+      toast.success(`Đã hoàn thành phân công của ${member.name}`);
+    } catch (err) {
+      setAssignmentError(err instanceof Error ? err.message : "Không hoàn tất được phân công.");
+    } finally {
+      setBusyAction(null);
+    }
   }
 
   if (error) {
@@ -165,15 +252,17 @@ export default function InstructorSessions() {
         </InkButton>
       </PageHeading>
 
-      <FilterChips
+      <FilterChips<SessionFilter>
         ariaLabel="Lọc phiên theo trạng thái"
         value={filter}
         onChange={setFilter}
         options={[
           { key: "all", label: "Tất cả", count: sessions.length },
-          { key: "active", label: "Đang diễn ra", count: sessions.filter((s) => s.status === "active").length },
-          { key: "upcoming", label: "Sắp mở", count: sessions.filter((s) => s.status === "upcoming").length },
-          { key: "closed", label: "Đã kết thúc", count: sessions.filter((s) => s.status === "closed").length },
+          ...FILTER_KEYS.map((key) => ({
+            key,
+            label: sessionStatusLabel(key as SessionStatus),
+            count: sessions.filter((s) => s.status === key).length,
+          })),
         ]}
       />
 
@@ -192,10 +281,13 @@ export default function InstructorSessions() {
       ) : (
         <Stagger className="grid gap-5 lg:grid-cols-2">
           {filtered.map((s) => {
-            const meta = SESSION_STATUS[s.status] ?? SESSION_STATUS.active;
             const daysToStart = Math.max(
               0,
               Math.ceil((new Date(s.startDate).getTime() - Date.now()) / 86_400_000),
+            );
+            const daysToEnd = Math.max(
+              0,
+              Math.ceil((new Date(s.endDate).getTime() - Date.now()) / 86_400_000),
             );
             const shownMembers = s.memberNames.slice(0, 5);
             const restMembers = s.memberNames.length - shownMembers.length;
@@ -206,26 +298,41 @@ export default function InstructorSessions() {
                   as="article"
                   className={`relative card-tilt flex h-full flex-col p-4 sm:p-5 ${
                     isLocal ? "animate-pop-in" : ""
-                  } ${s.status === "closed" ? "opacity-80" : ""}`}
+                  } ${s.status === "cancelled" ? "opacity-75" : s.status === "closed" ? "opacity-80" : ""}`}
                 >
                   {/* Băng dính: phiên sắp mở dán băng hổ phách nhắc lịch */}
                   {s.status === "upcoming" && (
                     <Tape variant="warm" rotate={-4} className="-top-3 left-7 !w-16 !h-5" />
                   )}
+                  {/* Băng dính vàng son — phiên sắp kết thúc cần chốt quân */}
+                  {s.status === "ending" && (
+                    <Tape variant="warm" rotate={-4} className="tape-gold -top-3 left-7 !w-16 !h-5" />
+                  )}
+                  {/* Tem xám nghiêng — phiên đã hủy vẫn giữ lịch sử */}
+                  {s.status === "cancelled" && (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute right-3 top-6 rotate-[9deg] rounded-full border-[2.5px] border-[color-mix(in_srgb,var(--ink)_50%,transparent)] px-3 py-0.5 text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--ink)_50%,transparent)]"
+                    >
+                      Đã hủy
+                    </span>
+                  )}
                   <div className="flex flex-wrap items-center gap-2">
                     <CodeChip className="!text-[0.72rem]">{s.code}</CodeChip>
                     {s.status === "active" ? (
-                      <InkBadge tone={meta.tone}>
+                      <InkBadge tone={STATUS_TONE[s.status]}>
                         <span aria-hidden="true" className="ws-dot-live" />
-                        {meta.label}
+                        {sessionStatusLabel(s.status)}
                       </InkBadge>
                     ) : (
-                      <InkBadge tone={meta.tone} dot>
-                        {meta.label}
+                      <InkBadge tone={STATUS_TONE[s.status]} dot>
+                        {sessionStatusLabel(s.status)}
                       </InkBadge>
                     )}
                     <span className="ml-auto flex items-center gap-1 font-geist-mono text-[0.66rem] uppercase tracking-[0.12em] text-[var(--ink-soft)]">
-                      {s.status === "closed" && <VClock size={13} aria-hidden="true" />}
+                      {(s.status === "closed" || s.status === "cancelled") && (
+                        <VClock size={13} aria-hidden="true" />
+                      )}
                       {s.members} SV
                     </span>
                   </div>
@@ -236,6 +343,12 @@ export default function InstructorSessions() {
                     <p className="mt-1 flex items-center gap-1.5 font-hand text-[0.95rem] text-[var(--warning)]">
                       <VStopwatch size={14} aria-hidden="true" />
                       bắt đầu sau {daysToStart} ngày
+                    </p>
+                  )}
+                  {s.status === "ending" && (
+                    <p className="mt-1 flex items-center gap-1.5 font-hand text-[0.95rem] text-[var(--warning)]">
+                      <VHourglass size={14} aria-hidden="true" />
+                      còn {daysToEnd} ngày là khép lại
                     </p>
                   )}
 
@@ -251,7 +364,13 @@ export default function InstructorSessions() {
                     </div>
                     <MiniBar
                       value={s.progress}
-                      tone={s.status === "closed" ? "success" : "royal"}
+                      tone={
+                        s.status === "closed"
+                          ? "success"
+                          : s.status === "cancelled"
+                            ? "danger"
+                            : "royal"
+                      }
                       label={`Tiến độ ${s.code}`}
                     />
                   </div>
@@ -383,8 +502,8 @@ export default function InstructorSessions() {
               <DialogHeader>
                 <div className="flex flex-wrap items-center gap-2">
                   <CodeChip className="!text-[0.72rem]">{detail.code}</CodeChip>
-                  <InkBadge tone={SESSION_STATUS[detail.status]?.tone ?? "neutral"} dot>
-                    {SESSION_STATUS[detail.status]?.label ?? detail.status}
+                  <InkBadge tone={STATUS_TONE[detail.status]} dot>
+                    {sessionStatusLabel(detail.status)}
                   </InkBadge>
                 </div>
                 <DialogTitle className="mt-1.5">{detail.project}</DialogTitle>
@@ -404,12 +523,82 @@ export default function InstructorSessions() {
                 label={`Tiến độ ${detail.code}`}
               />
 
-              {/* Tóm tắt nhanh từng nhóm tiến độ trong phiên */}
+              {/* ===== Hành động vòng đời phiên (codex: SessionLifecycleActions) ===== */}
+              {(detail.status === "active" ||
+                detail.status === "ending" ||
+                detail.status === "upcoming") && (
+                <section
+                  aria-label="Hành động vòng đời phiên"
+                  className="sketch-border-thin space-y-2.5 bg-[var(--paper)] p-3"
+                >
+                  <p className="eyebrow">Vòng đời phiên</p>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {detail.status === "active" && (
+                      <InkButton
+                        variant="outline"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => runTransition(detail, "ending")}
+                        aria-label={`Chuyển phiên ${detail.code} sang Sắp kết thúc`}
+                      >
+                        <VHourglass size={15} />
+                        {busyAction === "ending" ? "Đang xử lý…" : "Chuyển sang Sắp kết thúc"}
+                      </InkButton>
+                    )}
+                    {(detail.status === "active" || detail.status === "ending") && (
+                      <InkButton
+                        variant="royal"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => setConfirmTransition({ session: detail, next: "closed" })}
+                        aria-label={`Hoàn thành phiên ${detail.code}`}
+                      >
+                        <VFlag size={15} /> Hoàn thành phiên
+                      </InkButton>
+                    )}
+                    <InkButton
+                      variant="coal"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => setConfirmTransition({ session: detail, next: "cancelled" })}
+                      aria-label={`Hủy phiên ${detail.code}`}
+                    >
+                      <VBan size={15} /> Hủy phiên
+                    </InkButton>
+                  </div>
+                  {lifecycleError && (
+                    <p
+                      key={lifecycleError}
+                      role="alert"
+                      className="animate-shake-ink text-[0.8rem] font-semibold text-[var(--danger)]"
+                    >
+                      {lifecycleError}
+                    </p>
+                  )}
+                </section>
+              )}
+
+              {/* Tóm tắt nhanh trạng thái phân công trong phiên */}
               <div className="grid grid-cols-3 gap-2.5">
                 {[
-                  { icon: VGraduation, label: "Hoàn thành", value: memberSummary.done, tone: "text-[var(--success)]" },
-                  { icon: VUsers, label: "Đang làm", value: memberSummary.working, tone: "text-[var(--royal)]" },
-                  { icon: VClock, label: "Cần bắt đầu", value: memberSummary.idle, tone: "text-[var(--warning)]" },
+                  {
+                    icon: VGraduation,
+                    label: "Hoàn thành",
+                    value: memberSummary.done,
+                    tone: "text-[var(--success)]",
+                  },
+                  {
+                    icon: VClipboardCheck,
+                    label: "Đang làm",
+                    value: memberSummary.active,
+                    tone: "text-[var(--royal)]",
+                  },
+                  {
+                    icon: VUsers,
+                    label: "Thành viên",
+                    value: memberSummary.total,
+                    tone: "text-[var(--ink)]",
+                  },
                 ].map((t) => (
                   <div key={t.label} className="sketch-border-thin flex items-center gap-2.5 bg-[var(--paper)] p-2.5">
                     <t.icon size={18} className={`shrink-0 ${t.tone}`} aria-hidden="true" />
@@ -430,39 +619,85 @@ export default function InstructorSessions() {
                     <tr>
                       <th scope="col">Thành viên</th>
                       <th scope="col">Vai trò</th>
-                      <th scope="col" className="min-w-[8.5rem]">Tiến độ</th>
-                      <th scope="col">Trạng thái</th>
+                      <th scope="col">Phân công</th>
+                      <th scope="col" className="text-right">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {detailRows.map((m) => (
-                      <tr key={m.name}>
-                        <td>
-                          <span className="flex items-center gap-2 font-semibold">
-                            <span
-                              aria-hidden="true"
-                              className="grid h-6 w-6 shrink-0 place-items-center rounded-full border-[1.5px] border-[var(--ink)] bg-[var(--blue-mist)] text-[0.58rem] font-bold text-[var(--royal)]"
-                            >
-                              {initialsOf(m.name)}
+                    {detailRows.map((m) => {
+                      const canComplete =
+                        (detail.status === "active" ||
+                          detail.status === "ending" ||
+                          detail.status === "closed") &&
+                        m.assignmentStatus === "active" &&
+                        m.email !== "";
+                      return (
+                        <tr key={`${m.email || m.name}`}>
+                          <td>
+                            <span className="flex flex-col items-start gap-0.5">
+                              <span className="flex items-center gap-2 font-semibold">
+                                <span
+                                  aria-hidden="true"
+                                  className="grid h-6 w-6 shrink-0 place-items-center rounded-full border-[1.5px] border-[var(--ink)] bg-[var(--blue-mist)] text-[0.58rem] font-bold text-[var(--royal)]"
+                                >
+                                  {initialsOf(m.name)}
+                                </span>
+                                {m.name}
+                              </span>
+                              {m.email && (
+                                <span className="pl-8 font-geist-mono text-[0.64rem] text-[var(--ink-soft)]">
+                                  {m.email}
+                                </span>
+                              )}
                             </span>
-                            {m.name}
-                          </span>
-                        </td>
-                        <td className="text-[var(--ink-soft)]">{m.role}</td>
-                        <td>
-                          <span className="flex items-center gap-2">
-                            <MiniBar value={m.progress} className="w-16" label={`Tiến độ ${m.name}`} />
-                            <span className="text-[0.72rem] font-bold tabular">{m.progress}%</span>
-                          </span>
-                        </td>
-                        <td>
-                          <InkBadge tone={m.status.tone} dot>
-                            {m.status.label}
-                          </InkBadge>
-                        </td>
-                      </tr>
-                    ))}
-                    {detail.memberNames.length === 0 && (
+                          </td>
+                          <td className="text-[var(--ink-soft)]">{m.role}</td>
+                          <td>
+                            {m.assignmentStatus === "completed" ? (
+                              <span className="flex items-center gap-1.5">
+                                <InkBadge tone="green" dot>
+                                  Phân công đã hoàn thành
+                                </InkBadge>
+                              </span>
+                            ) : (
+                              <InkBadge tone="blue" dot>
+                                Đang thực hiện
+                              </InkBadge>
+                            )}
+                          </td>
+                          <td className="text-right">
+                            {canComplete ? (
+                              <InkButton
+                                variant="outline"
+                                size="sm"
+                                disabled={busy}
+                                onClick={() =>
+                                  setAssignmentTarget({
+                                    session: detail,
+                                    member: {
+                                      name: m.name,
+                                      email: m.email,
+                                      assignmentStatus: m.assignmentStatus,
+                                    },
+                                  })
+                                }
+                                aria-label={`Hoàn thành phân công của ${m.name} trong phiên ${detail.code}`}
+                              >
+                                <VCheck size={14} /> Hoàn thành phân công
+                              </InkButton>
+                            ) : (
+                              <>
+                                <span aria-hidden="true" className="font-hand text-[0.95rem] text-[var(--ink-faint)]">
+                                  —
+                                </span>
+                                <span className="sr-only">Không có thao tác</span>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {detailRows.length === 0 && (
                       <tr>
                         <td colSpan={4} className="py-6 text-center">
                           <span className="font-hand text-lg text-[var(--ink-soft)]">
@@ -476,7 +711,7 @@ export default function InstructorSessions() {
               </div>
 
               <MarginNote>
-                tiến độ từng người lấy từ kanban cá nhân — sinh viên tự kéo thẻ
+                trạng thái phân công lấy từ hệ thống — hoàn tất khi sinh viên đã xong việc được giao
               </MarginNote>
 
               <div className="flex flex-wrap justify-end gap-2.5 pt-1">
@@ -499,10 +734,158 @@ export default function InstructorSessions() {
         </DialogContent>
       </Dialog>
 
+      {/* ===== Modal xác nhận hoàn thành / hủy phiên (chặn đóng khi đang xử lý) ===== */}
+      <Dialog
+        open={confirmTransition !== null}
+        onOpenChange={(open) => {
+          if (!open && busyAction === null) {
+            setConfirmTransition(null);
+            setLifecycleError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md" showCloseButton={busyAction === null}>
+          {confirmTransition && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 leading-snug">
+                  {confirmTransition.next === "closed" ? (
+                    <VFlag size={18} className="shrink-0 text-[var(--royal)]" aria-hidden="true" />
+                  ) : (
+                    <VBan size={18} className="shrink-0 text-[var(--danger)]" aria-hidden="true" />
+                  )}
+                  {confirmTransition.next === "closed" ? "Hoàn thành phiên?" : "Hủy phiên?"}
+                </DialogTitle>
+                <DialogDescription>
+                  {confirmTransition.next === "closed"
+                    ? "Kiểm tra nhiệm vụ, đánh giá và hoàn tất các phân công trước khi kết thúc phiên. Phiên đã hoàn thành không thể bắt đầu lại; lịch sử được giữ."
+                    : "Phiên đã hủy không thể bắt đầu lại. Hãy kiểm tra đội hình và công việc đang thực hiện trước khi xác nhận; lịch sử được giữ."}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-wrap items-center gap-2">
+                <CodeChip className="!text-[0.72rem]">{confirmTransition.session.code}</CodeChip>
+                <InkBadge tone={STATUS_TONE[confirmTransition.session.status]} dot>
+                  {sessionStatusLabel(confirmTransition.session.status)}
+                </InkBadge>
+              </div>
+              {lifecycleError && (
+                <p
+                  key={lifecycleError}
+                  role="alert"
+                  className="animate-shake-ink text-[0.8rem] font-semibold text-[var(--danger)]"
+                >
+                  {lifecycleError}
+                </p>
+              )}
+              <div className="flex flex-wrap justify-end gap-2.5 pt-1">
+                <InkButton
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => {
+                    setConfirmTransition(null);
+                    setLifecycleError(null);
+                  }}
+                >
+                  Giữ phiên
+                </InkButton>
+                <InkButton
+                  variant={confirmTransition.next === "cancelled" ? "coal" : "royal"}
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => runTransition(confirmTransition.session, confirmTransition.next)}
+                  aria-label={
+                    confirmTransition.next === "closed"
+                      ? `Xác nhận hoàn thành phiên ${confirmTransition.session.code}`
+                      : `Xác nhận hủy phiên ${confirmTransition.session.code}`
+                  }
+                >
+                  {confirmTransition.next === "closed" ? <VFlag size={15} /> : <VBan size={15} />}
+                  {busyAction === confirmTransition.next
+                    ? "Đang xử lý…"
+                    : confirmTransition.next === "closed"
+                      ? "Xác nhận hoàn thành phiên"
+                      : "Xác nhận hủy phiên"}
+                </InkButton>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== Modal xác nhận hoàn thành phân công (chặn đóng khi đang xử lý) ===== */}
+      <Dialog
+        open={assignmentTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && busyAction === null) {
+            setAssignmentTarget(null);
+            setAssignmentError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md" showCloseButton={busyAction === null}>
+          {assignmentTarget && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 leading-snug">
+                  <VClipboardCheck size={18} className="shrink-0 text-[var(--success)]" aria-hidden="true" />
+                  Hoàn thành phân công?
+                </DialogTitle>
+                <DialogDescription>
+                  Xác nhận <b className="font-semibold text-[var(--ink)]">{assignmentTarget.member.name}</b> đã
+                  hoàn tất công việc được giao. Phân công sẽ kết thúc và sinh viên có thể được giao vào phiên
+                  khác. Thành viên, bài nộp và lịch sử của phiên này được giữ lại.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-wrap items-center gap-2">
+                <CodeChip className="!text-[0.72rem]">{assignmentTarget.session.code}</CodeChip>
+                <InkBadge tone="blue" dot>
+                  {assignmentTarget.member.email}
+                </InkBadge>
+              </div>
+              {assignmentError && (
+                <p
+                  key={assignmentError}
+                  role="alert"
+                  className="animate-shake-ink text-[0.8rem] font-semibold text-[var(--danger)]"
+                >
+                  {assignmentError}
+                </p>
+              )}
+              <div className="flex flex-wrap justify-end gap-2.5 pt-1">
+                <InkButton
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => {
+                    setAssignmentTarget(null);
+                    setAssignmentError(null);
+                  }}
+                >
+                  Giữ phân công
+                </InkButton>
+                <InkButton
+                  variant="royal"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => runAssignmentComplete(assignmentTarget.session, assignmentTarget.member)}
+                  aria-label={`Xác nhận hoàn thành phân công của ${assignmentTarget.member.name}`}
+                >
+                  <VCheck size={15} />
+                  {busyAction === "assignment"
+                    ? "Đang xử lý…"
+                    : "Xác nhận hoàn thành phân công"}
+                </InkButton>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <FadeIn delay={0.1}>
         <p className="flex items-center gap-2 text-[0.75rem] text-[var(--ink-soft)]">
           <VUsers size={14} />
-          Mọi thay đổi phiên (mở, đóng, thêm thành viên) đều ghi vào nhật ký hệ thống.
+          Mọi thay đổi vòng đời phiên (kết thúc, hủy) và phân công đều ghi vào nhật ký hệ thống.
         </p>
       </FadeIn>
     </div>

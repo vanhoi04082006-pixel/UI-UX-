@@ -1,0 +1,815 @@
+     1→     1→/**
+     2→     2→ * ROUTER PREVIEW — khớp (method, path) thật mà lib/api gọi qua apiFetch.
+     3→     3→ *
+     4→     4→ * Quy tắc trung thực (Section 10/11 master brief):
+     5→     5→ * - Endpoint nào chưa mock → ném ApiError 501 PREVIEW_ENDPOINT_NOT_MOCKED
+     6→     6→ *   (hiện ErrorState; coverage matrix ghi rõ endpoint chưa mock, không bịa).
+     7→     7→ * - Thao tác có trạng thái thật trong phiên: đánh dấu thông báo đã đọc
+     8→     8→ *   cập nhật danh sách mock — hành vi nhất quán, không chỉ vẽ UI.
+     9→     9→ * - Scenario do transport áp phủ (xem transport.ts): mọi handler chỉ lo dữ liệu.
+    10→    10→ */
+    11→    11→import { ApiError } from "@/lib/auth/api-client";
+    12→    12→import {
+    13→    13→  PREVIEW_ACCOUNTS,
+    14→    14→  PREVIEW_ACCOUNTS_BY_ID,
+    15→    15→  currentStoredAccountId,
+    16→    16→  resolvePreviewAccount,
+    17→    17→  type PreviewAccount,
+    18→    18→} from "./accounts";
+    19→    19→import {
+    20→    20→  currentAccountId,
+    21→    21→  resetPreviewState,
+    22→    22→  setPreviewAccount,
+    23→    23→} from "./store";
+    24→    24→import {
+    25→    25→  activityFor,
+    26→    26→  adminDashboard,
+    27→    27→  auditsFor,
+    28→    28→  boardFor,
+    29→    29→  certificatesFor,
+    30→    30→  groupsFor,
+    31→    31→  rolesFor,
+    32→    32→  usersFor,
+    33→    33→  evaluationsFor,
+    34→    34→  instructorDashboard,
+    35→    35→  internPerformance,
+    36→    36→  internWorkspace,
+    37→    37→  kpiDetailFor,
+    38→    38→  kpisFor,
+    39→    39→  ledgerFor,
+    40→    40→  mentorConversationsFor,
+    41→    41→  mentorDetailFor,
+    42→    42→  notificationsFor,
+    43→    43→  ownProjectFor,
+    44→    44→  recommendationsFor,
+    45→    45→  tasksFor,
+    46→    46→} from "./data";
+    47→    47→import { currentScenario } from "./store";
+    48→    48→
+    49→    49→export interface PreviewRequestContext {
+    50→    50→  method: string;
+    51→    51→  path: string; // không có query string
+    52→    52→  query: URLSearchParams;
+    53→    53→  body: unknown;
+    54→    54→  token?: string | null;
+    55→    55→  account: PreviewAccount;
+    56→    56→  scenario: ReturnType<typeof currentScenario>;
+    57→    57→}
+    58→    58→
+    59→    59→interface RouteHandler {
+    60→    60→  method: string;
+    61→    61→  /** Pattern dạng chuẩn hoá: bỏ query, giữ param động nguyên văn. */
+    62→    62→  test: (path: string) => boolean;
+    63→    63→  handle: (ctx: PreviewRequestContext) => unknown;
+    64→    64→}
+    65→    65→
+    66→    66→const err = (status: number, code: string, message: string, details?: unknown) =>
+    67→    67→  new ApiError(status, code, message, details);
+    68→    68→
+    69→    69→/** Đăng nhập demo: đúng tài khoản + mật khẩu demo.
+    70→    70→ *  Persist lựa chọn vào preview store: sessionStorage đóng vai "refresh cookie"
+    71→    71→ *  của preview — reload sau đó /auth/refresh trả lại đúng tài khoản này. */
+    72→    72→function login(ctx: PreviewRequestContext): unknown {
+    73→    73→  const body = (ctx.body ?? {}) as { email?: string; password?: string };
+    74→    74→  const found = PREVIEW_ACCOUNTS.find((a) => a.email === body.email);
+    75→    75→  if (!found || body.password !== found.password)
+    76→    76→    throw err(401, "INVALID_CREDENTIALS", "Email hoặc mật khẩu không chính xác.");
+    77→    77→  rememberSessionAccount(found.id);
+    78→    78→  setPreviewAccount(found.id);
+    79→    79→  return { accessToken: `preview-token-${found.id}`, user: found.user };
+    80→    80→}
+    81→    81→
+    82→    82→function me(ctx: PreviewRequestContext): unknown {
+    83→    83→  return ctx.account.user;
+    84→    84→}
+    85→    85→
+    86→    86→function refresh(ctx: PreviewRequestContext): unknown {
+    87→    87→  /* Khách chưa từng đăng nhập preview (không token, không preview state):
+    88→    88→     401 như refresh cookie thật không tồn tại → guard đưa về /login. Chỉ khi
+    89→    89→     đã login (store có account) hoặc token preview-token-* hợp lệ mới có phiên. */
+    90→    90→  const stored =
+    91→    91→    activeAccountId ?? currentStoredAccountId() ?? currentAccountId();
+    92→    92→  if (!stored && !ctx.token)
+    93→    93→    throw err(401, "NO_PREVIEW_SESSION", "Chưa có phiên preview (đăng nhập bằng tài khoản demo).");
+    94→    94→  rememberSessionAccount(ctx.account.id);
+    95→    95→  return { accessToken: `preview-token-${ctx.account.id}`, user: ctx.account.user };
+    96→    96→}
+    97→    97→
+    98→    98→/** Trong-memory session account bám theo token preview-token-<id>. */
+    99→    99→let activeAccountId: string | null = null;
+   100→   100→function rememberSessionAccount(id: string): void {
+   101→   101→  activeAccountId = id;
+   102→   102→}
+   103→   103→
+   104→   104→/** account cho request: ưu tiên (1) token preview-token-<id>, (2) module
+   105→   105→ *  memory activeAccountId, (3) lựa chọn trong preview store (sessionStorage —
+   106→   106→ *  giữ qua reload, đóng vai "refresh cookie" của preview), (4) mặc định role. */
+   107→   107→function accountForRequest(token?: string | null): PreviewAccount {
+   108→   108→  if (token?.startsWith("preview-token-")) {
+   109→   109→    const id = token.slice("preview-token-".length);
+   110→   110→    const byToken = PREVIEW_ACCOUNTS.find((a) => a.id === id);
+   111→   111→    if (byToken) {
+   112→   112→      activeAccountId = id;
+   113→   113→      return byToken;
+   114→   114→    }
+   115→   115→  }
+   116→   116→  const remembered = activeAccountId
+   117→   117→    ?? currentStoredAccountId()
+   118→   118→    ?? currentAccountId();
+   119→   119→  if (remembered && PREVIEW_ACCOUNTS_BY_ID[remembered]) {
+   120→   120→    activeAccountId = remembered;
+   121→   121→    return PREVIEW_ACCOUNTS_BY_ID[remembered];
+   122→   122→  }
+   123→   123→  const roleGuess = remembered
+   124→   124→    ? PREVIEW_ACCOUNTS_BY_ID[remembered]?.user.roles[0]
+   125→   125→    : undefined;
+   126→   126→  return resolvePreviewAccount(roleGuess ?? null);
+   127→   127→}
+   128→   128→
+   129→   129→
+   130→   130→/** Trang theo contract Nest chuẩn ({data, meta}) — parsePage của parse.ts. */
+   131→   131→function nestPage<T>(items: T[], page: number, pageSize: number) {
+   132→   132→  const total = items.length;
+   133→   133→  const start = (Math.max(1, page) - 1) * pageSize;
+   134→   134→  return {
+   135→   135→    data: items.slice(start, start + pageSize),
+   136→   136→    meta: {
+   137→   137→      total,
+   138→   138→      page: Math.max(1, page),
+   139→   139→      pageSize,
+   140→   140→      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+   141→   141→    },
+   142→   142→  };
+   143→   143→}
+   144→   144→
+   145→   145→function participationFor(scenario: ReturnType<typeof currentScenario>, page: number) {
+   146→   146→  const empty = scenario === "empty";
+   147→   147→  const items = empty
+   148→   148→    ? []
+   149→   149→    : [
+   150→   150→      {
+   151→   151→        id: "inc-1",
+   152→   152→        taskId: "ts-12",
+   153→   153→        internId: "pv-intern-1",
+   154→   154→        sessionId: "ss-f26",
+   155→   155→        deadlineVersion: 2,
+   156→   156→        policyVersion: 3,
+   157→   157→        dueAt: iso(-19, 17),
+   158→   158→        submittedAt: iso(-19, 19),
+   159→   159→        kind: "late",
+   160→   160→        status: "active",
+   161→   161→        ordinal: 1,
+   162→   162→        points: -1,
+   163→   163→        recommendReplacement: false,
+   164→   164→        replacementEligible: false,
+   165→   165→        createdAt: iso(-19, 20),
+   166→   166→        reason: null,
+   167→   167→        taskCode: "TS-12",
+   168→   168→        taskTitle: "Trang chi tiết tài liệu",
+   169→   169→        displayName: "Nguyễn An Khang",
+   170→   170→        sessionName: "Kỳ thực tập Thu 2026",
+   171→   171→        baseScore: 8,
+   172→   172→        latePenalty: -1,
+   173→   173→        score: 7,
+   174→   174→        submissionStatus: "late",
+   175→   175→      },
+   176→   176→      {
+   177→   177→        id: "inc-2",
+   178→   178→        taskId: "ts-24",
+   179→   179→        internId: "pv-intern-1",
+   180→   180→        sessionId: "ss-f26",
+   181→   181→        deadlineVersion: 2,
+   182→   182→        policyVersion: 3,
+   183→   183→        dueAt: iso(1, 17),
+   184→   184→        submittedAt: null,
+   185→   185→        kind: "missing",
+   186→   186→        status: "excused",
+   187→   187→        ordinal: 2,
+   188→   188→        points: 0,
+   189→   189→        recommendReplacement: false,
+   190→   190→        replacementEligible: false,
+   191→   191→        createdAt: iso(1, 18),
+   192→   192→        reason: "Nghỉ ốm có giấy xác nhận.",
+   193→   193→        taskCode: "TS-24",
+   194→   194→        taskTitle: "Xuất báo cáo tồn kho",
+   195→   195→        displayName: "Nguyễn An Khang",
+   196→   196→        sessionName: "Kỳ thực tập Thu 2026",
+   197→   197→        baseScore: null,
+   198→   198→        latePenalty: null,
+   199→   199→        score: null,
+   200→   200→        submissionStatus: null,
+   201→   201→      },
+   202→   202→    ];
+   203→   203→  return {
+   204→   204→    items,
+   205→   205→    summary: { total: items.length, active: items.filter((i) => i.status === "active").length, registeredPenalty: items.reduce((sum, i) => sum + i.points, 0) },
+   206→   206→    page,
+   207→   207→    pageSize: 20,
+   208→   208→  };
+   209→   209→}
+   210→   210→
+   211→   211→function ownSprintsList(scenario: ReturnType<typeof currentScenario>) {
+   212→   212→  if (scenario === "empty") return [];
+   213→   213→  return [
+   214→   214→    { id: "sp-03", code: "SP-03", name: "Sprint 03 — Mượn/trả sách", status: "active", startDate: iso(-7), endDate: iso(7) },
+   215→   215→    { id: "sp-02", code: "SP-02", name: "Sprint 02 — Định danh tài liệu", status: "completed", startDate: iso(-27), endDate: iso(-8) },
+   216→   216→    { id: "sp-01", code: "SP-01", name: "Sprint 01 — Khung dự án", status: "completed", startDate: iso(-47), endDate: iso(-28) },
+   217→   217→  ];
+   218→   218→}
+   219→   219→
+   220→   220→function taskDetail(ctx: PreviewRequestContext): unknown {
+   221→   221→  const id = ctx.path.split("/")[2];
+   222→   222→  return tasksFor(ctx.scenario).find((t) => t.id === id) ?? {
+   223→   223→    ...tasksFor(ctx.scenario)[0],
+   224→   224→    sprint: { id: "sp-03", code: "SP-03", name: "Sprint 03 — Mượn/trả sách", status: "active" },
+   225→   225→  };
+   226→   226→}
+   227→   227→
+   228→   228→function taskComments() {
+   229→   229→  return [
+   230→   230→    { id: "cm-1", content: "Đã thêm kiểm thử cho nhánh vượt hạn mức.", authorId: "pv-intern-1", createdAt: iso(-2, 14) },
+   231→   231→    { id: "cm-2", content: "Nhớ ghi rõ lý do đổi deadline trong mô tả PR.", authorId: "pv-inst-1", createdAt: iso(-1, 9) },
+   232→   232→  ];
+   233→   233→}
+   234→   234→
+   235→   235→function taskHistory() {
+   236→   236→  return [
+   237→   237→    { id: "h-1", fromStatus: "doing", toStatus: "review", changedById: "pv-intern-1", reason: "Nộp PR chờ duyệt", createdAt: iso(-2, 16) },
+   238→   238→    { id: "h-2", fromStatus: "todo", toStatus: "doing", changedById: "pv-intern-1", reason: null, createdAt: iso(-5, 10) },
+   239→   239→  ];
+   240→   240→}
+   241→   241→
+   242→   242→function mentorDetailFromPath(ctx: PreviewRequestContext): ReturnType<typeof mentorDetailFor> {
+   243→   243→  const id = ctx.path.split("/")[5];
+   244→   244→  return mentorDetailFor(id, ctx.scenario);
+   245→   245→}
+   246→   246→
+   247→   247→const iso = (dayOffset: number, hour = 9) =>
+   248→   248→  new Date(Date.now() + dayOffset * 86400000 + hour * 3600000).toISOString();
+   249→   249→
+   250→   250→
+   251→   251→function pageOf(ctx: PreviewRequestContext): number {
+   252→   252→  return Number(ctx.query.get("page") ?? 1) || 1;
+   253→   253→}
+   254→   254→
+   255→   255→function userDetail(ctx: PreviewRequestContext): unknown {
+   256→   256→  const id = ctx.path.split("/")[2];
+   257→   257→  return usersFor(ctx.scenario).find((u) => u.id === id) ?? usersFor(ctx.scenario)[0] ?? {
+   258→   258→    id,
+   259→   259→    email: "unknown@vintern.preview",
+   260→   260→    username: "unknown",
+   261→   261→    displayName: "Người dùng chưa rõ",
+   262→   262→    status: "active",
+   263→   263→    lastLoginAt: null,
+   264→   264→    createdAt: new Date().toISOString(),
+   265→   265→  };
+   266→   266→}
+   267→   267→
+   268→   268→
+   269→   269→function sessionOverviewRows(scenario: ReturnType<typeof currentScenario>) {
+   270→   270→  if (scenario === "empty") return [];
+   271→   271→  return [
+   272→   272→    {
+   273→   273→      id: "ss-f26", code: "SS-F26", name: "Kỳ thực tập Thu 2026", status: "active",
+   274→   274→      startDate: iso(-30), endDate: iso(60),
+   275→   275→      project: { id: "prj-lib", code: "PRJ-LIB", name: "Hệ thống quản lý thư viện số", templateVersion: 2 },
+   276→   276→      memberCount: 6, sprintCount: 3, taskTotal: 24, taskDone: 15, taskPercent: 62,
+   277→   277→      currentSprint: { id: "sp-03", code: "SP-03", name: "Sprint 03 — Mượn/trả sách" },
+   278→   278→      alerts: { overdueTasks: 1, pendingReview: 2, sessionOverdue: false },
+   279→   279→    },
+   280→   280→    {
+   281→   281→      id: "ss-s26", code: "SS-S26", name: "Kỳ thực tập Hè 2026", status: "completed",
+   282→   282→      startDate: iso(-150), endDate: iso(-40),
+   283→   283→      project: { id: "prj-portal", code: "PRJ-PORTAL", name: "Cổng thông tin tuyển dụng sinh viên CNTT", templateVersion: 1 },
+   284→   284→      memberCount: 5, sprintCount: 2, taskTotal: 20, taskDone: 20, taskPercent: 100,
+   285→   285→      currentSprint: null,
+   286→   286→    },
+   287→   287→  ];
+   288→   288→}
+   289→   289→
+   290→   290→function taskSpecFor(): unknown {
+   291→   291→  return {
+   292→   292→    requirements:
+   293→   293→      "Xây API trả sách quá hạn: tính phí trễ theo bậc ngày, ghi giao dịch bù trừ vào sổ, có kiểm thử đơn vị cho bảng giá.",
+   294→   294→    role: "backend",
+   295→   295→    dod: [
+   296→   296→      "Endpoint POST /returns xử lý đúng bậc phí theo số ngày trễ",
+   297→   297→      "Giao dịch bù trừ được ghi vào sổ lương ảo",
+   298→   298→      "Kiểm thử đơn vị phủ bảng giá mọi bậc",
+   299→   299→      "Tài liệu API cập nhật theo chuẩn repo",
+   300→   300→    ],
+   301→   301→    documentation: "docs/api/returns.md",
+   302→   302→    rubricVersion: "rubric-v3",
+   303→   303→    expectedOutput: "Giao dịch bù trừ + JSON phí trễ theo từng dòng mượn",
+   304→   304→    estimatedHours: 12,
+   305→   305→    skillTags: ["nestjs", "testing", "finance"],
+   306→   306→    complexity: "intermediate",
+   307→   307→  };
+   308→   308→}
+   309→   309→
+   310→   310→function taskSubmissionsFor(): unknown[] {
+   311→   311→  return [
+   312→   312→    {
+   313→   313→      id: "sub-1", taskId: "ts-20", internId: "pv-intern-1",
+   314→   314→      prUrl: "https://github.com/vintern-2026/library-system/pull/48",
+   315→   315→      summary: "Bổ sung API trả sách + kiểm thử bậc phí",
+   316→   316→      status: "submitted", score: null, feedback: null,
+   317→   317→      headSha: "9f2c1ab", submittedAt: iso(-1, 11),
+   318→   318→    },
+   319→   319→    {
+   320→   320→      id: "sub-0", taskId: "ts-20", internId: "pv-intern-1",
+   321→   321→      prUrl: "https://github.com/vintern-2026/library-system/pull/44",
+   322→   322→      summary: "Bản nháp đầu: khung controller",
+   323→   323→      status: "withdrawn", score: null, feedback: null,
+   324→   324→      headSha: "1aa9d3e", submittedAt: iso(-4, 16),
+   325→   325→    },
+   326→   326→  ];
+   327→   327→}
+   328→   328→
+   329→   329→
+   330→   330→function codeReviewsFor(): unknown[] {
+   331→   331→  return [
+   332→   332→    {
+   333→   333→      id: "cr-1",
+   334→   334→      headSha: "9f2c1ab",
+   335→   335→      status: "awaiting_instructor",
+   336→   336→      model: "gemini-2.5-pro",
+   337→   337→      inputHash: "in-8821",
+   338→   338→      errorCode: null,
+   339→   339→      result: {
+   340→   340→        score: 82,
+   341→   341→        rubric: { functional: 85, quality: 80, testing: 78, errors: 82, security: 84, dod: 80 },
+   342→   342→        summary: "API trả sách đúng bậc phí; thiếu một nhánh kiểm thử biên.",
+   343→   343→        limitations: ["Không chạy được integration test trong preview"],
+   344→   344→        findings: [
+   345→   345→          { file: "src/returns/fee.ts", line: 42, message: "Bậc phí thứ 3 chưa có test", severity: "warning" },
+   346→   346→          { file: "src/returns/controller.ts", line: 15, message: "Thiếu validate ngày trả trước ngày mượn", severity: "error" },
+   347→   347→        ],
+   348→   348→      },
+   349→   349→      evidence: {
+   350→   350→        complete: true,
+   351→   351→        warnings: [],
+   352→   352→        tests: {
+   353→   353→          status: "passed",
+   354→   354→          passed: 24,
+   355→   355→          failed: 0,
+   356→   356→          summary: "24 passed",
+   357→   357→          executionTimeMs: 1820,
+   358→   358→          score: 96,
+   359→   359→          checks: [{ name: "build", passed: true, log: "OK" }],
+   360→   360→        },
+   361→   361→      },
+   362→   362→    },
+   363→   363→  ];
+   364→   364→}
+   365→   365→
+   366→   366→// ---------------------------------------------------------------- routes ----
+   367→   367→const NOTIFICATION_CATEGORIES = [
+   368→   368→  "system", "task", "session", "evaluation", "announcement",
+   369→   369→  "recruitment", "kpi", "salary", "certificate",
+   370→   370→] as const;
+   371→   371→
+   372→   372→const routes: RouteHandler[] = [
+   373→   373→  // ---- auth
+   374→   374→  { method: "POST", test: (p) => p === "/auth/login", handle: login },
+   375→   375→  {
+   376→   376→    method: "POST",
+   377→   377→    test: (p) => p === "/auth/register",
+   378→   378→    handle: () => ({ registered: true }),
+   379→   379→  },
+   380→   380→  { method: "POST", test: (p) => p === "/auth/refresh", handle: refresh },
+   381→   381→  {
+   382→   382→    method: "POST",
+   383→   383→    test: (p) => p === "/auth/logout",
+   384→   384→    handle: () => {
+   385→   385→      // Đăng xuất preview: xóa "refresh cookie" mô phỏng để reload không tự vào lại.
+   386→   386→      activeAccountId = null;
+   387→   387→      resetPreviewState();
+   388→   388→      return null;
+   389→   389→    },
+   390→   390→  },
+   391→   391→  { method: "GET", test: (p) => p === "/auth/me", handle: me },
+   392→   392→  // ---- dashboard
+   393→   393→  { method: "GET", test: (p) => p === "/dashboard/admin", handle: (c) => adminDashboard(c.scenario) },
+   394→   394→  { method: "GET", test: (p) => p === "/dashboard/instructor", handle: (c) => instructorDashboard(c.account.id, c.scenario) },
+   395→   395→  // ---- admin lists
+   396→   396→  { method: "GET", test: (p) => p === "/users", handle: (c) => nestPage(usersFor(c.scenario), pageOf(c), 10) },
+   397→   397→  { method: "GET", test: (p) => /^\/users\/[^/]+$/.test(p), handle: (c) => userDetail(c) },
+   398→   398→  { method: "GET", test: (p) => p === "/roles", handle: () => nestPage(rolesFor(), 1, 10) },
+   399→   399→  { method: "GET", test: (p) => p === "/permissions", handle: () => nestPage([], 1, 10) },
+   400→   400→  { method: "GET", test: (p) => p === "/groups", handle: () => nestPage(groupsFor(), 1, 10) },
+   401→   401→  { method: "GET", test: (p) => p === "/audit-logs", handle: (c) => nestPage(auditsFor(c.scenario), pageOf(c), 10) },
+   402→   402→  { method: "GET", test: (p) => p === "/activity-events", handle: (c) => nestPage(activityFor(c.scenario), pageOf(c), 10) },
+   403→   403→  { method: "GET", test: (p) => p === "/settings", handle: () => ({ settings: [] }) },
+   404→   404→  {
+   405→   405→    method: "GET",
+   406→   406→    test: (p) => p === "/health",
+   407→   407→    handle: () => ({ status: "ok", checks: { backend: "ok", database: "ok" }, generatedAt: new Date().toISOString() }),
+   408→   408→  },
+   409→   409→  // ---- intern workspace + outcomes
+   410→   410→  { method: "GET", test: (p) => p === "/intern/me/workspace", handle: (c) => internWorkspace(c.account.id, c.scenario) },
+   411→   411→  { method: "GET", test: (p) => p === "/intern/me/evaluations", handle: (c) => ({ items: evaluationsFor(c.scenario) }) },
+   412→   412→  {
+   413→   413→    method: "GET",
+   414→   414→    test: (p) => /^\/intern\/me\/evaluations\/[^/]+$/.test(p),
+   415→   415→    handle: (c) => evaluationsFor(c.scenario)[0] ?? err(404, "NOT_FOUND", "Không tìm thấy đánh giá."),
+   416→   416→  },
+   417→   417→  { method: "GET", test: (p) => p === "/intern/me/performance", handle: (c) => internPerformance(c.scenario) },
+   418→   418→  { method: "GET", test: (p) => p === "/intern/me/kpi", handle: (c) => ({ items: kpisFor(c.scenario) }) },
+   419→   419→  {
+   420→   420→    method: "GET",
+   421→   421→    test: (p) => /^\/intern\/me\/kpi\/[^/]+$/.test(p),
+   422→   422→    handle: (c) => kpiDetailFromPath(c),
+   423→   423→  },
+   424→   424→  { method: "GET", test: (p) => p === "/intern/me/virtual-salary", handle: (c) => salaryFor(c) },
+   425→   425→  {
+   426→   426→    method: "GET",
+   427→   427→    test: (p) => p === "/intern/me/virtual-salary/ledger",
+   428→   428→    handle: (c) => paged(ledgerFor(c.scenario), Number(c.query.get("page") ?? 1), 20),
+   429→   429→  },
+   430→   430→  { method: "GET", test: (p) => p === "/intern/me/certificates", handle: (c) => ({ items: certificatesFor(c.scenario) }) },
+   431→   431→  {
+   432→   432→    method: "GET",
+   433→   433→    test: (p) => /^\/intern\/me\/certificates\/[^/]+$/.test(p),
+   434→   434→    handle: (c) => certificatesFor(c.scenario)[0] ?? err(404, "NOT_FOUND", "Không tìm thấy chứng nhận."),
+   435→   435→  },
+   436→   436→  { method: "GET", test: (p) => p === "/intern/me/ai-recommendations", handle: (c) => recommendationsFor(c.scenario) },
+   437→   437→  { method: "POST", test: (p) => p === "/intern/me/ai-recommendations/refresh", handle: (c) => recommendationsFor(c.scenario) },
+   438→   438→  // ---- intern work / sprint / project / mentor
+   439→   439→  {
+   440→   440→    method: "GET",
+   441→   441→    test: (p) => p === "/intern/me/sprint/board",
+   442→   442→    handle: (c) => boardFor(c.scenario),
+   443→   443→  },
+   444→   444→  {
+   445→   445→    method: "GET",
+   446→   446→    test: (p) => /^\/intern\/me\/sprints\/[^/]+\/board$/.test(p),
+   447→   447→    handle: (c) => boardFor(c.scenario),
+   448→   448→  },
+   449→   449→  {
+   450→   450→    method: "GET",
+   451→   451→    test: (p) => /^\/sprints\/[^/]+\/completion$/.test(p),
+   452→   452→    handle: (c) => {
+   453→   453→      const tasks = tasksFor(c.scenario);
+   454→   454→      const done = tasks.filter((t) => t.status === "done");
+   455→   455→      const committed = tasks.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
+   456→   456→      return {
+   457→   457→        total: tasks.length,
+   458→   458→        done: done.length,
+   459→   459→        open: tasks.length - done.length,
+   460→   460→        committedStoryPoints: committed,
+   461→   461→        completedStoryPoints: done.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0),
+   462→   462→      };
+   463→   463→    },
+   464→   464→  },
+   465→   465→  {
+   466→   466→    method: "GET",
+   467→   467→    test: (p) => p === "/intern/me/sprints",
+   468→   468→    handle: (c) => nestPage(ownSprintsList(c.scenario), Number(c.query.get("page") ?? 1), 50),
+   469→   469→  },
+   470→   470→  {
+   471→   471→    method: "GET",
+   472→   472→    test: (p) => p === "/intern/me/project",
+   473→   473→    handle: (c) => ownProjectFor(c.scenario),
+   474→   474→  },
+   475→   475→  {
+   476→   476→    method: "GET",
+   477→   477→    test: (p) => p === "/tasks",
+   478→   478→    handle: (c) => nestPage(tasksFor(c.scenario), Number(c.query.get("page") ?? 1), Number(c.query.get("pageSize") ?? 20)),
+   479→   479→  },
+   480→   480→  {
+   481→   481→    method: "GET",
+   482→   482→    test: (p) => /^\/tasks\/[^/]+$/.test(p),
+   483→   483→    handle: (c) => taskDetail(c),
+   484→   484→  },
+   485→   485→  {
+   486→   486→    method: "GET",
+   487→   487→    test: (p) => /^\/tasks\/[^/]+\/comments$/.test(p),
+   488→   488→    handle: (c) => nestPage(taskComments(), Number(c.query.get("page") ?? 1), 20),
+   489→   489→  },
+   490→   490→  {
+   491→   491→    method: "POST",
+   492→   492→    test: (p) => /^\/tasks\/[^/]+\/comments$/.test(p),
+   493→   493→    handle: (c) => {
+   494→   494→      const body = (c.body ?? {}) as { content?: string };
+   495→   495→      return {
+   496→   496→        id: `cm-${Date.now()}`,
+   497→   497→        content:
+   498→   498→          typeof body.content === "string" && body.content.trim()
+   499→   499→            ? body.content
+   500→   500→            : "Nhận xét (mặc định khi gửi rỗng).",
+   501→   501→        authorId: c.account.id,
+   502→   502→        createdAt: new Date().toISOString(),
+   503→   503→      };
+   504→   504→    },
+   505→   505→  },
+   506→   506→  {
+   507→   507→    method: "GET",
+   508→   508→    test: (p) => /^\/tasks\/[^/]+\/history$/.test(p),
+   509→   509→    handle: (c) => nestPage(taskHistory(), Number(c.query.get("page") ?? 1), 20),
+   510→   510→  },
+   511→   511→  // ---- session overview (instructor/admin dashboard + trang sessions)
+   512→   512→  {
+   513→   513→    method: "GET",
+   514→   514→    test: (p) => p === "/sessions/overview",
+   515→   515→    handle: (c) => nestPage(sessionOverviewRows(c.scenario), pageOf(c), 10),
+   516→   516→  },
+   517→   517→  // ---- task spec + submissions (chi tiết công việc)
+   518→   518→  {
+   519→   519→    method: "GET",
+   520→   520→    test: (p) => /^\/tasks\/[^/]+\/spec$/.test(p),
+   521→   521→    handle: (c) => (c.scenario === "empty" ? null : taskSpecFor()),
+   522→   522→  },
+   523→   523→  {
+   524→   524→    method: "GET",
+   525→   525→    test: (p) => /^\/tasks\/[^/]+\/spec\/source$/.test(p),
+   526→   526→    handle: () => ({
+   527→   527→      requirements: "Xây API trả sách quá hạn theo bậc phí.",
+   528→   528→      notes: "Nguồn spec mẫu trong preview.",
+   529→   529→    }),
+   530→   530→  },
+   531→   531→  {
+   532→   532→    method: "GET",
+   533→   533→    test: (p) => /^\/tasks\/[^/]+\/submissions$/.test(p),
+   534→   534→    handle: (c) => (c.scenario === "empty" ? [] : taskSubmissionsFor()),
+   535→   535→  },
+   536→   536→  {
+   537→   537→    method: "GET",
+   538→   538→    test: (p) => /^\/submissions\/[^/]+\/code-reviews$/.test(p),
+   539→   539→    handle: (c) => (c.scenario === "empty" ? [] : codeReviewsFor()),
+   540→   540→  },
+   541→   541→  // ---- github repository access (intern participation page)
+   542→   542→  {
+   543→   543→    method: "GET",
+   544→   544→    test: (p) => p === "/github/me/repository-access",
+   545→   545→    handle: (c) => ({
+   546→   546→      items: c.scenario === "empty" ? [] : [
+   547→   547→        {
+   548→   548→          id: "ra-1",
+   549→   549→          sessionId: "ss-f26",
+   550→   550→          status: "done",
+   551→   551→          displayStatus: "done",
+   552→   552→          errorCode: null,
+   553→   553→          attempts: 1,
+   554→   554→          updatedAt: iso(-2, 10),
+   555→   555→          nextAttemptAt: iso(-2, 11),
+   556→   556→          revision: "ra-rev-1",
+   557→   557→          displayName: "Nguyễn An Khang",
+   558→   558→          sessionName: "Kỳ thực tập Thu 2026",
+   559→   559→          projectName: "Hệ thống quản lý thư viện số",
+   560→   560→          role: "joining",
+   561→   561→          outcome: "repository-member",
+   562→   562→          repositoryUrl: "https://github.com/vintern-2026/library-system",
+   563→   563→          retryAllowed: false,
+   564→   564→        },
+   565→   565→      ],
+   566→   566→      summary: [{ status: "done", total: c.scenario === "empty" ? 0 : 1 }],
+   567→   567→      limit: 5,
+   568→   568→    }),
+   569→   569→  },
+   570→   570→  // ---- participation replacements (intern)
+   571→   571→  {
+   572→   572→    method: "GET",
+   573→   573→    test: (p) => p === "/participation/me/replacements",
+   574→   574→    handle: () => ({ limit: 3, items: [] }),
+   575→   575→  },
+   576→   576→  // ---- participation (intern + instructor)
+   577→   577→  {
+   578→   578→    method: "GET",
+   579→   579→    test: (p) => p === "/participation/me",
+   580→   580→    handle: (c) => participationFor(c.scenario, 1),
+   581→   581→  },
+   582→   582→  {
+   583→   583→    method: "GET",
+   584→   584→    test: (p) => /^\/sessions\/[^/]+\/participation$/.test(p),
+   585→   585→    handle: (c) => ({
+   586→   586→      ...participationFor(c.scenario, 1),
+   587→   587→      policy: {
+   588→   588→        version: 3,
+   589→   589→        configured: true,
+   590→   590→        activeFrom: iso(-60),
+   591→   591→        warningFrom: 2,
+   592→   592→        penaltyFrom: 4,
+   593→   593→        replacementFrom: 6,
+   594→   594→        penaltyPoints: -2,
+   595→   595→        penaltyCap: -10,
+   596→   596→      },
+   597→   597→    }),
+   598→   598→  },
+   599→   599→  // ---- notifications (mọi role)
+   600→   600→  { method: "GET", test: (p) => p === "/notifications", handle: (c) => notificationsPaged(c) },
+   601→   601→  { method: "GET", test: (p) => p === "/notifications/unread-count", handle: (c) => ({ count: unreadCount(c) }) },
+   602→   602→  {
+   603→   603→    method: "POST",
+   604→   604→    test: (p) => /^\/notifications\/[^/]+\/read$/.test(p),
+   605→   605→    handle: (c) => {
+   606→   606→      markRead(c.path.split("/")[2]);
+   607→   607→      return null;
+   608→   608→    },
+   609→   609→  },
+   610→   610→  { method: "POST", test: (p) => p === "/notifications/read-all", handle: (c) => ({ updated: markAllRead(c) }) },
+   611→   611→  { method: "GET", test: (p) => p === "/notifications/preferences", handle: () => ({ preferences: preferences }) },
+   612→   612→  {
+   613→   613→    method: "PUT",
+   614→   614→    test: (p) => p === "/notifications/preferences",
+   615→   615→    handle: (c) => {
+   616→   616→      const body = (c.body ?? {}) as { category?: string; enabled?: boolean };
+   617→   617→      const category = NOTIFICATION_CATEGORIES.find((x) => x === body.category);
+   618→   618→      if (!category) throw err(422, "VALIDATION_ERROR", "Danh mục thông báo không hợp lệ.");
+   619→   619→      const found = preferences.find((p) => p.category === category);
+   620→   620→      if (found) found.enabled = Boolean(body.enabled);
+   621→   621→      return { preferences: preferences };
+   622→   622→    },
+   623→   623→  },
+   624→   624→  // ---- AI mentor (intern)
+   625→   625→  {
+   626→   626→    method: "GET",
+   627→   627→    test: (p) => p === "/intern/me/ai-mentor/conversations",
+   628→   628→    handle: (c) => mentorConversationsFor(c.scenario),
+   629→   629→  },
+   630→   630→  {
+   631→   631→    method: "POST",
+   632→   632→    test: (p) => p === "/intern/me/ai-mentor/conversations",
+   633→   633→    handle: (c) => mentorConversationsFor(c.scenario).items[0] ?? null,
+   634→   634→  },
+   635→   635→  {
+   636→   636→    method: "GET",
+   637→   637→    test: (p) => /^\/intern\/me\/ai-mentor\/conversations\/[^/]+$/.test(p),
+   638→   638→    handle: (c) => mentorDetailFromPath(c),
+   639→   639→  },
+   640→   640→  {
+   641→   641→    method: "POST",
+   642→   642→    test: (p) => /^\/intern\/me\/ai-mentor\/conversations\/[^/]+\/archive$/.test(p),
+   643→   643→    handle: (c) => mentorDetailFromPath(c).conversation,
+   644→   644→  },
+   645→   645→  {
+   646→   646→    method: "POST",
+   647→   647→    test: (p) => /^\/intern\/me\/ai-mentor\/conversations\/[^/]+\/messages$/.test(p),
+   648→   648→    handle: (c) => {
+   649→   649→      const detail = mentorDetailFromPath(c);
+   650→   650→      const body = (c.body ?? {}) as { content?: string };
+   651→   651→      return {
+   652→   652→        conversation: detail.conversation,
+   653→   653→        userMessage: {
+   654→   654→          id: "mm-user-new",
+   655→   655→          role: "user",
+   656→   656→          content: typeof body.content === "string" ? body.content : "",
+   657→   657→          aiRunId: null,
+   658→   658→          createdAt: new Date().toISOString(),
+   659→   659→        },
+   660→   660→        assistantMessage: {
+   661→   661→          id: "mm-ai-new",
+   662→   662→          role: "assistant",
+   663→   663→          content:
+   664→   664→            "Gợi ý mô phỏng: chia nhỏ thay đổi, viết test cho nhánh chính và ghi chú quyết định trong mô tả PR.",
+   665→   665→          aiRunId: "run-772",
+   666→   666→          createdAt: new Date().toISOString(),
+   667→   667→        },
+   668→   668→        summary: "Trả lời AI mentor (mô phỏng).",
+   669→   669→        followUps: [
+   670→   670→          "Chia task này thành các bước nhỏ hơn được không?",
+   671→   671→          "Nên viết test gì trước khi mở PR?",
+   672→   672→        ],
+   673→   673→      };
+   674→   674→    },
+   675→   675→  },
+   676→   676→  // ---- verify public
+   677→   677→  {
+   678→   678→    method: "GET",
+   679→   679→    test: (p) => /^\/certificates\/verify\/[^/]+$/.test(p),
+   680→   680→    handle: (c) => {
+   681→   681→      const code = decodeURIComponent(c.path.split("/")[3]);
+   682→   682→      const cert = certificatesFor("populated").find((x) => x.verificationCode === code);
+   683→   683→      if (!cert)
+   684→   684→        throw err(404, "CERTIFICATE_NOT_FOUND", "Không tìm thấy chứng nhận với mã này.");
+   685→   685→      return {
+   686→   686→        valid: cert.status === "issued",
+   687→   687→        status: cert.status,
+   688→   688→        certificateNumber: cert.certificateNumber,
+   689→   689→        holderName: "Nguyễn An Khang",
+   690→   690→        role: "Frontend Developer",
+   691→   691→        projectName: cert.projectName,
+   692→   692→        sessionName: cert.sessionName,
+   693→   693→        completedAt: cert.completedAt,
+   694→   694→        issuedAt: cert.issuedAt,
+   695→   695→        revokedAt: cert.revokedAt,
+   696→   696→      };
+   697→   697→    },
+   698→   698→  },
+   699→   699→];
+   700→   700→
+   701→   701→function kpiDetailFromPath(ctx: PreviewRequestContext): unknown {
+   702→   702→  const id = ctx.path.split("/").pop() ?? "";
+   703→   703→  return kpiDetailFor(id, ctx.scenario);
+   704→   704→}
+   705→   705→
+   706→   706→function salaryFor(ctx: PreviewRequestContext): unknown {
+   707→   707→  const ledger = ledgerFor(ctx.scenario);
+   708→   708→  return {
+   709→   709→    balance: ledger.reduce((sum, e) => sum + e.amount, 0),
+   710→   710→    unit: "VND",
+   711→   711→    virtual: true,
+   712→   712→    earnedThisPeriod: ctx.scenario === "empty" ? 0 : 780000,
+   713→   713→    latestEntries: ledger.slice(0, 5),
+   714→   714→  };
+   715→   715→}
+   716→   716→
+   717→   717→function paged<T>(items: T[], page: number, pageSize: number) {
+   718→   718→  const total = items.length;
+   719→   719→  const start = (Math.max(1, page) - 1) * pageSize;
+   720→   720→  return {
+   721→   721→    items: items.slice(start, start + pageSize),
+   722→   722→    total,
+   723→   723→    page: Math.max(1, page),
+   724→   724→    pageSize,
+   725→   725→    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+   726→   726→  };
+   727→   727→}
+   728→   728→
+   729→   729→// ---- notification mutable state (trong phiên preview; reset khi reload)
+   730→   730→let notificationStore: ReturnType<typeof notificationsFor> | null = null;
+   731→   731→let notificationAccount: string | null = null;
+   732→   732→let notificationScenario: string | null = null;
+   733→   733→
+   734→   734→function notifications(ctx: PreviewRequestContext) {
+   735→   735→  if (
+   736→   736→    notificationStore === null ||
+   737→   737→    notificationAccount !== ctx.account.id ||
+   738→   738→    notificationScenario !== ctx.scenario
+   739→   739→  ) {
+   740→   740→    notificationStore = notificationsFor(ctx.account.id, ctx.scenario);
+   741→   741→    notificationAccount = ctx.account.id;
+   742→   742→    notificationScenario = ctx.scenario;
+   743→   743→  }
+   744→   744→  return notificationStore;
+   745→   745→}
+   746→   746→
+   747→   747→function notificationsPaged(ctx: PreviewRequestContext): unknown {
+   748→   748→  const unreadOnly = ctx.query.get("unread") === "true";
+   749→   749→  const list = notifications(ctx).filter((n) => (unreadOnly ? !n.readAt : true));
+   750→   750→  // parse.ts parsePage — contract Nest chuẩn {data, meta}.
+   751→   751→  return nestPage(list, pageOf(ctx), Number(ctx.query.get("pageSize") ?? 20));
+   752→   752→}
+   753→   753→
+   754→   754→function unreadCount(ctx: PreviewRequestContext): number {
+   755→   755→  return notifications(ctx).filter((n) => !n.readAt).length;
+   756→   756→}
+   757→   757→
+   758→   758→function markRead(id: string): void {
+   759→   759→  const list = notificationStore ?? [];
+   760→   760→  const found = list.find((n) => n.id === id);
+   761→   761→  if (found && !found.readAt) found.readAt = new Date().toISOString();
+   762→   762→}
+   763→   763→
+   764→   764→function markAllRead(ctx: PreviewRequestContext): number {
+   765→   765→  const list = notifications(ctx);
+   766→   766→  const updated = list.filter((n) => !n.readAt).length;
+   767→   767→  list.forEach((n) => {
+   768→   768→    if (!n.readAt) n.readAt = new Date().toISOString();
+   769→   769→  });
+   770→   770→  return updated;
+   771→   771→}
+   772→   772→
+   773→   773→const preferences = NOTIFICATION_CATEGORIES.map((category) => ({
+   774→   774→  category,
+   775→   775→  enabled: category !== "announcement",
+   776→   776→}));
+   777→   777→
+   778→   778→/** Điểm vào duy nhất của transport. */
+   779→   779→export function handlePreviewRequest(
+   780→   780→  path: string,
+   781→   781→  options: { method?: string; body?: unknown; token?: string | null },
+   782→   782→): { data: unknown } | { error: ApiError; status: number } {
+   783→   783→  const [rawPath, rawQuery] = path.split("?");
+   784→   784→  const clean = rawPath.replace(/\/+$/, "") || "/";
+   785→   785→  const query = new URLSearchParams(rawQuery ?? "");
+   786→   786→  const method = (options.method ?? "GET").toUpperCase();
+   787→   787→  const account = accountForRequest(options.token);
+   788→   788→  const ctx: PreviewRequestContext = {
+   789→   789→    method,
+   790→   790→    path: clean,
+   791→   791→    query,
+   792→   792→    body: options.body,
+   793→   793→    token: options.token ?? null,
+   794→   794→    account,
+   795→   795→    scenario: currentScenario(),
+   796→   796→  };
+   797→   797→  const route = routes.find((r) => r.method === method && r.test(clean));
+   798→   798→  if (!route) {
+   799→   799→    return {
+   800→   800→      error: err(
+   801→   801→        501,
+   802→   802→        "PREVIEW_ENDPOINT_NOT_MOCKED",
+   803→   803→        `Chưa mock ${method} ${clean} trong Preview (xem src/lib/preview/router.ts).`,
+   804→   804→      ),
+   805→   805→      status: 501,
+   806→   806→    };
+   807→   807→  }
+   808→   808→  return { data: route.handle(ctx) };
+   809→   809→}
+   810→   810→
+   811→   811→/** Cho test + isolation script: danh sách endpoint đã mock. */
+   812→   812→export const PREVIEW_MOCKED_ENDPOINTS = routes.map(
+   813→   813→  (r) => `${r.method} ${r.test.toString()}`,
+   814→   814→);
+   815→   815→

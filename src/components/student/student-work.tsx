@@ -13,6 +13,13 @@ import type { Priority, Task, TaskStatus } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Eyebrow,
   InkBadge,
   MarginNote,
@@ -34,6 +41,7 @@ import {
   VGitCommit,
   VGitPullRequest,
   VInbox,
+  VMore,
   VSearch,
   VSend,
   VStar,
@@ -80,6 +88,33 @@ export default function StudentWork() {
   const patchTask = useCallback((id: string, patch: Partial<Task>) => {
     setOverrides((prev) => ({ ...prev, [id]: { ...(prev[id] ?? {}), ...patch } }));
   }, []);
+
+  /* Row menu (codex: RowMenu) — thao tác nhanh ngay trên dòng nhiệm vụ,
+   * cùng hành vi như các nút trong hộp chi tiết. */
+
+  /** Tăng/giảm tiến độ — cùng phép kẹp 0–100 và câu thông báo như hộp chi tiết. */
+  const bumpProgress = (task: Task, delta: number) => {
+    const next = Math.max(0, Math.min(100, task.progress + delta));
+    if (next === task.progress) return;
+    patchTask(task.id, { progress: next });
+    toast.success(`Tiến độ ${task.code} cập nhật: ${next}%`);
+  };
+
+  /** Nộp PR nhanh — cùng hiệu ứng như nút "Nộp bài chờ duyệt" trong hộp chi tiết. */
+  const submitPr = (task: Task) => {
+    patchTask(task.id, {
+      status: "review" as TaskStatus,
+      progress: 90,
+      history: [...task.history, { at: new Date().toISOString(), label: "Nộp bài — PR chờ giảng viên duyệt" }],
+    });
+    toast.success("Đã nộp! PR vào hàng chờ duyệt — giảng viên sẽ xem trong 48 giờ");
+  };
+
+  /** Đánh dấu hoàn thành — chỉ khi tiến độ đã 100% hoặc đang chờ duyệt. */
+  const markDone = (task: Task) => {
+    patchTask(task.id, { status: "done" as TaskStatus, progress: 100 });
+    toast.success(`"${task.title}" → Hoàn thành`);
+  };
 
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
@@ -138,7 +173,7 @@ export default function StudentWork() {
           <h1 className="mt-1.5 text-2xl font-extrabold leading-tight text-[var(--ink)]">Công việc của tôi</h1>
           <SquiggleUnderline className="mt-1 h-2.5 w-40 text-[var(--royal)]" />
         </div>
-        <MarginNote className="max-w-56">bấm một dòng để mở phiếu nhiệm vụ</MarginNote>
+        <MarginNote className="max-w-56">dùng bộ lọc để chọn nhiệm vụ cần ưu tiên nhé</MarginNote>
       </header>
 
       {tasks.length === 0 ? (
@@ -175,7 +210,14 @@ export default function StudentWork() {
           ) : (
             <ul className="grid gap-3">
               {filtered.map((t) => (
-                <TaskRow key={t.id} task={t} onOpen={() => setOpenId(t.id)} />
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  onOpen={() => setOpenId(t.id)}
+                  onBump={(delta) => bumpProgress(t, delta)}
+                  onSubmitPr={() => submitPr(t)}
+                  onMarkDone={() => markDone(t)}
+                />
               ))}
             </ul>
           )}
@@ -269,21 +311,41 @@ function FilterBar({
 
 /* ------------------------------ Dòng nhiệm vụ ------------------------------ */
 
-function TaskRow({ task, onOpen }: { task: Task; onOpen: () => void }) {
+function TaskRow({
+  task,
+  onOpen,
+  onBump,
+  onSubmitPr,
+  onMarkDone,
+}: {
+  task: Task;
+  onOpen: () => void;
+  onBump: (delta: number) => void;
+  onSubmitPr: () => void;
+  onMarkDone: () => void;
+}) {
   const due = dueDisplay(task);
   const overdue = due.tone === "red";
   const dueSoon = due.tone === "amber";
+  /* Điều kiện mục menu: nộp PR khi chưa vào hàng chờ duyệt; hoàn thành khi
+   * tiến độ chốt 100% hoặc đang chờ giảng viên duyệt. */
+  const canSubmitPr = task.status === "todo" || task.status === "doing";
+  const canMarkDone = task.progress >= 100 || task.status === "review";
+  const menuItem =
+    "cursor-pointer gap-2 rounded-[7px] px-2.5 py-2 text-[0.8rem] font-semibold focus:bg-[var(--blue-mist)] focus:text-[var(--ink)]";
   return (
-    <li className="relative">
+    <li
+      className={cn(
+        "sketch-card sketch-card-hover relative flex items-center gap-1.5 p-3.5 pl-5 pr-2.5",
+        task.status === "done" && "opacity-80",
+      )}
+      style={{ borderLeft: `4px solid ${PRIORITY_SPINE[task.priority]}` }}
+    >
       <button
         type="button"
         onClick={onOpen}
         aria-label={`Mở chi tiết nhiệm vụ ${task.code}: ${task.title}`}
-        className={cn(
-          "sketch-card sketch-card-hover focus-ink relative flex w-full flex-wrap items-center gap-x-3 gap-y-2 p-3.5 pl-5 text-left",
-          task.status === "done" && "opacity-80",
-        )}
-        style={{ borderLeft: `4px solid ${PRIORITY_SPINE[task.priority]}` }}
+        className="focus-ink flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px_12px_11px_12px] px-1 py-0.5 text-left"
       >
         <CodeChip code={task.code} />
         <span
@@ -323,12 +385,50 @@ function TaskRow({ task, onOpen }: { task: Task; onOpen: () => void }) {
           </span>
         )}
         <VChevronRight size={15} className="shrink-0 text-[var(--ink-soft)]" />
-        {task.status === "done" && (
-          <span className="pointer-events-none absolute right-12 top-1.5 text-[var(--success)] opacity-70">
-            <CheckDoodle className="h-6 w-6" />
-          </span>
-        )}
       </button>
+
+      {/* RowMenu: nút “⋯” tách khỏi nút mở dòng — không che nhau. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Thao tác nhiệm vụ ${task.code}`}
+            className="focus-ink grid size-9 shrink-0 place-items-center rounded-full border-2 border-[var(--ink)] bg-[var(--paper-raised)] text-[var(--ink)] transition-colors hover:bg-[var(--blue-mist)]"
+          >
+            <VMore size={15} />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className="rounded-[10px_12px_10px_12px] border-2 border-[var(--ink)] bg-[var(--paper-raised)] p-1.5 shadow-ink-3"
+        >
+          <DropdownMenuItem onClick={onOpen} className={menuItem}>
+            <VChevronRight size={15} aria-hidden="true" /> Mở chi tiết
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="my-1 border-t border-dashed border-[color-mix(in_srgb,var(--ink)_25%,transparent)]" />
+          {task.status !== "done" && (
+            <DropdownMenuItem onClick={() => onBump(25)} className={menuItem}>
+              <VRocket size={15} aria-hidden="true" /> Tăng tiến độ +25%
+            </DropdownMenuItem>
+          )}
+          {canSubmitPr && (
+            <DropdownMenuItem onClick={onSubmitPr} className={menuItem}>
+              <VGitPullRequest size={15} aria-hidden="true" /> Nộp PR
+            </DropdownMenuItem>
+          )}
+          {canMarkDone && (
+            <DropdownMenuItem onClick={onMarkDone} className={menuItem}>
+              <VCircleCheck size={15} aria-hidden="true" /> Đánh dấu hoàn thành
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {task.status === "done" && (
+        <span className="pointer-events-none absolute right-12 top-1.5 text-[var(--success)] opacity-70">
+          <CheckDoodle className="h-6 w-6" />
+        </span>
+      )}
     </li>
   );
 }

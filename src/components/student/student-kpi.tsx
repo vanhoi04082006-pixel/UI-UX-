@@ -390,6 +390,16 @@ function KpiTab() {
 
 /* --------------------------- TAB LƯƠNG ẢO ---------------------------- */
 
+/** Chip chọn kỳ lương — cùng kiểu chip chọn kỳ ở tab KPI. */
+function periodChip(active: boolean) {
+  return cn(
+    "focus-ink rounded-full border-2 px-3.5 py-1.5 text-[0.78rem] font-bold transition-all",
+    active
+      ? "border-[var(--ink)] bg-[var(--royal)] text-white shadow-ink-2 dark:text-[#101018]"
+      : "border-[color-mix(in_srgb,var(--ink)_35%,transparent)] bg-[var(--paper-raised)] text-[var(--ink-soft)] hover:border-[var(--ink)] hover:text-[var(--ink)]",
+  );
+}
+
 function SalaryTab() {
   const user = useApp((s) => s.user);
   const email = user?.email ?? "";
@@ -397,6 +407,8 @@ function SalaryTab() {
     email ? `intern/salary?email=${encodeURIComponent(email)}` : null,
   );
   const [showAll, setShowAll] = useState(false);
+  /* Kỳ đang chọn — null nghĩa là "Mọi kỳ" (mặc định). */
+  const [period, setPeriod] = useState<string | null>(null);
 
   if (loading) return <LoadingPanel rows={3} label="Đang mở sổ giao dịch..." />;
   if (error) return <ErrorPanel message={error} onRetry={reload} />;
@@ -418,15 +430,55 @@ function SalaryTab() {
     );
   }
 
+  /* Số dư toàn cục: tổng MỌI dòng sổ — kể cả điều chỉnh lẻ không gắn kỳ
+   * (codex fix: tách bạch số dư toàn cục và thu nhập theo kỳ). */
   const total = entries.reduce((s, e) => s + e.amount, 0);
-  const kpiSum = entries.filter((e) => e.type === "KPI").reduce((s, e) => s + e.amount, 0);
-  const rewardSum = entries.filter((e) => e.type === "Thưởng").reduce((s, e) => s + e.amount, 0);
-  const adjustSum = entries.filter((e) => e.type === "Điều chỉnh").reduce((s, e) => s + e.amount, 0);
+
+  /* Các kỳ duy nhất có trong sổ, giữ thứ tự xuất hiện (mới → cũ). */
+  const periods: string[] = [];
+  for (const e of entries) {
+    if (e.period && !periods.includes(e.period)) periods.push(e.period);
+  }
+  /* Kỳ đang chọn vẫn hợp lệ nếu sổ vừa được tải lại. */
+  const active = period && periods.includes(period) ? period : null;
+
+  /* Thu nhập theo kỳ: chỉ tổng các dòng được gắn kỳ. */
+  const scoped = active
+    ? entries.filter((e) => e.period === active)
+    : entries.filter((e) => e.period != null);
+  const scopedTotal = scoped.reduce((s, e) => s + e.amount, 0);
+  const scopedReward = scoped.filter((e) => e.type === "Thưởng").reduce((s, e) => s + e.amount, 0);
+  const scopedAdjust = scoped.filter((e) => e.type === "Điều chỉnh").reduce((s, e) => s + e.amount, 0);
   const visible = showAll ? entries : entries.slice(0, 5);
 
   return (
     <div className="space-y-5">
-      {/* Hai thẻ số dư */}
+      {/* Bộ chọn kỳ — tách bạch thu nhập từng kỳ khỏi số dư toàn cục. */}
+      {periods.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Chọn kỳ lương">
+          <button
+            type="button"
+            aria-pressed={!active}
+            onClick={() => setPeriod(null)}
+            className={periodChip(!active)}
+          >
+            Mọi kỳ
+          </button>
+          {periods.map((p) => (
+            <button
+              key={p}
+              type="button"
+              aria-pressed={active === p}
+              onClick={() => setPeriod(p)}
+              className={periodChip(active === p)}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Hai thẻ: số dư toàn cục vs thu nhập theo kỳ đang chọn */}
       <div className="grid gap-5 sm:grid-cols-2">
         <FadeIn>
           <SketchCard className="h-full p-5">
@@ -443,7 +495,7 @@ function SalaryTab() {
               <span className="font-hand text-lg text-[var(--ink-soft)]">đ ảo</span>
             </p>
             <p className="mt-2 text-[0.75rem] text-[var(--ink-soft)]">
-              Tổng sau {entries.length} giao dịch đã đối chiếu
+              tính từ toàn bộ sổ giao dịch — tổng sau {entries.length} giao dịch đã đối chiếu
             </p>
           </SketchCard>
         </FadeIn>
@@ -454,23 +506,26 @@ function SalaryTab() {
               <span className="grid size-11 shrink-0 place-items-center rounded-[12px_14px_12px_14px] border-2 border-[var(--ink)] bg-[var(--note-yellow)] text-[var(--note-yellow-ink)]">
                 <VCoins size={22} />
               </span>
-              <p className="eyebrow">Tích lũy từ KPI</p>
+              <p className="eyebrow">{active ? "Thu nhập kỳ đang chọn" : "Thu nhập KPI (mọi kỳ)"}</p>
             </div>
             <p className="mt-4 flex items-baseline gap-2">
               <span className="tabular text-4xl font-extrabold leading-none sm:text-[2.6rem]">
-                <CountUpNumber value={kpiSum} duration={1100} format={fmtMoney} />
+                <CountUpNumber key={active ?? "moi-ky"} value={scopedTotal} duration={1100} format={fmtMoney} />
               </span>
               <span className="font-hand text-lg text-[var(--ink-soft)]">đ ảo</span>
             </p>
+            <p className="mt-2 text-[0.75rem] text-[var(--ink-soft)]">
+              {scoped.length > 0 ? (active ?? "Thu nhập theo kỳ (mọi kỳ)") : "chưa có giao dịch nào gắn kỳ"}
+            </p>
             <div className="mt-2.5 flex flex-wrap gap-2">
-              {rewardSum > 0 && (
+              {scopedReward > 0 && (
                 <InkBadge tone="amber">
-                  <VThumbsUp size={12} className="mr-1" aria-hidden="true" /> Thưởng +{fmtMoney(rewardSum)}
+                  <VThumbsUp size={12} className="mr-1" aria-hidden="true" /> Thưởng +{fmtMoney(scopedReward)}
                 </InkBadge>
               )}
-              {adjustSum > 0 && (
+              {scopedAdjust > 0 && (
                 <InkBadge tone="mint">
-                  <VCoins size={12} className="mr-1" aria-hidden="true" /> Điều chỉnh +{fmtMoney(adjustSum)}
+                  <VCoins size={12} className="mr-1" aria-hidden="true" /> Điều chỉnh +{fmtMoney(scopedAdjust)}
                 </InkBadge>
               )}
             </div>
@@ -491,23 +546,32 @@ function SalaryTab() {
             <h2 className="text-base font-extrabold">Sổ giao dịch</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="ink-table min-w-[36rem]">
+            <table className="ink-table min-w-[40rem]">
               <thead>
                 <tr>
                   <th>Thời gian</th>
                   <th>Loại</th>
+                  <th>Kỳ</th>
                   <th className="text-right">Số tiền</th>
                   <th>Nội dung</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((e) => (
-                  <tr key={e.id}>
+                  <tr
+                    key={e.id}
+                    className={cn(
+                      active && e.period === active && "bg-[color-mix(in_srgb,var(--blue-mist)_38%,transparent)]",
+                    )}
+                  >
                     <td className="tabular whitespace-nowrap text-[0.8rem]">
                       {formatDateTimeVN(e.at)}
                     </td>
                     <td>
                       <InkBadge tone={SALARY_TYPE_TONE[e.type]}>{e.type}</InkBadge>
+                    </td>
+                    <td className="whitespace-nowrap text-[0.75rem] font-semibold text-[var(--ink-soft)]">
+                      {e.period ?? <span className="text-[var(--ink-faint)]">—</span>}
                     </td>
                     <td className="tabular whitespace-nowrap text-right font-extrabold text-[var(--royal)]">
                       +{fmtMoney(e.amount)}{" "}
@@ -521,7 +585,7 @@ function SalaryTab() {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={2} className="border-b-0 border-t-2 border-solid border-[var(--ink)] pt-3.5">
+                  <td colSpan={3} className="border-b-0 border-t-2 border-solid border-[var(--ink)] pt-3.5">
                     <span className="rotate-[-5deg] inline-block">
                       <StampMoc tone="blue" rotate={-5} className="!px-2.5 !py-0.5 !text-[0.58rem]">
                         Đã đối chiếu

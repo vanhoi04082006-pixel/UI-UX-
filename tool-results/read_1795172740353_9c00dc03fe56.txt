@@ -1,0 +1,822 @@
+     1→@import "tailwindcss";
+     2→@import "tw-animate-css";
+     3→
+     4→@custom-variant dark (&:is(.dark *));
+     5→
+     6→/* =====================================================================
+     7→ * V-INTERN · "SỔ TAY HÀNH TRÌNH" — Journey Notebook Design System v2
+     8→ * Bản nâng cấp: giấy kem + mực xanh + băng dính washi + mộc đỏ.
+     9→ * Light = giấy kem #fbfaf4 · Dark = bảng đen #131318.
+    10→ * ===================================================================== */
+    11→
+    12→@theme inline {
+    13→  --color-background: var(--background);
+    14→  --color-foreground: var(--foreground);
+    15→  --color-card: var(--card);
+    16→  --color-card-foreground: var(--card-foreground);
+    17→  --color-popover: var(--popover);
+    18→  --color-popover-foreground: var(--popover-foreground);
+    19→  --color-primary: var(--primary);
+    20→  --color-primary-foreground: var(--primary-foreground);
+    21→  --color-secondary: var(--secondary);
+    22→  --color-secondary-foreground: var(--secondary-foreground);
+    23→  --color-muted: var(--muted);
+    24→  --color-muted-foreground: var(--muted-foreground);
+    25→  --color-accent: var(--accent);
+    26→  --color-accent-foreground: var(--accent-foreground);
+    27→  --color-destructive: var(--destructive);
+    28→  --color-border: var(--border);
+    29→  --color-input: var(--input);
+    30→  --color-ring: var(--ring);
+    31→  --color-chart-1: var(--chart-1);
+    32→  --color-chart-2: var(--chart-2);
+    33→  --color-chart-3: var(--chart-3);
+    34→  --color-chart-4: var(--chart-4);
+    35→  --color-chart-5: var(--chart-5);
+    36→  --color-sidebar: var(--sidebar);
+    37→  --color-sidebar-foreground: var(--sidebar-foreground);
+    38→  --color-sidebar-primary: var(--sidebar-primary);
+    39→  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    40→  --color-sidebar-accent: var(--sidebar-accent);
+    41→  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    42→  --color-sidebar-border: var(--sidebar-border);
+    43→  --color-sidebar-ring: var(--sidebar-ring);
+    44→  /* Notebook palette */
+    45→  --color-paper: var(--paper);
+    46→  --color-raised: var(--paper-raised);
+    47→  --color-ink: var(--ink);
+    48→  --color-ink-soft: var(--ink-soft);
+    49→  --color-ink-faint: var(--ink-faint);
+    50→  --color-royal: var(--royal);
+    51→  --color-royal-deep: var(--royal-deep);
+    52→  --color-royal-mist: var(--blue-mist);
+    53→  --color-coal: var(--coal);
+    54→  --color-chalk: var(--chalk);
+    55→  --color-stamp-red: var(--stamp-red);
+    56→  --color-note-yellow: var(--note-yellow);
+    57→  --radius-sm: calc(var(--radius) - 4px);
+    58→  --radius-md: calc(var(--radius) - 2px);
+    59→  --radius-lg: var(--radius);
+    60→  --radius-xl: calc(var(--radius) + 4px);
+    61→  --font-sans: var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
+    62→  --font-hand: var(--font-patrick-hand), cursive;
+    63→  --font-mono2: var(--font-jetbrains), ui-monospace, monospace;
+    64→  --shadow-ink-2: 2px 2px 0 0 var(--hard-shadow);
+    65→  --shadow-ink-3: 3px 3px 0 0 var(--hard-shadow);
+    66→  --shadow-ink-4: 4px 4px 0 0 var(--hard-shadow);
+    67→  --shadow-ink-6: 6px 6px 0 0 var(--hard-shadow);
+    68→  --shadow-ink-sm: 2px 3px 0 0 var(--hard-shadow);
+    69→  --animate-float: float 6s ease-in-out infinite;
+    70→  --animate-float-soft: float 8s ease-in-out infinite;
+    71→  --animate-bob: bob 4s ease-in-out infinite;
+    72→  --animate-wiggle: wiggle 5s ease-in-out infinite;
+    73→  --animate-blink-dot: blink-dot 1.4s ease-in-out infinite;
+    74→  /* === v3 UPGRADE · animate tokens + accent colors === */
+    75→  --animate-pop-in: pop-in 360ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    76→  --animate-shake-ink: shake-ink 480ms ease-in-out both;
+    77→  --animate-float-y: float-y 5s ease-in-out infinite;
+    78→  --animate-marquee: marquee-strip 22s linear infinite;
+    79→  --color-gold: var(--gold);
+    80→  --color-gold-soft: var(--gold-soft);
+    81→  --color-chalk-dust: var(--chalk-dust);
+    82→  /* === LANDING GỐC (REPO) · token bổ sung — màu xanh mực, bóng in/đá ===== */
+    83→  --color-blue: var(--blue);
+    84→  --color-blue-deep: var(--blue-deep);
+    85→  --color-blue-mist: var(--blue-mist);
+    86→  --color-coal-soft: var(--coal-soft);
+    87→  --color-chalk-soft: var(--chalk-soft);
+    88→  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+    89→  --shadow-hard-2: 2px 2px 0 0 var(--hard-shadow);
+    90→  --shadow-hard-4: 4px 4px 0 0 var(--hard-shadow);
+    91→  --shadow-hard-6: 6px 6px 0 0 var(--hard-shadow);
+    92→  --shadow-coal-2: 2px 2px 0 0 var(--coal);
+    93→  --shadow-coal-4: 4px 4px 0 0 var(--coal);
+    94→  --shadow-coal-6: 6px 6px 0 0 var(--coal);
+    95→  --shadow-marker-4: 4px 4px 0 0 rgba(32, 96, 240, 0.9);
+    96→  --shadow-marker-6: 6px 6px 0 0 rgba(32, 96, 240, 0.9);
+    97→  --animate-float-delayed: float 6.5s ease-in-out 1.5s infinite;
+    98→}
+    99→
+   100→:root {
+   101→  --radius: 0.875rem;
+   102→  --background: #fbfaf4;
+   103→  --foreground: #17171c;
+   104→  --card: #ffffff;
+   105→  --card-foreground: #17171c;
+   106→  --popover: #ffffff;
+   107→  --popover-foreground: #17171c;
+   108→  --primary: #2060f0;
+   109→  --primary-foreground: #ffffff;
+   110→  --secondary: #e9f0fe;
+   111→  --secondary-foreground: #17171c;
+   112→  --muted: #efede3;
+   113→  --muted-foreground: #5a5a64;
+   114→  --accent: #e9f0fe;
+   115→  --accent-foreground: #17171c;
+   116→  --destructive: #d9304a;
+   117→  --border: #e5e3d9;
+   118→  --input: #d4d2c6;
+   119→  --ring: rgba(32, 96, 240, 0.45);
+   120→  --chart-1: #2060f0;
+   121→  --chart-2: #0ea5b7;
+   122→  --chart-3: #f59e0b;
+   123→  --chart-4: #8b5cf6;
+   124→  --chart-5: #ef4767;
+   125→  --sidebar: #f5f3ea;
+   126→  --sidebar-foreground: #17171c;
+   127→  --sidebar-primary: #2060f0;
+   128→  --sidebar-primary-foreground: #ffffff;
+   129→  --sidebar-accent: #e9f0fe;
+   130→  --sidebar-accent-foreground: #17171c;
+   131→  --sidebar-border: #e5e3d9;
+   132→  --sidebar-ring: rgba(32, 96, 240, 0.45);
+   133→  /* Notebook palette */
+   134→  --paper: #fbfaf4;
+   135→  --paper-raised: #ffffff;
+   136→  --ink: #17171c;
+   137→  --ink-soft: #5a5a64;
+   138→  --ink-faint: #9c9ca6;
+   139→  --blue: #2060f0;
+   140→  --blue-deep: #1743c4;
+   141→  --blue-mist: #e9f0fe;
+   142→  --line: rgba(23, 23, 28, 0.085);
+   143→  --hard-shadow: rgba(42, 34, 28, 0.92);
+   144→  --royal: #2060f0;
+   145→  --royal-deep: #1743c4;
+   146→  --coal: #141419;
+   147→  --coal-soft: #1f1f28;
+   148→  --chalk: #f2f1e9;
+   149→  --chalk-soft: #a8a8b2;
+   150→  --note-yellow: #fdf3b8;
+   151→  --note-yellow-ink: #4a4010;
+   152→  --stamp-red: #c0272d;
+   153→  --stamp-blue: #1743c4;
+   154→  --pencil: #70707b;
+   155→  --note-pink: #fde2ef;
+   156→  --note-pink-ink: #5b2340;
+   157→  --note-mint: #ddf5ea;
+   158→  --note-mint-ink: #11463a;
+   159→  --success: #1c7d5d;
+   160→  --warning: #97690f;
+   161→  --danger: #c0272d;
+   162→  /* Role decoration density: intern đậm / instructor vừa / admin nhẹ */
+   163→  --nb-ink-line: 2px;
+   164→  --nb-offset: 4px;
+   165→  --nb-radius: 12px 15px 13px 14px;
+   166→  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+   167→}
+   168→
+   169→.dark {
+   170→  --background: #131318;
+   171→  --foreground: #f2f1e9;
+   172→  --card: #1c1c24;
+   173→  --card-foreground: #f2f1e9;
+   174→  --popover: #1c1c24;
+   175→  --popover-foreground: #f2f1e9;
+   176→  --primary: #7d97ff;
+   177→  --primary-foreground: #101018;
+   178→  --secondary: rgba(125, 151, 255, 0.16);
+   179→  --secondary-foreground: #f2f1e9;
+   180→  --muted: #202029;
+   181→  --muted-foreground: #a8a8b2;
+   182→  --accent: rgba(125, 151, 255, 0.16);
+   183→  --accent-foreground: #f2f1e9;
+   184→  --destructive: #ff627a;
+   185→  --border: #2b2b35;
+   186→  --input: #34343f;
+   187→  --ring: rgba(125, 151, 255, 0.5);
+   188→  --chart-1: #7d97ff;
+   189→  --chart-2: #38bdf8;
+   190→  --chart-3: #fbbf24;
+   191→  --chart-4: #a78bfa;
+   192→  --chart-5: #fb7185;
+   193→  --sidebar: #101016;
+   194→  --sidebar-foreground: #f2f1e9;
+   195→  --sidebar-primary: #7d97ff;
+   196→  --sidebar-primary-foreground: #101018;
+   197→  --sidebar-accent: #1c1c24;
+   198→  --sidebar-accent-foreground: #f2f1e9;
+   199→  --sidebar-border: #2b2b35;
+   200→  --sidebar-ring: rgba(125, 151, 255, 0.5);
+   201→  --paper: #131318;
+   202→  --paper-raised: #1c1c24;
+   203→  --ink: #f2f1e9;
+   204→  --ink-soft: #a8a8b2;
+   205→  --ink-faint: #70707b;
+   206→  --blue: #7d97ff;
+   207→  --blue-deep: #99adff;
+   208→  --blue-mist: rgba(125, 151, 255, 0.16);
+   209→  --line: rgba(242, 241, 233, 0.09);
+   210→  --hard-shadow: rgba(0, 0, 0, 0.55);
+   211→  --royal: #7d97ff;
+   212→  --royal-deep: #99adff;
+   213→  --coal: #101018;
+   214→  --coal-soft: #1c1c24;
+   215→  --chalk: #131318;
+   216→  --chalk-soft: #70707b;
+   217→  --note-yellow: #5d5531;
+   218→  --note-yellow-ink: #f7f0c9;
+   219→  --stamp-red: #ff7d7d;
+   220→  --stamp-blue: #99adff;
+   221→  --pencil: #a8a8b2;
+   222→  --note-pink: #4a2338;
+   223→  --note-pink-ink: #f9c9dd;
+   224→  --note-mint: #1d3f34;
+   225→  --note-mint-ink: #c4ecd9;
+   226→  --success: #3ddc97;
+   227→  --warning: #fbbf24;
+   228→  --danger: #ff627a;
+   229→}
+   230→
+   231→@layer base {
+   232→  * {
+   233→    @apply border-border outline-ring/50;
+   234→  }
+   235→  html {
+   236→    scroll-behavior: smooth;
+   237→  }
+   238→  body {
+   239→    @apply bg-background text-foreground;
+   240→    font-family: var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
+   241→    font-feature-settings: "ss01" on, "cv05" on;
+   242→  }
+   243→  ::selection {
+   244→    background: var(--blue-mist);
+   245→    color: var(--ink);
+   246→  }
+   247→  /* Custom scrollbar — nét mực */
+   248→  ::-webkit-scrollbar {
+   249→    width: 10px;
+   250→    height: 10px;
+   251→  }
+   252→  ::-webkit-scrollbar-track {
+   253→    background: transparent;
+   254→  }
+   255→  ::-webkit-scrollbar-thumb {
+   256→    background: color-mix(in srgb, var(--ink) 22%, transparent);
+   257→    border-radius: 999px;
+   258→    border: 2px solid var(--paper);
+   259→  }
+   260→  ::-webkit-scrollbar-thumb:hover {
+   261→    background: color-mix(in srgb, var(--ink) 38%, transparent);
+   262→  }
+   263→}
+   264→
+   265→/* =====================================================================
+   266→ * NOTEBOOK UTILITIES — bút mực, giấy kẻ ô, băng dính, mộc, sticker
+   267→ * ===================================================================== */
+   268→
+   269→@layer utilities {
+   270→  .font-hand {
+   271→    font-family: var(--font-patrick-hand), cursive;
+   272→  }
+   273→  .font-geist-mono {
+   274→    font-family: var(--font-geist-mono), ui-monospace, monospace;
+   275→  }
+   276→
+   277→  /* --- Sketch card: viền mực 2px + bóng in lệch + bán kính bất đối xứng --- */
+   278→  .sketch-card {
+   279→    border: var(--nb-ink-line) solid var(--ink);
+   280→    border-radius: var(--nb-radius);
+   281→    box-shadow: var(--nb-offset) var(--nb-offset) 0 0 var(--hard-shadow);
+   282→    background: var(--paper-raised);
+   283→    transition: transform 180ms var(--motion-ease), box-shadow 180ms var(--motion-ease);
+   284→  }
+   285→  .sketch-card-hover:hover {
+   286→    transform: translate(-2px, -2px) rotate(-0.35deg);
+   287→    box-shadow: calc(var(--nb-offset) + 3px) calc(var(--nb-offset) + 3px) 0 0 var(--hard-shadow);
+   288→  }
+   289→  .sketch-border {
+   290→    border: var(--nb-ink-line) solid var(--ink);
+   291→    border-radius: var(--nb-radius);
+   292→  }
+   293→  .sketch-border-thin {
+   294→    border: 1.5px solid var(--ink);
+   295→    border-radius: 10px 12px 10px 12px;
+   296→  }
+   297→
+   298→  /* --- Role density --- */
+   299→  .density-thin {
+   300→    --nb-ink-line: 1.5px;
+   301→    --nb-offset: 3px;
+   302→    --nb-radius: 10px 12px 11px 12px;
+   303→  }
+   304→  .density-light {
+   305→    --nb-ink-line: 1px;
+   306→    --nb-offset: 2px;
+   307→    --nb-radius: 8px 10px 9px 10px;
+   308→  }
+   309→
+   310→  /* --- Giấy kẻ dòng / kẻ ô --- */
+   311→  .paper-lined {
+   312→    background-image: repeating-linear-gradient(
+   313→      to bottom,
+   314→      transparent 0,
+   315→      transparent 27px,
+   316→      var(--line) 27px,
+   317→      var(--line) 28px
+   318→    );
+   319→  }
+   320→  .paper-grid {
+   321→    background-image:
+   322→      repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 26px),
+   323→      repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 26px);
+   324→  }
+   325→  .paper-dots {
+   326→    background-image: radial-gradient(var(--line) 1.2px, transparent 1.2px);
+   327→    background-size: 22px 22px;
+   328→  }
+   329→
+   330→  /* --- Lề đỏ sổ tay --- */
+   331→  .red-margin {
+   332→    border-left: 2px solid color-mix(in srgb, var(--stamp-red) 55%, transparent);
+   333→  }
+   334→
+   335→  /* --- Băng dính washi --- */
+   336→  .tape {
+   337→    position: absolute;
+   338→    width: 96px;
+   339→    height: 28px;
+   340→    background: color-mix(in srgb, var(--royal) 26%, #fff 30%);
+   341→    opacity: 0.82;
+   342→    box-shadow: 0 1px 3px rgba(23, 23, 28, 0.18);
+   343→    border-left: 1px dashed rgba(255, 255, 255, 0.55);
+   344→    border-right: 1px dashed rgba(255, 255, 255, 0.55);
+   345→    backdrop-filter: blur(1px);
+   346→    transition: transform 200ms var(--motion-ease), opacity 200ms;
+   347→  }
+   348→  .tape-warm {
+   349→    background: color-mix(in srgb, #f59e0b 30%, #fff 34%);
+   350→  }
+   351→  .tape-candy {
+   352→    background: color-mix(in srgb, #f472b6 28%, #fff 32%);
+   353→  }
+   354→  .tape-mint {
+   355→    background: color-mix(in srgb, #34d399 28%, #fff 32%);
+   356→  }
+   357→  .tape-slate {
+   358→    background: color-mix(in srgb, #64748b 30%, #e2e8f0 30%);
+   359→  }
+   360→  /* === v3 UPGRADE · C · tape-gold — băng dính vàng son, mép sẫm === */
+   361→  .tape-gold {
+   362→    background: linear-gradient(
+   363→      180deg,
+   364→      #c9972c,
+   365→      #e6b950 18%,
+   366→      #e6b950 82%,
+   367→      #c9972c
+   368→    );
+   369→  }
+   370→  .dark .tape-gold {
+   371→    background: linear-gradient(
+   372→      180deg,
+   373→      #7c611c,
+   374→      #a8842e 18%,
+   375→      #a8842e 82%,
+   376→      #7c611c
+   377→    );
+   378→  }
+   379→  .tape-peel:hover {
+   380→    transform: rotate(var(--tape-rotate, -4deg)) translateY(-2px) scale(1.04);
+   381→    opacity: 1;
+   382→  }
+   383→
+   384→  /* --- Sticky note --- */
+   385→  .sticky-note {
+   386→    background: var(--note-yellow);
+   387→    color: var(--note-yellow-ink);
+   388→    border-radius: 2px 2px 14px 2px;
+   389→    box-shadow: 0 4px 14px rgba(23, 23, 28, 0.14);
+   390→    transform: rotate(var(--note-rotate, -1.5deg));
+   391→    transition: transform 200ms var(--motion-ease);
+   392→  }
+   393→  .sticky-note:hover {
+   394→    transform: rotate(0deg) scale(1.015);
+   395→  }
+   396→  .sticky-pink {
+   397→    background: var(--note-pink);
+   398→    color: var(--note-pink-ink);
+   399→  }
+   400→  .sticky-mint {
+   401→    background: var(--note-mint);
+   402→    color: var(--note-mint-ink);
+   403→  }
+   404→
+   405→  /* --- Con dấu mộc (rubber stamp) --- */
+   406→  .stamp-moc {
+   407→    display: inline-flex;
+   408→    align-items: center;
+   409→    gap: 0.45rem;
+   410→    border: 2.5px solid var(--stamp-red);
+   411→    color: var(--stamp-red);
+   412→    border-radius: 999px;
+   413→    padding: 0.28rem 1rem;
+   414→    font-weight: 700;
+   415→    letter-spacing: 0.06em;
+   416→    transform: rotate(var(--stamp-rotate, -6deg));
+   417→    text-transform: uppercase;
+   418→    font-size: 0.72rem;
+   419→    opacity: 0.88;
+   420→    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.9 0.08'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+   421→    mask-size: 120px;
+   422→  }
+   423→  .stamp-blue {
+   424→    border-color: var(--stamp-blue);
+   425→    color: var(--stamp-blue);
+   426→  }
+   427→  .animate-stamp-thump {
+   428→    animation: stamp-thump 420ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+   429→  }
+   430→
+   431→  /* --- Marker highlight --- */
+   432→  .marker {
+   433→    background-image: linear-gradient(
+   434→      100deg,
+   435→      transparent 0.5%,
+   436→      color-mix(in srgb, var(--royal) 22%, transparent) 3%,
+   437→      color-mix(in srgb, var(--royal) 22%, transparent) 97%,
+   438→      transparent 99.5%
+   439→    );
+   440→    background-repeat: no-repeat;
+   441→    background-size: 100% 46%;
+   442→    background-position: 0 82%;
+   443→  }
+   444→  .marker-yellow {
+   445→    background-image: linear-gradient(
+   446→      100deg,
+   447→      transparent 0.5%,
+   448→      color-mix(in srgb, #fde047 55%, transparent) 3%,
+   449→      color-mix(in srgb, #fde047 55%, transparent) 97%,
+   450→      transparent 99.5%
+   451→    );
+   452→  }
+   453→  /* === v3 UPGRADE · C · marker variants (kỹ thuật như marker-yellow) === */
+   454→  .marker-blue {
+   455→    background-image: linear-gradient(
+   456→      100deg,
+   457→      transparent 0.5%,
+   458→      color-mix(in srgb, var(--blue-mist) 92%, transparent) 3%,
+   459→      color-mix(in srgb, var(--blue-mist) 92%, transparent) 97%,
+   460→      transparent 99.5%
+   461→    );
+   462→    background-repeat: no-repeat;
+   463→    background-size: 100% 46%;
+   464→    background-position: 0 82%;
+   465→  }
+   466→  .dark .marker-blue {
+   467→    background-image: linear-gradient(
+   468→      100deg,
+   469→      transparent 0.5%,
+   470→      color-mix(in srgb, var(--royal) 38%, transparent) 3%,
+   471→      color-mix(in srgb, var(--royal) 38%, transparent) 97%,
+   472→      transparent 99.5%
+   473→    );
+   474→  }
+   475→  .marker-pink {
+   476→    background-image: linear-gradient(
+   477→      100deg,
+   478→      transparent 0.5%,
+   479→      color-mix(in srgb, var(--note-pink) 92%, transparent) 3%,
+   480→      color-mix(in srgb, var(--note-pink) 92%, transparent) 97%,
+   481→      transparent 99.5%
+   482→    );
+   483→    background-repeat: no-repeat;
+   484→    background-size: 100% 46%;
+   485→    background-position: 0 82%;
+   486→  }
+   487→  .dark .marker-pink {
+   488→    background-image: linear-gradient(
+   489→      100deg,
+   490→      transparent 0.5%,
+   491→      color-mix(in srgb, #fb7185 32%, transparent) 3%,
+   492→      color-mix(in srgb, #fb7185 32%, transparent) 97%,
+   493→      transparent 99.5%
+   494→    );
+   495→  }
+   496→  .marker-mint {
+   497→    background-image: linear-gradient(
+   498→      100deg,
+   499→      transparent 0.5%,
+   500→      color-mix(in srgb, var(--note-mint) 92%, transparent) 3%,
+   501→      color-mix(in srgb, var(--note-mint) 92%, transparent) 97%,
+   502→      transparent 99.5%
+   503→    );
+   504→    background-repeat: no-repeat;
+   505→    background-size: 100% 46%;
+   506→    background-position: 0 82%;
+   507→  }
+   508→  .dark .marker-mint {
+   509→    background-image: linear-gradient(
+   510→      100deg,
+   511→      transparent 0.5%,
+   512→      color-mix(in srgb, #34d399 30%, transparent) 3%,
+   513→      color-mix(in srgb, #34d399 30%, transparent) 97%,
+   514→      transparent 99.5%
+   515→    );
+   516→  }
+   517→  .animate-marker-blot {
+   518→    animation: marker-blot 700ms 150ms var(--motion-ease) both;
+   519→  }
+   520→
+   521→  /* --- Nav item active: quét màu + gạch chân nguệch --- */
+   522→  .nav-marker {
+   523→    position: relative;
+   524→    background: var(--blue-mist);
+   525→    color: var(--ink);
+   526→  }
+   527→  .nav-marker::after {
+   528→    content: "";
+   529→    position: absolute;
+   530→    left: 12%;
+   531→    right: 12%;
+   532→    bottom: 5px;
+   533→    height: 3px;
+   534→    background: var(--squiggle-svg) center/contain no-repeat;
+   535→  }
+   536→
+   537→  /* --- Divider răng rách (torn edge) --- */
+   538→  .divider-torn {
+   539→    height: 10px;
+   540→    background: var(--paper-raised);
+   541→    clip-path: polygon(
+   542→      0 0, 4% 62%, 9% 28%, 14% 70%, 20% 30%, 26% 66%, 32% 34%, 38% 72%,
+   543→      44% 26%, 50% 68%, 56% 30%, 62% 64%, 68% 32%, 74% 70%, 80% 28%,
+   544→      86% 66%, 92% 30%, 96% 60%, 100% 0, 100% 100%, 0 100%
+   545→    );
+   546→  }
+   547→  /* === v3 UPGRADE · C · divider gạch đứt mực + kim cương nhỏ giữa === */
+   548→  .divider-dashed-ink {
+   549→    position: relative;
+   550→    height: 0;
+   551→    border-top: 2px dashed color-mix(in srgb, var(--ink) 42%, transparent);
+   552→  }
+   553→  .divider-dashed-ink::after {
+   554→    content: "";
+   555→    position: absolute;
+   556→    top: -6px;
+   557→    left: 50%;
+   558→    width: 8px;
+   559→    height: 8px;
+   560→    transform: translateX(-50%) rotate(45deg);
+   561→    background: var(--paper);
+   562→    border: 1.5px solid var(--ink);
+   563→    border-radius: 1px;
+   564→  }
+   565→
+   566→  /* --- Gáy lò xo sổ tay (spiral binding) --- */
+   567→  .spiral-edge {
+   568→    position: relative;
+   569→  }
+   570→  .spiral-edge::before {
+   571→    content: "";
+   572→    position: absolute;
+   573→    left: 10px;
+   574→    top: 14px;
+   575→    bottom: 14px;
+   576→    width: 12px;
+   577→    background-image: radial-gradient(circle at 6px 7px, var(--paper-raised) 3.4px, var(--ink) 3.4px, var(--ink) 4.6px, transparent 5px);
+   578→    background-size: 12px 24px;
+   579→    background-repeat: repeat-y;
+   580→    pointer-events: none;
+   581→    opacity: 0.85;
+   582→  }
+   583→
+   584→  /* --- Góc gấp trang (dog-ear) --- */
+   585→  .dog-ear {
+   586→    position: relative;
+   587→  }
+   588→  .dog-ear::after {
+   589→    content: "";
+   590→    position: absolute;
+   591→    top: 0;
+   592→    right: 0;
+   593→    width: 0;
+   594→    height: 0;
+   595→    border-style: solid;
+   596→    border-width: 0 22px 22px 0;
+   597→    border-color: transparent var(--paper) transparent transparent;
+   598→    filter: drop-shadow(-2px 2px 1px rgba(23, 23, 28, 0.12));
+   599→    transition: border-width 160ms var(--motion-ease);
+   600→  }
+   601→  .dog-ear:hover::after {
+   602→    border-width: 0 34px 34px 0;
+   603→  }
+   604→
+   605→  /* --- Skeleton nét chì --- */
+   606→  .skeleton-pencil {
+   607→    background: linear-gradient(
+   608→      100deg,
+   609→      color-mix(in srgb, var(--ink) 6%, transparent) 40%,
+   610→      color-mix(in srgb, var(--ink) 12%, transparent) 50%,
+   611→      color-mix(in srgb, var(--ink) 6%, transparent) 60%
+   612→    );
+   613→    background-size: 220% 100%;
+   614→    animation: pencil-sweep 1.4s ease-in-out infinite;
+   615→    border-radius: 6px;
+   616→  }
+   617→  /* === v3 UPGRADE · F · skeleton khối — góc tròn bất đối xứng === */
+   618→  .skeleton-pencil-block {
+   619→    background: linear-gradient(
+   620→      100deg,
+   621→      color-mix(in srgb, var(--ink) 6%, transparent) 40%,
+   622→      color-mix(in srgb, var(--ink) 12%, transparent) 50%,
+   623→      color-mix(in srgb, var(--ink) 6%, transparent) 60%
+   624→    );
+   625→    background-size: 220% 100%;
+   626→    animation: pencil-sweep 1.4s ease-in-out infinite;
+   627→    border-radius: 12px 16px 10px 14px;
+   628→  }
+   629→
+   630→  /* --- entrance --- */
+   631→  .nb-rise {
+   632→    animation: nb-rise 480ms var(--motion-ease) both;
+   633→  }
+   634→  .nb-stagger > * {
+   635→    animation: nb-rise 460ms var(--motion-ease) both;
+   636→  }
+   637→  .nb-stagger > *:nth-child(1) { animation-delay: 30ms; }
+   638→  .nb-stagger > *:nth-child(2) { animation-delay: 80ms; }
+   639→  .nb-stagger > *:nth-child(3) { animation-delay: 130ms; }
+   640→  .nb-stagger > *:nth-child(4) { animation-delay: 180ms; }
+   641→  .nb-stagger > *:nth-child(5) { animation-delay: 230ms; }
+   642→  .nb-stagger > *:nth-child(6) { animation-delay: 280ms; }
+   643→  .nb-stagger > *:nth-child(7) { animation-delay: 330ms; }
+   644→  .nb-stagger > *:nth-child(8) { animation-delay: 380ms; }
+   645→
+   646→  /* --- Squiggle underline vẽ dần khi cuộn tới --- */
+   647→  .squiggle-draw path {
+   648→    stroke-dasharray: 240;
+   649→    stroke-dashoffset: 240;
+   650→    animation: squiggle-draw 900ms 120ms var(--motion-ease) forwards;
+   651→  }
+   652→
+   653→  /* --- Line clamp note --- */
+   654→  .tabular {
+   655→    font-variant-numeric: tabular-nums;
+   656→  }
+   657→  .eyebrow {
+   658→    font-family: var(--font-geist-mono), ui-monospace, monospace;
+   659→    font-size: 0.72rem;
+   660→    letter-spacing: 0.22em;
+   661→    text-transform: uppercase;
+   662→    color: var(--ink-soft);
+   663→  }
+   664→}
+   665→
+   666→:root {
+   667→  --squiggle-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 6' preserveAspectRatio='none'%3E%3Cpath d='M2 4 Q 6 1.5, 10 3.5 T 18 3.5 T 26 3.5 T 34 3.5 T 42 3.5 T 50 3.5 T 58 3' fill='none' stroke='%232060f0' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+   668→}
+   669→.dark {
+   670→  --squiggle-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 6' preserveAspectRatio='none'%3E%3Cpath d='M2 4 Q 6 1.5, 10 3.5 T 18 3.5 T 26 3.5 T 34 3.5 T 42 3.5 T 50 3.5 T 58 3' fill='none' stroke='%237d97ff' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+   671→}
+   672→
+   673→/* =====================================================================
+   674→ * KEYFRAMES
+   675→ * ===================================================================== */
+   676→
+   677→@keyframes stamp-thump {
+   678→  0% { transform: rotate(var(--stamp-rotate, -6deg)) scale(2.1); opacity: 0; }
+   679→  60% { transform: rotate(var(--stamp-rotate, -6deg)) scale(0.94); opacity: 1; }
+   680→  100% { transform: rotate(var(--stamp-rotate, -6deg)) scale(1); opacity: 0.88; }
+   681→}
+   682→@keyframes marker-blot {
+   683→  0% { background-size: 0% 46%; }
+   684→  100% { background-size: 100% 46%; }
+   685→}
+   686→@keyframes nb-rise {
+   687→  0% { opacity: 0; transform: translateY(14px) rotate(0.4deg); }
+   688→  100% { opacity: 1; transform: translateY(0) rotate(0); }
+   689→}
+   690→@keyframes pencil-sweep {
+   691→  0% { background-position: 120% 0; }
+   692→  100% { background-position: -120% 0; }
+   693→}
+   694→@keyframes float {
+   695→  0%, 100% { transform: translateY(0) rotate(var(--float-rotate, 0deg)); }
+   696→  50% { transform: translateY(-10px) rotate(var(--float-rotate, 0deg)); }
+   697→}
+   698→@keyframes bob {
+   699→  0%, 100% { transform: translateY(0) rotate(-1deg); }
+   700→  50% { transform: translateY(-5px) rotate(1deg); }
+   701→}
+   702→@keyframes wiggle {
+   703→  0%, 100% { transform: rotate(-3deg); }
+   704→  50% { transform: rotate(3deg); }
+   705→}
+   706→@keyframes blink-dot {
+   707→  0%, 100% { opacity: 0.25; }
+   708→  50% { opacity: 1; }
+   709→}
+   710→@keyframes squiggle-draw {
+   711→  to { stroke-dashoffset: 0; }
+   712→}
+   713→@keyframes ping-soft {
+   714→  0% { transform: scale(1); opacity: 0.7; }
+   715→  80%, 100% { transform: scale(2.1); opacity: 0; }
+   716→}
+   717→@keyframes page-curl {
+   718→  0% { transform: perspective(1200px) rotateY(-18deg); opacity: 0; }
+   719→  100% { transform: perspective(1200px) rotateY(0); opacity: 1; }
+   720→}
+   721→
+   722→/* =====================================================================
+   723→ * WORKSPACE — vùng làm việc 3 vai trò
+   724→ * ===================================================================== */
+   725→
+   726→.workspace-ui {
+   727→  --ws-ink: var(--ink);
+   728→  --ws-line: var(--line);
+   729→  background: var(--paper);
+   730→  color: var(--ink);
+   731→}
+   732→.workspace-ui .ws-panel {
+   733→  background: var(--paper-raised);
+   734→  border: var(--nb-ink-line) solid var(--ink);
+   735→  border-radius: var(--nb-radius);
+   736→  box-shadow: var(--nb-offset) var(--nb-offset) 0 0 var(--hard-shadow);
+   737→}
+   738→.workspace-ui[data-role="intern"] {
+   739→  /* intern giữ mặc định đậm nhất */
+   740→}
+   741→.workspace-ui[data-role="instructor"] {
+   742→  --nb-ink-line: 1.5px;
+   743→  --nb-offset: 3px;
+   744→  --nb-radius: 10px 12px 11px 12px;
+   745→}
+   746→.workspace-ui[data-role="admin"] {
+   747→  --nb-ink-line: 1px;
+   748→  --nb-offset: 0px;
+   749→  --nb-radius: 8px 10px 9px 10px;
+   750→}
+   751→.workspace-ui[data-role="admin"] .ws-panel {
+   752→  box-shadow: none;
+   753→  border-color: var(--border);
+   754→  background: var(--paper-raised);
+   755→}
+   756→
+   757→/* Table zebra ấm */
+   758→.ink-table {
+   759→  width: 100%;
+   760→  border-collapse: collapse;
+   761→  font-size: 0.875rem;
+   762→}
+   763→.ink-table th {
+   764→  text-align: left;
+   765→  font-size: 0.75rem;
+   766→  text-transform: uppercase;
+   767→  letter-spacing: 0.08em;
+   768→  color: var(--ink-soft);
+   769→  padding: 0.6rem 0.9rem;
+   770→  border-bottom: 2px solid var(--ink);
+   771→  white-space: nowrap;
+   772→}
+   773→.ink-table td {
+   774→  padding: 0.7rem 0.9rem;
+   775→  border-bottom: 1px dashed color-mix(in srgb, var(--ink) 18%, transparent);
+   776→  vertical-align: middle;
+   777→}
+   778→.ink-table tbody tr {
+   779→  transition: background 120ms;
+   780→}
+   781→.ink-table tbody tr:hover {
+   782→  background: color-mix(in srgb, var(--blue) 4%, transparent);
+   783→}
+   784→
+   785→/* Status dots */
+   786→.ws-dot {
+   787→  width: 8px;
+   788→  height: 8px;
+   789→  border-radius: 999px;
+   790→  display: inline-block;
+   791→  border: 1.5px solid var(--ink);
+   792→}
+   793→
+   794→/* === v3 UPGRADE · A · ws-dot-live — halo "đang online"
+   795→ * wired với keyframe `ping-soft` sẵn có ở trên === */
+   796→.ws-dot-live {
+   797→  position: relative;
+   798→  display: inline-block;
+   799→  width: 9px;
+   800→  height: 9px;
+   801→  border-radius: 999px;
+   802→  background: var(--success);
+   803→  border: 1.5px solid var(--ink);
+   804→}
+   805→.ws-dot-live::before {
+   806→  content: "";
+   807→  position: absolute;
+   808→  inset: -3px;
+   809→  border-radius: 999px;
+   810→  border: 2px solid color-mix(in srgb, var(--success) 60%, transparent);
+   811→  animation: ping-soft 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+   812→}
+   813→.dark .ws-dot-live {
+   814→  border-color: var(--ink);
+   815→  box-shadow: 0 0 8px color-mix(in srgb, var(--success) 45%, transparent);
+   816→}
+   817→.dark .ws-dot-live::before {
+   818→  border-color: color-mix(in srgb, var(--success) 55%, transparent);
+   819→}
+   820→
+
+[showing lines 1-820 of 1613; use offset=821 with limit to continue reading]

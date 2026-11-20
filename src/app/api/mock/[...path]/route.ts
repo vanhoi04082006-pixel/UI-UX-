@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { MockAccount, SessionUser } from "@/lib/mock/types";
+import type {
+  MockAccount,
+  Priority,
+  SessionStatus,
+  SessionUser,
+  SprintStatus,
+} from "@/lib/mock/types";
 import {
   ACCOUNTS,
   ADMIN_ACTIVITY,
@@ -8,10 +14,14 @@ import {
   ADMIN_TEMPLATES,
   ADMIN_USERS,
   certificatesForIntern,
+  completeAssignment,
+  createBoardTask,
+  createSprint,
   evaluationsForIntern,
   INSTRUCTOR_GRADING,
   INSTRUCTOR_REPORTS,
   INSTRUCTOR_SESSIONS,
+  INSTRUCTOR_SPRINTS,
   INSTRUCTOR_SPRINT_BOARD,
   kpiForIntern,
   markNotificationsRead,
@@ -20,7 +30,12 @@ import {
   notificationsFor,
   overviewForIntern,
   salaryForIntern,
+  sessionTransitions,
+  sprintTransitions,
   tasksForIntern,
+  transitionSession,
+  transitionSprint,
+  updateSprint,
 } from "@/lib/mock/data";
 
 export const dynamic = "force-dynamic";
@@ -129,6 +144,13 @@ export async function GET(
       }
       case "instructor/sessions":
         return ok(INSTRUCTOR_SESSIONS);
+      case "instructor/sprints":
+        return ok({
+          sprints: INSTRUCTOR_SPRINTS,
+          transitions: Object.fromEntries(
+            INSTRUCTOR_SPRINTS.map((s) => [s.id, sprintTransitions(s.status)]),
+          ),
+        });
       case "instructor/board":
         return ok(INSTRUCTOR_SPRINT_BOARD);
       case "instructor/grading":
@@ -297,6 +319,103 @@ export async function POST(
         }));
         const reply = await aiMentorReply(history);
         return ok({ reply });
+      }
+
+      /* ---- Vòng đời phiên / sprint / phân công / nhiệm vụ (codex) ---- */
+      case "instructor/session-transition": {
+        const { sessionId, status } = body as { sessionId?: string; status?: string };
+        if (!sessionId || !status) return fail("Thiếu mã phiên hoặc trạng thái đích.");
+        try {
+          return ok(transitionSession(sessionId, status as SessionStatus));
+        } catch (error) {
+          return fail((error as Error).message ?? "Không đổi được trạng thái phiên.", 409);
+        }
+      }
+      case "instructor/session-transitions": {
+        const { sessionId } = body as { sessionId?: string };
+        const session = INSTRUCTOR_SESSIONS.find((s) => s.id === sessionId);
+        if (!session) return fail("Không tìm thấy phiên thực tập này.", 404);
+        return ok({ transitions: sessionTransitions(session.status) });
+      }
+      case "instructor/assignment-complete": {
+        const { sessionId, memberEmail } = body as { sessionId?: string; memberEmail?: string };
+        if (!sessionId || !memberEmail) return fail("Thiếu mã phiên hoặc email thành viên.");
+        try {
+          return ok(completeAssignment(sessionId, memberEmail));
+        } catch (error) {
+          return fail((error as Error).message ?? "Không hoàn tất được phân công.", 409);
+        }
+      }
+      case "instructor/sprint-transition": {
+        const { sprintId, status } = body as { sprintId?: string; status?: string };
+        if (!sprintId || !status) return fail("Thiếu mã Sprint hoặc trạng thái đích.");
+        try {
+          return ok(transitionSprint(sprintId, status as SprintStatus));
+        } catch (error) {
+          return fail((error as Error).message ?? "Không đổi được trạng thái Sprint.", 409);
+        }
+      }
+      case "instructor/sprint-update": {
+        const { sprintId, name, goal, startsAt, endsAt } = body as {
+          sprintId?: string;
+          name?: string;
+          goal?: string;
+          startsAt?: string;
+          endsAt?: string;
+        };
+        if (!sprintId) return fail("Thiếu mã Sprint.");
+        if (startsAt && endsAt && endsAt <= startsAt) {
+          return fail("Ngày kết thúc Sprint phải sau ngày bắt đầu. Hãy kiểm tra lại hai mốc thời gian.");
+        }
+        try {
+          return ok(updateSprint(sprintId, { name, goal, startsAt, endsAt }));
+        } catch (error) {
+          return fail((error as Error).message ?? "Không lưu được thay đổi Sprint.", 409);
+        }
+      }
+      case "instructor/sprint-create": {
+        const { sessionId, name, goal, startsAt, endsAt } = body as {
+          sessionId?: string;
+          name?: string;
+          goal?: string;
+          startsAt?: string;
+          endsAt?: string;
+        };
+        if (!sessionId || !name) return fail("Thiếu phiên hoặc tên Sprint.");
+        if (!startsAt || !endsAt) return fail("Vui lòng chọn ngày bắt đầu và kết thúc.");
+        if (endsAt <= startsAt) {
+          return fail("Ngày kết thúc Sprint phải sau ngày bắt đầu. Hãy kiểm tra lại hai mốc thời gian.");
+        }
+        try {
+          return ok(createSprint({ sessionId, name, goal, startsAt, endsAt }));
+        } catch (error) {
+          return fail((error as Error).message ?? "Không tạo được Sprint.", 409);
+        }
+      }
+      case "instructor/task-create": {
+        const { sprintId, title, assignee, priority, points } = body as {
+          sprintId?: string;
+          title?: string;
+          assignee?: string;
+          priority?: string;
+          points?: number;
+        };
+        if (!sprintId || !title || !assignee) {
+          return fail("Vui lòng điền tên nhiệm vụ và người nhận.");
+        }
+        try {
+          return ok(
+            createBoardTask({
+              sprintId,
+              title,
+              assignee,
+              priority: (priority as Priority | undefined) ?? "medium",
+              points: typeof points === "number" ? points : 3,
+            }),
+          );
+        } catch (error) {
+          return fail((error as Error).message ?? "Không tạo được nhiệm vụ.", 409);
+        }
       }
       default:
         return fail(`Không tìm thấy endpoint mock: ${route}`, 404);

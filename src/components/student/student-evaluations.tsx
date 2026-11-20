@@ -8,6 +8,7 @@ import {
   Radar,
   RadarChart,
   ResponsiveContainer,
+  Tooltip,
 } from "recharts";
 import { useApp } from "@/lib/store";
 import { useMock } from "@/lib/use-mock";
@@ -59,16 +60,82 @@ function criteriaColor(pct: number) {
   return "var(--danger)";
 }
 
-/** Ngắn gọn nhãn trục radar (≤14 ký tự) để không chồng chữ. */
-function shortLabel(label: string): string {
-  return label.length > 14 ? `${label.slice(0, 13).trimEnd()}…` : label;
+/** Dữ liệu một trục radar: tên tiêu chí đủ + điểm gốc dạng "score / max". */
+type RadarDatum = {
+  subject: string;
+  score: number;
+  max: number;
+  diem: number;
+  weight?: number;
+};
+
+/** Tooltip radar nét mực — điểm gốc hiển thị "score / max" (codex). */
+function RadarTip({ active, payload }: { active?: boolean; payload?: { payload?: RadarDatum }[] }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <div className="rounded-[10px_12px_10px_12px] border-2 border-[var(--ink)] bg-[var(--paper-raised)] px-3 py-1.5 shadow-ink-3">
+      <p className="text-[0.72rem] font-extrabold text-[var(--ink)]">{d.subject}</p>
+      <p className="tabular mt-0.5 text-[0.72rem] font-bold text-[var(--royal)]">
+        {d.score.toFixed(1)} / {d.max} điểm
+      </p>
+      {d.weight !== undefined && (
+        <p className="tabular mt-0.5 text-[0.66rem] font-bold text-[var(--ink-soft)]">Trọng số {d.weight}%</p>
+      )}
+    </div>
+  );
+}
+
+/** Tách nhãn dài thành tối đa 2 dòng cân bằng — đủ tên tiêu chí, không cắt cụt. */
+function wrap2(label: string): string[] {
+  if (label.length <= 14) return [label];
+  const words = label.split(" ");
+  let best = 1;
+  let bestDiff = Infinity;
+  for (let i = 1; i < words.length; i++) {
+    const diff = Math.abs(words.slice(0, i).join(" ").length - words.slice(i).join(" ").length);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = i;
+    }
+  }
+  return [words.slice(0, best).join(" "), words.slice(best).join(" ")];
+}
+
+/** Tick trục radar viết tay — tên tiêu chí đầy đủ, xuống dòng khi dài. */
+function RadarAxisTick({
+  x,
+  y,
+  textAnchor,
+  payload,
+}: {
+  x?: number | string;
+  y?: number | string;
+  textAnchor?: string;
+  payload?: { value?: string };
+}) {
+  const lines = wrap2(payload?.value ?? "");
+  const anchor = (textAnchor ?? "middle") as "start" | "middle" | "end";
+  return (
+    <text x={Number(x)} y={Number(y)} textAnchor={anchor} fill="var(--ink-soft)" fontSize={11}>
+      {lines.map((l, i) => (
+        <tspan key={l} x={Number(x)} dy={i === 0 ? (lines.length > 1 ? -5 : 0) : 13}>
+          {l}
+        </tspan>
+      ))}
+    </text>
+  );
 }
 
 /** Bảng tiêu chí kỳ đánh giá MỚI NHẤT dưới dạng radar nét mực. */
 function CriteriaRadar({ ev }: { ev: Evaluation }) {
   const reduced = usePrefersReducedMotion();
-  const data = ev.criteria.map((c) => ({
-    subject: shortLabel(c.label),
+  const data: RadarDatum[] = ev.criteria.map((c) => ({
+    subject: c.label,
+    score: c.score,
+    max: c.max,
+    ...(c.weight !== undefined ? { weight: c.weight } : {}),
     diem: Math.round((c.score / c.max) * 100),
   }));
   return (
@@ -81,7 +148,7 @@ function CriteriaRadar({ ev }: { ev: Evaluation }) {
         Bảng tiêu chí dạng radar
       </h2>
       <p className="mt-0.5 text-[0.75rem] text-[var(--ink-soft)]">
-        Tỷ lệ đạt của từng tiêu chí (0–100%) — đảo nhãn để so sánh giữa các kỳ.
+        Tỷ lệ đạt của từng tiêu chí (0–100%) — chạm biểu đồ để xem điểm gốc dạng x / max.
       </p>
       <div className="chart-ink relative mt-3 h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
@@ -92,7 +159,7 @@ function CriteriaRadar({ ev }: { ev: Evaluation }) {
             />
             <PolarAngleAxis
               dataKey="subject"
-              tick={{ fill: "var(--ink-soft)", fontSize: 11 }}
+              tick={(props) => <RadarAxisTick {...props} />}
             />
             <PolarRadiusAxis
               domain={[0, 100]}
@@ -100,6 +167,7 @@ function CriteriaRadar({ ev }: { ev: Evaluation }) {
               tick={{ fill: "var(--ink-faint)", fontSize: 10 }}
               axisLine={false}
             />
+            <Tooltip cursor={false} content={<RadarTip />} />
             <Radar
               name="Đạt (%)"
               dataKey="diem"
@@ -184,9 +252,16 @@ function EvalCard({ ev, defaultOpen }: { ev: Evaluation; defaultOpen: boolean })
                   return (
                     <div key={c.label}>
                       <div className="flex items-baseline justify-between gap-2">
-                        <p className="truncate text-[0.78rem] font-semibold">{c.label}</p>
+                        <p className="truncate text-[0.78rem] font-semibold">
+                          {c.label}
+                          {c.weight !== undefined && (
+                            <span className="tabular ml-1.5 text-[0.66rem] font-bold text-[var(--ink-soft)]">
+                              · trọng số {c.weight}%
+                            </span>
+                          )}
+                        </p>
                         <p className="tabular shrink-0 text-[0.78rem] font-bold" style={{ color: tone }}>
-                          {c.score.toFixed(1)}/{c.max}
+                          {c.score.toFixed(1)} / {c.max} điểm
                         </p>
                       </div>
                       <div className="mt-1 h-2.5 overflow-hidden rounded-full border-2 border-[var(--ink)] bg-[var(--paper)]">

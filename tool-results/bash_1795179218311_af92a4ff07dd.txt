@@ -1,0 +1,727 @@
+ src/components/admin/certificate-console.tsx       |  15 +--
+ src/components/admin/kpi-console.tsx               |  35 ++++---
+ src/components/admin/question-bank.tsx             |   2 +-
+ src/components/admin/salary-console.tsx            |  21 ++--
+ .../instructor/instructor-page-title.tsx           |  17 ++-
+ .../instructor/instructor-session-summary.tsx      |  29 +++---
+ src/components/intern/student-outcome-heading.tsx  |  28 ++++-
+ src/components/product/outcomes.tsx                | 114 ++++++++++-----------
+ src/components/sessions/delivery-overview.tsx      |  37 +++----
+ src/components/sessions/reports-workspace.tsx      |   6 +-
+ src/components/sessions/session-list.tsx           |   3 +
+ src/components/sessions/session-overview.tsx       |   1 +
+ src/components/sessions/sprint-workspace.tsx       |   7 +-
+ 13 files changed, 185 insertions(+), 130 deletions(-)
+diff --git a/src/components/admin/certificate-console.tsx b/src/components/admin/certificate-console.tsx
+index 3f74091..53263a2 100644
+--- a/src/components/admin/certificate-console.tsx
++++ b/src/components/admin/certificate-console.tsx
+@@ -21,6 +21,7 @@ import {
+ import { useResource } from "@/lib/api/use-resource";
+ import { ErrorState, LoadingState } from "@/components/shared/data-state";
+ import {
++  btn,
+   buttonClass,
+   Empty,
+   inputClass,
+@@ -28,6 +29,7 @@ import {
+   PageTitle,
+   Pager,
+   StatusDot,
++  tableClass,
+   thClass,
+   tdClass,
+ } from "@/components/product/primitives";
+@@ -64,6 +66,8 @@ export function CertificateConsole() {
+   return (
+     <div className="space-y-6">
+       <PageTitle
++        eyebrow="CHỨNG NHẬN"
++        stamp="VĂN BẰNG"
+         title="Chứng nhận"
+         subtitle="Cấp và thu hồi chứng nhận hoàn thành thực tập theo chính sách V-INTERN-COMPLETE. Điều kiện cấp được kiểm định phía hệ thống, không cấp tay."
+         action={
+@@ -113,8 +117,8 @@ export function CertificateConsole() {
+       ) : certificates.error ? (
+         <ErrorState error={certificates.error} onRetry={certificates.reload} />
+       ) : certificates.data?.items.length ? (
+-        <div className="overflow-x-auto border-y border-border" role="region" aria-label="Danh sách chứng nhận" tabIndex={0}>
+-          <table className="product-table w-full min-w-[52rem] border-collapse text-body">
++        <div className="notebook-scroll overflow-x-auto" role="region" aria-label="Danh sách chứng nhận" tabIndex={0}>
++          <table className={`${tableClass} min-w-[52rem]`}>
+             <thead>
+               <tr>
+                 {["Số chứng nhận", "Người giữ", "Vai trò · Dự án", "Trạng thái", "Hành động"].map(
+@@ -136,7 +140,6 @@ export function CertificateConsole() {
+               {certificates.data.items.map((certificate) => (
+                 <tr
+                   key={certificate.id}
+-                  className="align-top transition-colors hover:bg-background/70"
+                 >
+                   <td className={tdClass}>
+                     {/* Số chứng nhận như mảnh bi lai xé khỏi cuốn: viền mực,
+@@ -168,7 +171,7 @@ export function CertificateConsole() {
+                       {certificate.roleName ?? "—"}
+                     </p>
+                   </td>
+-                  <td className="border-b border-border px-4 py-3 text-muted-foreground">
++                  <td className={`${tdClass} text-muted-foreground`}>
+                     {certificate.projectName ?? "—"}
+                     {certificate.sessionName ? (
+                       <span className="block text-caption">{certificate.sessionName}</span>
+@@ -197,7 +200,7 @@ export function CertificateConsole() {
+                       </p>
+                     )}
+                   </td>
+-                  <td className="border-b border-border px-4 py-3 text-right">
++                  <td className={`${tdClass} text-right`}>
+                     <div className="flex flex-wrap items-center justify-end gap-3">
+                       <a
+                         className={`${linkButtonClass} -ml-1 text-primary hover:underline underline-offset-4`}
+@@ -439,7 +442,7 @@ function RevokeForm({
+       {Boolean(action.error) && <ErrorState error={action.error} />}
+       <div className="flex justify-end">
+         <button
+-          className={`${buttonClass} bg-destructive hover:bg-destructive/90`}
++          className={btn("danger")}
+           disabled={action.busy || !reason.trim()}
+           type="submit"
+         >
+diff --git a/src/components/admin/kpi-console.tsx b/src/components/admin/kpi-console.tsx
+index c4869d2..f3aefc1 100644
+--- a/src/components/admin/kpi-console.tsx
++++ b/src/components/admin/kpi-console.tsx
+@@ -31,6 +31,8 @@ import {
+   PageTitle,
+   Pager,
+   StatusDot,
++  tableClass,
++  tdClass,
+   thClass,
+ } from "@/components/product/primitives";
+ import { useAction } from "@/components/product/use-action";
+@@ -104,6 +106,7 @@ export function KpiConsole() {
+   return (
+     <div className="space-y-6">
+       <PageTitle
++        eyebrow="ĐO LƯỜNG HIỆU SUẤT"
+         title="Kỳ KPI"
+         subtitle="Tạo kỳ đo lường, tính KPI theo quy tắc kpi-v1 và chốt kỳ để sinh lương ảo cũng như cấp chứng nhận. Kỳ đã chốt không tính lại."
+         action={
+@@ -436,8 +439,8 @@ function KpiResults({ period }: { period: KpiPeriod }) {
+       ) : results.error ? (
+         <ErrorState error={results.error} onRetry={results.reload} />
+       ) : results.data?.items.length ? (
+-        <div className="overflow-x-auto border-y border-border" role="region" aria-label="Kết quả KPI của kỳ" tabIndex={0}>
+-          <table className="product-table w-full min-w-[40rem] border-collapse text-body">
++        <div className="notebook-scroll overflow-x-auto" role="region" aria-label="Kết quả KPI của kỳ" tabIndex={0}>
++          <table className={`${tableClass} min-w-[40rem]`}>
+             <thead>
+               <tr>
+                 <th className={thClass}>
+@@ -460,25 +463,25 @@ function KpiResults({ period }: { period: KpiPeriod }) {
+             </thead>
+             <tbody className="nb-stagger">
+               {results.data.items.map((row, index) => (
+-                <tr key={row.id} className="transition-colors hover:bg-background/70">
+-                  <td className="border-b border-border px-4 py-3 tabular-nums text-muted-foreground">
++                <tr key={row.id}>
++                  <td className={`${tdClass} tabular-nums text-muted-foreground`}>
+                     {(page - 1) * results.data!.pageSize + index + 1}
+                   </td>
+-                  <td className="border-b border-border px-4 py-3 font-medium text-foreground">
++                  <td className={`${tdClass} font-medium text-foreground`}>
+                     {nameOf(row.userId)}
+                   </td>
+-                  <td className="border-b border-border px-4 py-3 tabular-nums text-foreground">
++                  <td className={`${tdClass} tabular-nums text-foreground`}>
+                     {row.finalScore === null ? "—" : row.finalScore.toFixed(1)}
+                   </td>
+-                  <td className="border-b border-border px-4 py-3">
++                  <td className={tdClass}>
+                     <StatusDot tone={row.status === "calculated" ? "green" : "amber"}>
+                       {row.status === "calculated" ? "Đã tính" : "Thiếu dữ liệu"}
+                     </StatusDot>
+                   </td>
+-                  <td className="border-b border-border px-4 py-3 text-muted-foreground">
++                  <td className={`${tdClass} text-muted-foreground`}>
+                     {new Date(row.calculatedAt).toLocaleString("vi-VN")}
+                   </td>
+-                  <td className="border-b border-border px-4 py-3 text-right">
++                  <td className={`${tdClass} text-right`}>
+                     <button
+                       className={`${linkButtonClass} -ml-1 text-primary hover:underline underline-offset-4`}
+                       aria-label={`Chi tiết kết quả ${nameOf(row.userId)}`}
+@@ -547,8 +550,8 @@ function KpiResultDetail({
+         {nameOf(result.userId)} · quy tắc <span className="font-mono">{result.ruleVersion}</span> ·{" "}
+         {metricHint}
+       </p>
+-      <div className="overflow-x-auto border-y border-border" role="region" aria-label="Thành phần điểm KPI" tabIndex={0}>
+-        <table className="product-table w-full min-w-[36rem] border-collapse text-body">
++      <div className="notebook-scroll overflow-x-auto" role="region" aria-label="Thành phần điểm KPI" tabIndex={0}>
++        <table className={`${tableClass} min-w-[36rem]`}>
+           <thead>
+             <tr>
+               {["Thành phần", "Giá trị gốc", "Trọng số hiệu lực", "Đóng góp"].map((label) => (
+@@ -563,17 +566,17 @@ function KpiResultDetail({
+           </thead>
+           <tbody className="nb-stagger">
+             {state.data.metrics.map((metric) => (
+-              <tr key={metric.metricCode} className="transition-colors hover:bg-background/70">
+-                <td className="border-b border-border px-4 py-3 font-medium text-foreground">
++              <tr key={metric.metricCode}>
++                <td className={`${tdClass} font-medium text-foreground`}>
+                   {metricLabelsetric.metricCode] ?? metric.metricCode}
+                 </td>
+-                <td className="border-b border-border px-4 py-3 tabular-nums">
++                <td className={`${tdClass} tabular-nums`}>
+                   {metric.sourceValue === null ? "—" : metric.sourceValue.toFixed(1)}
+                 </td>
+-                <td className="border-b border-border px-4 py-3 tabular-nums text-muted-foreground">
++                <td className={`${tdClass} tabular-nums text-muted-foreground`}>
+                   {metric.effectiveWeight === null ? "—" : `${metric.effectiveWeight}%`}
+                 </td>
+-                <td className="border-b border-border px-4 py-3 tabular-nums">
++                <td className={`${tdClass} tabular-nums`}>
+                   {metric.weightedContribution === null
+                     ? "—"
+                     : metric.weightedContribution.toFixed(2)}
+diff --git a/src/components/admin/question-bank.tsx b/src/components/admin/question-bank.tsx
+index 3015485..5a40dad 100644
+--- a/src/components/admin/question-bank.tsx
++++ b/src/components/admin/question-bank.tsx
+@@ -21,7 +21,7 @@ export function QuestionBank() {
+   const action = useAction();
+   const [notice, setNotice] = useState('');
+   return <div className="space-y-6">
+-    <PageTitle title="Ngân hàng câu hỏi phỏng vấn" subtitle="Nội dung và hướng dẫn chấm riêng tư; thay đổi chỉ áp dụng cho phỏng vấn tương lai." action={<button className={buttonClass} disabled={!careers.data?.length || careers.loading || Boolean(careers.error)} onClick={() => setEditor('new')}>Thêm câu hỏi</button>} />
++    <PageTitle eyebrow="NGÂN HÀNG CÂU HỎI" stamp="PHỎNG VẤN" title="Ngân hàng câu hỏi phỏng vấn" subtitle="Nội dung và hướng dẫn chấm riêng tư; thay đổi chỉ áp dụng cho phỏng vấn tương lai." action={<button className={buttonClass} disabled={!careers.data?.length || careers.loading || Boolean(careers.error)} onClick={() => setEditor('new')}>Thêm câu hỏi</button>} />
+     {notice && !action.busy && !action.error && <p role="status" className="border-l border-success pl-3 text-body text-success">{notice}</p>}
+     {Boolean(careers.error) && <ErrorState error={careers.error} onRetry={careers.reload} />}
+     {state.data && <Panel title="Độ phủ câu hỏi đang dùng"><div className="min-w-0 overflow-x-auto" role="region" aria-label="Số câu hỏi đang dùng theo nghề nghiệp và nhóm câu hỏi" tabIndex={0}><table className="admin-coverage-table min-w-[36rem]"><caption className="sr-only">Số câu hỏi đang dùng theo nghề nghiệp và nhóm câu hỏi</caption><thead><tr>{['Nghề nghiệp', 'Chuyên môn', 'Giới thiệu', 'Tiếng Anh', 'Sẵn sàng phỏng vấn'].map(label => <th scope="col" key={label}>{label}</th>)}</tr></thead><tbody>{questionRoles.map(code => { const count = (type: string) => state.data!.coverage.find(c => c.roleCode === code && c.phase === type)?.count ?? 0; const ready = count('technical') >= 6 && count('introduction') >= 2 && count('english') >= 2; return <tr key={code}><th scope="row">{roleLabel(code)}</th><td>{count('technical')}</td><td>{count('introduction')}</td><td>{count('english')}</td><td><StatusDot tone={ready ? 'green' : 'amber'}>{ready ? 'Đủ số lượng tối thiểu cho 10 câu' : 'Cần bổ sung trước khi mở phỏng vấn'}</StatusDot></td></tr>; })}</tbody></table></div></Panel>}
+diff --git a/src/components/admin/salary-console.tsx b/src/components/admin/salary-console.tsx
+index 25e2319..8ee2574 100644
+--- a/src/components/admin/salary-console.tsx
++++ b/src/components/admin/salary-console.tsx
+@@ -26,6 +26,8 @@ import {
+   PageTitle,
+   Pager,
+   StatusDot,
++  tableClass,
++  tdClass,
+   thClass,
+ } from "@/components/product/primitives";
+ import { useAction } from "@/components/product/use-action";
+@@ -104,6 +106,7 @@ export function SalaryConsole() {
+   return (
+     <div className="space-y-6">
+       <PageTitle
++        eyebrow="TÀI CHÍNH ẢO"
+         title="Lương ảo"
+         subtitle="Đơn vị ảo dùng để động viên sinh viên — không phải lương thật. Số dư luôn được tính lại từ sổ ghi, không có số dư lưu sẵn."
+         action={
+@@ -270,8 +273,8 @@ export function SalaryConsole() {
+       ) : ledger.error ? (
+         <ErrorState error={ledger.error} onRetry={ledger.reload} />
+       ) : ledger.data?.items.length ? (
+-        <div className="overflow-x-auto border-y border-border" role="region" aria-label="Sổ lương ảo theo kỳ" tabIndex={0}>
+-          <table className="product-table w-full min-w-[48rem] border-collapse text-body">
++        <div className="notebook-scroll overflow-x-auto" role="region" aria-label="Sổ lương ảo theo kỳ" tabIndex={0}>
++          <table className={`${tableClass} min-w-[48rem]`}>
+             <thead>
+               <tr>
+                 {["Khi", "Sinh viên", "Loại", "Số tiền", "Diễn giải", "Thao tác"].map((label) => (
+@@ -286,30 +289,30 @@ export function SalaryConsole() {
+             </thead>
+             <tbody className="nb-stagger">
+               {ledger.data.items.map((row) => (
+-                <tr key={row.id} className="transition-colors hover:bg-background/70">
+-                  <td className="whitespace-nowrap border-b border-border px-4 py-3 text-muted-foreground">
++                <tr key={row.id}>
++                  <td className={`${tdClass} whitespace-nowrap text-muted-foreground`}>
+                     {new Date(row.createdAt).toLocaleString("vi-VN")}
+                   </td>
+-                  <td className="border-b border-border px-4 py-3 font-medium text-foreground">
++                  <td className={`${tdClass} font-medium text-foreground`}>
+                     {nameOf(row.userId)}
+                   </td>
+-                  <td className="border-b border-border px-4 py-3">
++                  <td className={tdClass}>
+                     <StatusDot tone={ledgerTypeTones[row.type]}>
+                       {ledgerTypeLabels[row.type]}
+                     </StatusDot>
+                   </td>
+                   <td
+-                    className={`border-b border-border px-4 py-3 tabular-nums font-semibold ${
++                    className={`${tdClass} tabular-nums font-semibold ${
+                       row.amount < 0 ? "text-destructive" : "text-success"
+                     }`}
+                   >
+                     {row.amount > 0 ? "+" : ""}
+                     {vnd(row.amount, row.unit)}
+                   </td>
+-                  <td className="border-b border-border px-4 py-3 text-foreground">
++                  <td className={`${tdClass} text-foreground`}>
+                     {row.description}
+                   </td>
+-                  <td className="border-b border-border px-4 py-3">
++                  <td className={tdClass}>
+                     {row.type !== "reversal" && <button type="button" className={linkButtonClass}
+                       aria-label={`Hoàn đảo ${ledgerTypeLabels[row.type]} ${vnd(row.amount, row.unit)} của ${nameOf(row.userId)}`}
+                       onClick={() => { setNotice(""); setReversing(row); }}>Hoàn đảo</button>}
+diff --git a/src/components/instructor/instructor-page-title.tsx b/src/components/instructor/instructor-page-title.tsx
+index 2a7e43b..c0f1546 100644
+--- a/src/components/instructor/instructor-page-title.tsx
++++ b/src/components/instructor/instructor-page-title.tsx
+@@ -8,15 +8,30 @@ export function InstructorPageTitle({
+   title,
+   subtitle,
+   action,
++  eyebrow,
++  stamp,
++  stampTone = "blue",
+ }: {
+   title: string;
+   subtitle?: string;
+   action?: ReactNode;
++  /** v3 additive (chỉ nhánh product PageTitle): dòng mono nhỏ trên tiêu đề. */
++  eyebrow?: string;
++  /** v3 additive (chỉ nhánh product PageTitle): mộc cạnh tiêu đề. */
++  stamp?: string;
++  stampTone?: "red" | "blue";
+ }) {
+   const pathname = usePathname();
+   return pathname?.startsWith("/instructor") ? (
+     <InstructorHeading title={title} description={subtitle} action={action} />
+   ) : (
+-    <PageTitle title={title} subtitle={subtitle} action={action} />
++    <PageTitle
++      title={title}
++      subtitle={subtitle}
++      action={action}
++      eyebrow={eyebrow}
++      stamp={stamp}
++      stampTone={stampTone}
++    />
+   );
+ }
+diff --git a/src/components/instructor/instructor-session-summary.tsx b/src/components/instructor/instructor-session-summary.tsx
+index 47ee7d0..80a123b 100644
+--- a/src/components/instructor/instructor-session-summary.tsx
++++ b/src/components/instructor/instructor-session-summary.tsx
+@@ -3,6 +3,7 @@ import {
+   IconArrowUpRight,
+ } from "@/components/v-intern/icons";
+ import type { SessionOverviewRow } from "@/lib/api/sessions";
++import { ChartFrame } from "@/components/notebook/kit";
+ import { TaskDistribution } from "@/components/workspace/workspace-ui";
+ import { SessionProgressComparison } from "@/components/workspace/workspace-charts";
+ import { InkCountUp } from "@/components/v-intern/motion";
+@@ -140,18 +141,22 @@ export function InstructorSessionSummary({
+       <details className="ins-analytics">
+       <summary>Phân bố công việc và tiến độ phiên</summary>
+       <div className="workspace-analytics-grid">
+-        <TaskDistribution
+-        label="Tiến độ nhiệm vụ trong các phiên đang hiển thị"
+-        items={[
+-          { label: "Đã hoàn thành", value: done, tone: "success" },
+-          {
+-            label: "Chưa hoàn thành",
+-            value: Math.max(0, tasks - done),
+-            tone: "neutral",
+-          },
+-        ]}
+-        />
+-        <SessionProgressComparison items={rows.map((row) => ({ id: row.id, name: row.name, done: row.taskDone, total: row.taskTotal }))} />
++        <ChartFrame>
++          <TaskDistribution
++            label="Tiến độ nhiệm vụ trong các phiên đang hiển thị"
++            items={[
++              { label: "Đã hoàn thành", value: done, tone: "success" },
++              {
++                label: "Chưa hoàn thành",
++                value: Math.max(0, tasks - done),
++                tone: "neutral",
++              },
++            ]}
++          />
++        </ChartFrame>
++        <ChartFrame>
++          <SessionProgressComparison items={rows.map((row) => ({ id: row.id, name: row.name, done: row.taskDone, total: row.taskTotal }))} />
++        </ChartFrame>
+       </div>
+       </details>
+       </div>
+diff --git a/src/components/intern/student-outcome-heading.tsx b/src/components/intern/student-outcome-heading.tsx
+index ee4b92c..26f33b1 100644
+--- a/src/components/intern/student-outcome-heading.tsx
++++ b/src/components/intern/student-outcome-heading.tsx
+@@ -54,11 +54,35 @@ export function StudentOutcomeHeading({
+       {action}
+     </>
+   );
+-  if (pathname.startsWith("/instructor") || pathname.startsWith("/admin")) return <WorkspacePageHeader title={title} description={subtitle} action={stampedAction} artwork={artwork} />;
+-  if (!pathname.startsWith("/intern")) return <PageTitle title={title} subtitle={subtitle} action={stampedAction} />;
++  /* v3: tem chương mono phía trên mọi tiêu đề outcome — nhóm chức năng
++     "SỔ KẾT QUẢ" (đánh giá / KPI / lương ảo / chứng nhận / khuyến nghị).
++     Thuần trình bày: không đụng dữ liệu, không đổi props của heading. */
++  const eyebrow = "SỔ KẾT QUẢ";
++  if (pathname.startsWith("/instructor") || pathname.startsWith("/admin"))
++    return (
++      <>
++        <p className="eyebrow mb-1.5">{eyebrow}</p>
++        <WorkspacePageHeader
++          title={title}
++          description={subtitle}
++          action={stampedAction}
++          artwork={artwork}
++        />
++      </>
++    );
++  if (!pathname.startsWith("/intern"))
++    return (
++      <PageTitle
++        eyebrow={eyebrow}
++        title={title}
++        subtitle={subtitle}
++        action={stampedAction}
++      />
++    );
+   return (
+     <>
+       <StudentHeading
++        eyebrow={eyebrow}
+         title={title}
+         description={subtitle}
+         action={stampedAction}
+diff --git a/src/components/product/outcomes.tsx b/src/components/product/outcomes.tsx
+index f5e74a5..9b780e9 100644
+--- a/src/components/product/outcomes.tsx
++++ b/src/components/product/outcomes.tsx
+@@ -57,6 +57,7 @@ import {
+ } from "@/lib/api/outcomes";
+ import { ErrorState, LoadingState } from "@/components/shared/data-state";
+ import { Tape } from "@/components/v-intern/doodles";
++import { EmptyNotebook } from "@/components/notebook/kit";
+ import { NotificationText } from "./notification-text";
+ import {
+   buttonClass,
+@@ -301,19 +302,16 @@ export function Evaluations({ id }: { id?: string }) {
+             </div>
+           ) : (
+             <div className="student-outcome-empty-layout">
+-              <div className="student-panel student-empty">
+-                <IconAward size={42} aria-hidden="true" />
+-                <h3>Chưa có đánh giá được chốt.</h3>
+-                <p>
+-                  Nhận xét và điểm chính thức sẽ xuất hiện sau khi giảng viên
+-                  hoàn tất đánh giá.
+-                </p>
+-                <div className="mt-5">
++              <EmptyNotebook
++                doodle={<IconAward size={42} aria-hidden="true" />}
++                title="Chưa có đánh giá được chốt."
++                description="Nhận xét và điểm chính thức sẽ xuất hiện sau khi giảng viên hoàn tất đánh giá."
++                action={
+                   <StudentLink secondary href="/intern/performance">
+                     Xem tiến độ hiện tại
+                   </StudentLink>
+-                </div>
+-              </div>
++                }
++              />
+               <StudentPanel title="Đánh giá diễn ra thế nào?" icon={IconInfo}>
+                 <ol className="student-step-list">
+                   <li>
+@@ -482,19 +480,18 @@ export function Kpi({ id }: { id?: string }) {
+             </div>
+           ) : (
+             <div className="student-dashboard-grid student-outcome-empty-grid">
+-              <div className="student-panel student-empty">
+-                <SparklesIcon size={36} animateOnView aria-hidden="true" />
+-                <h3>Chưa có kết quả KPI</h3>
+-                <p>
+-                  Khi có đủ dữ liệu và kết quả được tính, bạn sẽ xem được điểm,
+-                  trọng số và nguồn tính tại đây.
+-                </p>
+-                <div className="mt-5">
++              <EmptyNotebook
++                doodle={
++                  <SparklesIcon size={36} animateOnView aria-hidden="true" />
++                }
++                title="Chưa có kết quả KPI"
++                description="Khi có đủ dữ liệu và kết quả được tính, bạn sẽ xem được điểm, trọng số và nguồn tính tại đây."
++                action={
+                   <StudentLink secondary href="/intern/performance">
+                     Xem hiệu suất hiện tại
+                   </StudentLink>
+-                </div>
+-              </div>
++                }
++              />
+               <StudentPanel title="KPI được tổng hợp thế nào?" icon={IconInfo}>
+                 <ol className="student-step-list">
+                   <li>
+@@ -644,14 +641,11 @@ export function Salary() {
+                   </table>
+                 </div>
+               ) : (
+-                <div className="student-empty">
+-                  <IconWallet size={34} aria-hidden="true" />
+-                  <h3>Chưa có giao dịch lương ảo</h3>
+-                  <p>
+-                    Khi KPI được chốt hoặc có điều chỉnh, giao dịch sẽ xuất hiện
+-                    tại đây kèm nguồn và thời điểm.
+-                  </p>
+-                </div>
++                <Empty
++                  icon={IconWallet}
++                  title="Chưa có giao dịch lương ảo"
++                  description="Khi KPI được chốt hoặc có điều chỉnh, giao dịch sẽ xuất hiện tại đây kèm nguồn và thời điểm."
++                />
+               )}
+               {data.totalPages > 1 && <Pager {...data} onChange={setPage} />}
+             </>
+@@ -836,19 +830,16 @@ export function Certificates({ id }: { id?: string }) {
+             )
+           ) : (
+             <div className="student-outcome-empty-layout">
+-              <div className="student-panel student-empty">
+-                <IconAward size={48} aria-hidden="true" />
+-                <h3>Chưa có chứng nhận được cấp.</h3>
+-                <p>
+-                  Chứng nhận được cấp theo chính sách chương trình sau khi kết
+-                  quả thực tập được xác nhận.
+-                </p>
+-                <div className="mt-5">
++              <EmptyNotebook
++                doodle={<IconAward size={48} aria-hidden="true" />}
++                title="Chưa có chứng nhận được cấp."
++                description="Chứng nhận được cấp theo chính sách chương trình sau khi kết quả thực tập được xác nhận."
++                action={
+                   <StudentLink secondary href="/intern/evaluations">
+                     Xem đánh giá của tôi
+                   </StudentLink>
+-                </div>
+-              </div>
++                }
++              />
+               <StudentPanel title="Điều kiện cấp chứng nhận" icon={IconShieldCheck}>
+                 <ol className="student-step-list">
+                   <li>
+@@ -1079,6 +1070,8 @@ export function Verify({ initialCode = "" }: { initialCode?: string }) {
+       </Link>
+       <div className="mt-8">
+         <PageTitle
++          eyebrow="CHỨNG NHẬN"
++          stamp="XÁC MINH"
+           title="Xác minh chứng nhận"
+           subtitle="Nhập mã xác minh in trên chứng nhận để kiểm tra hiệu lực — kết quả đọc trực tiếp từ hệ thống."
+         />
+@@ -1414,15 +1407,15 @@ export function Notifications() {
+                       ))}
+                   </div>
+                 ) : intern ? (
+-                  <div className="student-empty">
+-                    <BellRingIcon size={34} animateOnView aria-hidden="true" />
+-                    <h3>Chưa có thông báo phù hợp</h3>
+-                    <p>
+-                      {unread
++                  <Empty
++                    icon={BellPanelIcon}
++                    title="Chưa có thông báo phù hợp"
++                    description={
++                      unread
+                         ? "Bạn đã đọc hết thông báo. Bỏ lọc để xem lại toàn bộ."
+-                        : "Cập nhật từ phiên thực tập, nhiệm vụ và đánh giá sẽ xuất hiện tại đây."}
+-                    </p>
+-                  </div>
++                        : "Cập nhật từ phiên thực tập, nhiệm vụ và đánh giá sẽ xuất hiện tại đây."
++                    }
++                  />
+                 ) : (
+                   <Empty
+                     title="Chưa có thông báo phù hợp"
+@@ -1554,24 +1547,23 @@ export function Recommendations() {
+       {recommendations.error instanceof ApiError &&
+       recommendations.error.statusCode === 404 ? (
+         <div className="student-dashboard-grid">
+-          <div className="student-panel student-chat-welcome">
+-            <SparklesIcon
+-              size={42}
+-              animateOnView
+-              className="text-primary"
+-              aria-hidden="true"
+-            />
+-            <h2>Một kế hoạch phát triển dành cho bạn</h2>
+-            <p>
+-              Chưa có khuyến nghị. Cập nhật để yêu cầu AI phân tích dữ liệu hiện
+-              tại: kết quả công việc, điểm đã chốt và các chỉ số hiệu suất.
+-            </p>
+-            <div className="mt-5">
++          <EmptyNotebook
++            doodle={
++              <SparklesIcon
++                size={42}
++                animateOnView
++                className="text-primary"
++                aria-hidden="true"
++              />
++            }
++            title="Một kế hoạch phát triển dành cho bạn"
++            description="Chưa có khuyến nghị. Cập nhật để yêu cầu AI phân tích dữ liệu hiện tại: kết quả công việc, điểm đã chốt và các chỉ số hiệu suất."
++            action={
+               <StudentLink secondary href="/intern/performance">
+                 Xem hiệu suất của tôi
+               </StudentLink>
+-            </div>
+-          </div>
++            }
++          />
+           <StudentPanel title="Dữ liệu được dùng" icon={IconInfo}>
+             <ol className="student-step-list">
+               <li>
+diff --git a/src/components/sessions/delivery-overview.tsx b/src/components/sessions/delivery-overview.tsx
+index dd287a8..af2a67c 100644
+--- a/src/components/sessions/delivery-overview.tsx
++++ b/src/components/sessions/delivery-overview.tsx
+@@ -5,6 +5,7 @@ import { InstructorPageTitle as PageTitle } from "@/components/instructor/instru
+ import Link from "next/link";
+ import { useCallback, useState } from "react";
+ import { AcademicPicker } from "@/components/product/academic-picker";
++import { FilterChips } from "@/components/notebook/kit";
+ import {
+   Empty,
+   inputClass,
+@@ -149,6 +150,9 @@ export function DeliveryOverview({
+     <div className="space-y-5">
+       <PageTitle
+         title="Sprint & Task"
++        eyebrow="SPRINT"
++        stamp="SPRINT"
++        stampTone="blue"
+         subtitle="Theo dõi công việc trong các dự án và phiên thực tập bạn quản lý."
+         action={kind === "sprints" && <Can perm="sprints.manage"><button className={buttonClass} onClick={() => setCreateSprint(true)}>Tạo Sprint</button></Can>}
+       />
+@@ -182,26 +186,19 @@ export function DeliveryOverview({
+         </div>
+         </div>
+       </details>
+-      <div
+-        role="group"
+-        className="ins-view-switch flex gap-2"
+-        aria-label="Loại công việc"
+-      >
+-        {(["sprints", "tasks"] as const).map((tab) => (
+-          <button
+-            key={tab}
+-            aria-pressed={kind === tab}
+-            className="min-h-10 border-b-2 border-transparent px-4 py-2 text-body text-muted-foreground hover:bg-accent aria-pressed:border-primary aria-pressed:text-primary"
+-            onClick={() => {
+-              setKind(tab);
+-              setStatus("");
+-              setPage(1);
+-            }}
+-          >
+-            {tab === "sprints" ? "Sprint" : "Task"}
+-          </button>
+-        ))}
+-      </div>
++      <FilterChips
++        options={[
++          { value: "sprints", label: "Sprint" },
++          { value: "tasks", label: "Task" },
++        ]}
++        value={kind}
++        onChange={(tab) => {
++          setKind(tab);
++          setStatus("");
++          setPage(1);
++        }}
++        ariaLabel="Loại công việc"
++      />
+       <Panel
+         title={kind === "sprints" ? "Danh sách Sprint" : "Danh sách nhiệm vụ"}
+         action={
+diff --git a/src/components/sessions/reports-workspace.tsx b/src/components/sessions/reports-workspace.tsx
+index 55bd8f2..bfa1e6b 100644
+--- a/src/components/sessions/reports-workspace.tsx
++++ b/src/components/sessions/reports-workspace.tsx
+@@ -11,6 +11,7 @@ import {
+   inputClass,
+   buttonClass,
+   Spinner,
++  tableClass,
+   thClass,
+   tdClass,
+   
+@@ -145,6 +146,9 @@ export function ReportsWorkspace({
+       {!embedded && (
+         <PageTitle
+           title="Báo cáo phiên thực tập"
++          eyebrow="BÁO CÁO"
++          stamp="BÁO CÁO"
++          stampTone="blue"
+           subtitle="Bản chụp tiến độ, đóng góp và điểm đánh giá từ dữ liệu đã lưu."
+         />
+       )}
+@@ -403,7 +407,7 @@ export function ReportsWorkspace({
+                 {new Date(detail.data.createdAt).toLocaleString("vi-VN")}
+               </p>
+               <div className="overflow-x-auto border-y border-border" role="region" aria-label="Thành viên trong bản chụp báo cáo" tabIndex={0}>
+-                <table className="product-table w-full border-collapse text-body">
++                <table className={tableClass}>
+                   <thead>
+                     <tr>
+                       {[
+diff --git a/src/components/sessions/session-list.tsx b/src/components/sessions/session-list.tsx
+index 53a233a..18aeb58 100644
+--- a/src/components/sessions/session-list.tsx
++++ b/src/components/sessions/session-list.tsx
+@@ -115,6 +115,9 @@ export function SessionList({
+       ) : (
+         <PageTitle
+           title="Phiên thực tập"
++          eyebrow="PHIÊN THỰC TẬP"
++          stamp="LỚP"
++          stampTone="blue"
+           subtitle={
+             basePath === "/admin"
+               ? "Các phiên trong hệ thống, đội hình và tiến độ được lưu tại backend"
+diff --git a/src/components/sessions/session-overview.tsx b/src/components/sessions/session-overview.tsx
+index da17d01..95412af 100644
+--- a/src/components/sessions/session-overview.tsx
++++ b/src/components/sessions/session-overview.tsx
+@@ -217,6 +217,7 @@ export function SessionOverview({
+       ) : (
+         <PageTitle
+           title={session.name}
++          eyebrow="PHIÊN THỰC TẬP"
+           subtitle={`${session.code} · ${session.status}${session.startDate ? ` · ${session.startDate.slice(0, 10)} → ${session.endDate?.slice(0, 10) ?? ""}` : ""}`}
+           action={
+             <Link
+diff --git a/src/components/sessions/sprint-workspace.tsx b/src/components/sessions/sprint-workspace.tsx
+index 0046975..0440fb9 100644
+--- a/src/components/sessions/sprint-workspace.tsx
++++ b/src/components/sessions/sprint-workspace.tsx
+@@ -25,6 +25,7 @@ import {
+ } from "@/components/product/primitives";
+ import { SprintOverview } from "@/components/product/sprint-overview";
+ import { SprintBurndown } from "@/components/workspace/workspace-charts";
++import { ChartFrame } from "@/components/notebook/kit";
+ import { StampMoc } from "@/components/workspace/notebook";
+ import { TaskManagement } from "@/components/product/sprint-management";
+ import { ActivateButton } from "@/components/product/instructor-onboarding";
+@@ -261,7 +262,11 @@ export function SprintBurndownSection({ id }: { id: string }) {
+     useCallback((signal: AbortSignal) => fetchSprintBurndown(id, signal), [id]),
+   );
+   if (data.loading || data.error || !data.data) return null;
+-  return <SprintBurndown points={data.data} />;
++  return (
++    <ChartFrame>
++      <SprintBurndown points={data.data} />
++    </ChartFrame>
++  );
+ }
+ 
+ export function SprintWorkspace({

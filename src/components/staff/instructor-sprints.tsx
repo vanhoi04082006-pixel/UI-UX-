@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, type ButtonHTMLAttributes } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
   Area,
@@ -15,20 +15,44 @@ import {
   YAxis,
 } from "recharts";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import {
+  VBan,
   VCheckCheck,
   VCircleDot,
   VClock,
   VColumns,
+  VEdit,
   VHourglass,
   VKanban,
   VPlay,
+  VPlus,
   VRefresh,
+  VSend,
   VStar,
 } from "@/components/icons/v-icons";
 import { CheckDoodle, PushPin, RibbonBookmark } from "@/components/notebook/doodles";
 import { FadeIn, InkButton } from "@/components/notebook/reveal";
 import {
   CodeChip,
+  EmptyState,
   ErrorState,
   MetricTile,
   MiniBar,
@@ -38,12 +62,21 @@ import {
   SkeletonBlock,
   initialsOf,
 } from "@/components/staff/instructor-shared";
-import { InkBadge, MarginNote, NoteCard, SketchCard, Tape } from "@/components/notebook/ui";
-import { useMock } from "@/lib/use-mock";
-import type { SprintBoard, SprintBoardTask } from "@/lib/mock/types";
+import { InkBadge, MarginNote, NoteCard, SketchCard, StampMoc, Tape } from "@/components/notebook/ui";
+import { postMock, useMock } from "@/lib/use-mock";
+import type {
+  InstructorSession,
+  Priority,
+  Sprint,
+  SprintBoard,
+  SprintBoardTask,
+  SprintStatus,
+} from "@/lib/mock/types";
 
 /* =====================================================================
- * SPRINT & TASK — bảng kanban chỉ xem của giảng viên + burndown.
+ * SPRINT & TASK — vòng đời sprint theo phiên + bảng kanban chỉ xem của
+ * giảng viên + burndown. Hành động: kích hoạt / hoàn thành / hủy / sửa,
+ * tạo sprint, giao nhiệm vụ (codex: sprint lifecycle actions).
  * ===================================================================== */
 
 const COLUMN_TAPE: Record<string, { tape: "slate" | "blue" | "warm" | "mint" }> = {
@@ -69,6 +102,62 @@ const INK_TOOLTIP = {
   padding: "6px 10px",
 } as const;
 
+/* ------------------------- Vòng đời sprint ------------------------- */
+
+interface SprintListPayload {
+  sprints: Sprint[];
+  transitions: Record<string, SprintStatus[]>;
+}
+
+const SPRINT_STATUS_META: Record<SprintStatus, { label: string; tone: string }> = {
+  planned: { label: "Đã lập kế hoạch", tone: "neutral" },
+  active: { label: "Đang diễn ra", tone: "blue" },
+  completed: { label: "Đã hoàn thành", tone: "green" },
+  cancelled: { label: "Đã hủy", tone: "red" },
+};
+
+const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
+  { value: "low", label: PRIORITY_LABEL.low },
+  { value: "medium", label: PRIORITY_LABEL.medium },
+  { value: "high", label: PRIORITY_LABEL.high },
+  { value: "urgent", label: PRIORITY_LABEL.urgent },
+];
+
+/** dd/MM — mốc gọn cho dòng sprint. */
+function fmtMD(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+}
+
+/** Tên ngắn của bảng ("Sprint 3 · SS-2026-01" → "Sprint 3"). */
+function boardShortName(board: SprintBoard | null) {
+  return (board?.name ?? "").split("·")[0]?.trim() || "Sprint hiện tại";
+}
+
+function SprintStatusBadge({ status }: { status: SprintStatus }) {
+  const meta = SPRINT_STATUS_META[status];
+  return (
+    <InkBadge tone={meta.tone} className={status === "planned" ? "border-dashed" : ""}>
+      {status === "active" && <span aria-hidden="true" className="ws-dot-live" />}
+      {meta.label}
+    </InkBadge>
+  );
+}
+
+/** Nút mực đỏ cho hành động hủy (InkButton không có variant danger). */
+function DangerInkButton({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type="button"
+      className="inline-flex items-center justify-center gap-2 rounded-[10px_13px_11px_12px] border-2 border-[var(--ink)] bg-[var(--danger)] px-3.5 py-2 text-[0.82rem] font-semibold text-white shadow-ink-3 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-ink-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ink)] disabled:pointer-events-none disabled:opacity-40"
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
 function TaskStatusIcon({ status }: { status: SprintBoardTask["status"] }) {
   if (status === "done") return <CheckDoodle className="h-4 w-4 text-[var(--success)]" />;
   if (status === "review") return <VClock size={14} className="text-[var(--warning)]" />;
@@ -77,8 +166,86 @@ function TaskStatusIcon({ status }: { status: SprintBoardTask["status"] }) {
 }
 
 export default function InstructorSprints() {
-  const { data: board, loading, error, reload } = useMock<SprintBoard>("instructor/board");
+  const { data: board, loading, error, reload: reloadBoard } = useMock<SprintBoard>("instructor/board");
+  const {
+    data: sprintList,
+    loading: sprintsLoading,
+    error: sprintsError,
+    reload: reloadSprints,
+  } = useMock<SprintListPayload>("instructor/sprints");
+  const {
+    data: sessions,
+    loading: sessionsLoading,
+    error: sessionsError,
+    reload: reloadSessions,
+  } = useMock<InstructorSession[]>("instructor/sessions");
   const reduced = useReducedMotion();
+
+  /* ---------- trạng thái hành động vòng đời ---------- */
+  const [pending, setPending] = useState<{ sprint: Sprint; kind: "completed" | "cancelled" } | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  const [busySprintId, setBusySprintId] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
+
+  /* ---------- dialog sửa sprint ---------- */
+  const [editTarget, setEditTarget] = useState<Sprint | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", goal: "", startsAt: "", endsAt: "" });
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  /* ---------- dialog tạo sprint ---------- */
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ sessionId: "", name: "", goal: "", startsAt: "", endsAt: "" });
+  const [createBusy, setCreateBusy] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createdNotice, setCreatedNotice] = useState<string | null>(null);
+
+  /* ---------- dialog tạo nhiệm vụ ---------- */
+  const [taskOpen, setTaskOpen] = useState(false);
+  const [taskForm, setTaskForm] = useState({
+    sprintId: "",
+    title: "",
+    assignee: "",
+    priority: "medium" as Priority,
+    points: "3",
+  });
+  const [taskBusy, setTaskBusy] = useState(false);
+  const [taskError, setTaskError] = useState<string | null>(null);
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
+
+  /* ---------- dữ liệu suy ra ---------- */
+
+  const sprints = sprintList?.sprints ?? [];
+  const transitions = sprintList?.transitions ?? {};
+  const openSprints = sprints.filter((s) => s.status === "planned" || s.status === "active");
+  const boardTerminal = board?.status === "completed" || board?.status === "cancelled";
+
+  const groups = useMemo(() => {
+    const sessionsList = sessions ?? [];
+    const bySession = new Map<string, Sprint[]>();
+    for (const sp of sprints) {
+      const bucket = bySession.get(sp.sessionId);
+      if (bucket) bucket.push(sp);
+      else bySession.set(sp.sessionId, [sp]);
+    }
+    const result: { key: string; code: string; project: string; sprints: Sprint[] }[] = [];
+    for (const s of sessionsList) {
+      result.push({ key: s.id, code: s.code, project: s.project, sprints: bySession.get(s.id) ?? [] });
+      bySession.delete(s.id);
+    }
+    for (const [sid, list] of bySession) {
+      result.push({ key: sid, code: sid, project: "Phiên chưa xếp", sprints: list });
+    }
+    return result;
+  }, [sprints, sessions]);
+
+  const assigneeOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const s of sessions ?? []) for (const n of s.memberNames) names.add(n);
+    return [...names];
+  }, [sessions]);
 
   const burndownData = useMemo(() => {
     const raw = board?.burndown ?? [];
@@ -105,25 +272,442 @@ export default function InstructorSprints() {
 
   const completion = counts.total > 0 ? Math.round((counts.done / counts.total) * 100) : 0;
 
-  if (error) {
-    return (
-      <div className="space-y-5">
-        <PageHeading eyebrow="Sổ tay hành trình · Giảng viên" title="Sprint & Task" />
-        <ErrorState message={error} onRetry={reload} />
-      </div>
-    );
+  function reloadAll() {
+    reloadBoard();
+    reloadSprints();
+    reloadSessions();
   }
+
+  /* ---------- hành động vòng đời sprint ---------- */
+
+  function validateDates(startsAt: string, endsAt: string): string | null {
+    if (!startsAt || !endsAt) return "Chọn đủ ngày bắt đầu và ngày kết thúc.";
+    if (endsAt <= startsAt) return "Ngày kết thúc phải sau ngày bắt đầu.";
+    return null;
+  }
+
+  async function activateSprint(sprint: Sprint) {
+    setBusySprintId(sprint.id);
+    setRowError(null);
+    try {
+      await postMock<{ sprintId: string; status: SprintStatus }, { sprint: Sprint }>(
+        "instructor/sprint-transition",
+        { sprintId: sprint.id, status: "active" },
+      );
+      toast.success(`Đã kích hoạt ${sprint.name}.`);
+      reloadAll();
+    } catch (err) {
+      setRowError({ id: sprint.id, message: (err as Error).message });
+    } finally {
+      setBusySprintId(null);
+    }
+  }
+
+  function openConfirm(sprint: Sprint, kind: "completed" | "cancelled") {
+    setConfirmError(null);
+    setPending({ sprint, kind });
+  }
+
+  async function submitConfirm() {
+    if (!pending) return;
+    setConfirmBusy(true);
+    setConfirmError(null);
+    try {
+      await postMock<{ sprintId: string; status: SprintStatus }, { sprint: Sprint }>(
+        "instructor/sprint-transition",
+        { sprintId: pending.sprint.id, status: pending.kind },
+      );
+      toast.success(
+        pending.kind === "completed"
+          ? `Đã hoàn thành ${pending.sprint.name}.`
+          : `Đã hủy ${pending.sprint.name}.`,
+      );
+      setPending(null);
+      reloadAll();
+    } catch (err) {
+      // Giữ modal mở và nêu rõ lỗi (VD còn nhiệm vụ mở).
+      setConfirmError((err as Error).message);
+    } finally {
+      setConfirmBusy(false);
+    }
+  }
+
+  function openEdit(sprint: Sprint) {
+    setEditTarget(sprint);
+    setEditForm({ name: sprint.name, goal: sprint.goal, startsAt: sprint.startsAt, endsAt: sprint.endsAt });
+    setEditError(null);
+  }
+
+  async function submitEdit() {
+    if (!editTarget) return;
+    const name = editForm.name.trim();
+    if (!name) {
+      setEditError("Sprint cần có tên.");
+      return;
+    }
+    const dateErr = validateDates(editForm.startsAt, editForm.endsAt);
+    if (dateErr) {
+      setEditError(dateErr);
+      return;
+    }
+    setEditBusy(true);
+    setEditError(null);
+    try {
+      await postMock<
+        { sprintId: string; name: string; goal: string; startsAt: string; endsAt: string },
+        { sprint: Sprint }
+      >("instructor/sprint-update", {
+        sprintId: editTarget.id,
+        name,
+        goal: editForm.goal.trim(),
+        startsAt: editForm.startsAt,
+        endsAt: editForm.endsAt,
+      });
+      toast.success("Đã lưu thay đổi Sprint.");
+      setEditTarget(null);
+      reloadAll();
+    } catch (err) {
+      setEditError((err as Error).message);
+    } finally {
+      setEditBusy(false);
+    }
+  }
+
+  function openCreate() {
+    const first = (sessions ?? []).find((s) => s.status !== "cancelled");
+    setCreateForm({ sessionId: first?.id ?? "", name: "", goal: "", startsAt: "", endsAt: "" });
+    setCreateError(null);
+    setCreateOpen(true);
+  }
+
+  async function submitCreate() {
+    const name = createForm.name.trim();
+    if (!createForm.sessionId) {
+      setCreateError("Chọn phiên thực tập cho Sprint mới.");
+      return;
+    }
+    if (!name) {
+      setCreateError("Sprint cần có tên (VD: Sprint 6).");
+      return;
+    }
+    const dateErr = validateDates(createForm.startsAt, createForm.endsAt);
+    if (dateErr) {
+      setCreateError(dateErr);
+      return;
+    }
+    setCreateBusy(true);
+    setCreateError(null);
+    try {
+      await postMock<
+        { sessionId: string; name: string; goal: string; startsAt: string; endsAt: string },
+        { sprint: Sprint }
+      >("instructor/sprint-create", {
+        sessionId: createForm.sessionId,
+        name,
+        goal: createForm.goal.trim(),
+        startsAt: createForm.startsAt,
+        endsAt: createForm.endsAt,
+      });
+      toast.success("Đã tạo Sprint.");
+      setCreatedNotice("Đã tạo Sprint.");
+      setCreateOpen(false);
+      reloadAll();
+    } catch (err) {
+      setCreateError((err as Error).message);
+    } finally {
+      setCreateBusy(false);
+    }
+  }
+
+  function openTask(sprint?: Sprint) {
+    setTaskNotice(null);
+    setTaskForm({
+      sprintId: sprint?.id ?? openSprints[0]?.id ?? "",
+      title: "",
+      assignee: "",
+      priority: "medium",
+      points: "3",
+    });
+    setTaskError(null);
+    setTaskOpen(true);
+  }
+
+  async function submitTask() {
+    const title = taskForm.title.trim();
+    const assignee = taskForm.assignee.trim();
+    if (!taskForm.sprintId) {
+      setTaskError("Chọn Sprint nhận nhiệm vụ.");
+      return;
+    }
+    if (!title) {
+      setTaskError("Nhiệm vụ cần có tiêu đề.");
+      return;
+    }
+    if (!assignee) {
+      setTaskError("Điền người nhận nhiệm vụ.");
+      return;
+    }
+    const pts = Math.round(Number(taskForm.points));
+    if (!Number.isFinite(pts) || pts < 1 || pts > 13) {
+      setTaskError("Story points chọn trong khoảng 1–13.");
+      return;
+    }
+    setTaskBusy(true);
+    setTaskError(null);
+    const targetSprint = sprints.find((s) => s.id === taskForm.sprintId);
+    try {
+      await postMock<
+        { sprintId: string; title: string; assignee: string; priority: Priority; points: number },
+        { task: SprintBoardTask }
+      >("instructor/task-create", {
+        sprintId: taskForm.sprintId,
+        title,
+        assignee,
+        priority: taskForm.priority,
+        points: pts,
+      });
+      toast.success("Đã giao nhiệm vụ.");
+      if (board && taskForm.sprintId !== board.id) {
+        setTaskNotice(
+          `Nhiệm vụ mới hiện diện ở bảng Kanban của ${boardShortName(board)} — nhiệm vụ giao trong ${
+            targetSprint?.name ?? "Sprint khác"
+          } được ghi nhận ở danh sách Sprint.`,
+        );
+      } else {
+        reloadBoard();
+      }
+      setTaskOpen(false);
+      reloadSprints();
+    } catch (err) {
+      setTaskError((err as Error).message);
+    } finally {
+      setTaskBusy(false);
+    }
+  }
+
+  /* ---------- khối danh sách sprint theo phiên ---------- */
+
+  const sprintSection = (
+    <section aria-labelledby="sp-session-heading" className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <p className="eyebrow">Vòng đời sprint</p>
+          <h2 id="sp-session-heading" className="mt-1.5 text-xl font-extrabold tracking-tight">
+            Sprint của phiên
+          </h2>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <InkButton
+            variant="outline"
+            size="sm"
+            onClick={() => openTask()}
+            disabled={openSprints.length === 0}
+            aria-label="Tạo nhiệm vụ vào Sprint đang mở"
+          >
+            <VSend size={15} /> Tạo nhiệm vụ
+          </InkButton>
+          <InkButton variant="royal" size="sm" onClick={openCreate} aria-label="Tạo Sprint mới cho phiên">
+            <VPlus size={15} /> Tạo Sprint
+          </InkButton>
+        </div>
+      </div>
+
+      {(createdNotice || taskNotice) && (
+        <p role="status" className="font-hand text-[0.95rem] leading-snug text-[var(--ink-soft)]">
+          {createdNotice ?? taskNotice}
+        </p>
+      )}
+
+      {sprintsError ? (
+        <SketchCard hover={false} className="flex flex-wrap items-center gap-3 border-[var(--danger)] p-4">
+          <VHourglass size={18} className="text-[var(--danger)]" aria-hidden="true" />
+          <p className="min-w-0 flex-1 text-[0.8rem] font-semibold text-[var(--danger)]">
+            Không tải được danh sách sprint: {sprintsError}
+          </p>
+          <InkButton variant="outline" size="sm" onClick={reloadSprints}>
+            <VRefresh size={14} /> Thử lại
+          </InkButton>
+        </SketchCard>
+      ) : sprintsLoading || (sessionsLoading && !sessions) ? (
+        <SkeletonBlock className="h-72" />
+      ) : groups.length === 0 ? (
+        <EmptyState
+          icon={VKanban}
+          title="Chưa có sprint nào"
+          hint="Bấm “Tạo Sprint” để mở kế hoạch đầu tiên cho một phiên thực tập."
+        />
+      ) : (
+        <SketchCard hover={false} as="article" className="relative p-4">
+          <Tape variant="blue" rotate={-5} style={{ top: -12, left: 16, width: 58, height: 17 }} />
+          {sessionsError && (
+            <p className="mb-2 text-[0.72rem] font-semibold text-[var(--warning)]">
+              Không tải được tên phiên ({sessionsError}) — hiển thị theo mã phiên.
+            </p>
+          )}
+          <div className="max-h-[26rem] space-y-4 overflow-y-auto pr-1.5">
+            {groups.map((g) => (
+              <div key={g.key}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <CodeChip className="!text-[0.7rem]">{g.code}</CodeChip>
+                  <span className="min-w-0 truncate text-[0.82rem] font-bold">{g.project}</span>
+                </div>
+                {g.sprints.length === 0 ? (
+                  <p className="mt-2 font-hand text-[0.95rem] text-[var(--ink-soft)]">
+                    phiên chưa có sprint — bấm “Tạo Sprint” để khởi động ✎
+                  </p>
+                ) : (
+                  <ul className="mt-2 space-y-2.5">
+                    {g.sprints.map((sp) => {
+                      const allowed = transitions[sp.id] ?? [];
+                      const editable = sp.status === "planned" || sp.status === "active";
+                      const rowBusy = busySprintId === sp.id;
+                      const done = sp.totalTasks - sp.openTasks;
+                      const pct = sp.totalTasks > 0 ? Math.round((done / sp.totalTasks) * 100) : 0;
+                      return (
+                        <li
+                          key={sp.id}
+                          className={`sketch-border-thin bg-[var(--paper-raised)] p-3.5 ${
+                            sp.status === "cancelled" ? "opacity-75" : ""
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-[0.88rem] font-bold leading-tight">{sp.name}</p>
+                                <SprintStatusBadge status={sp.status} />
+                                {board && sp.id === board.id && (
+                                  <CodeChip className="!px-2 !py-0.5 !text-[0.6rem]">bảng dưới</CodeChip>
+                                )}
+                              </div>
+                              <p className="mt-1 line-clamp-1 text-[0.78rem] italic text-[var(--ink-soft)]">
+                                {sp.goal}
+                              </p>
+                              <p className="mt-1.5 inline-flex items-center gap-1.5 font-geist-mono text-[0.66rem] font-semibold uppercase tracking-[0.08em] text-[var(--ink-soft)]">
+                                <VColumns size={13} aria-hidden="true" />
+                                {fmtMD(sp.startsAt)} → {fmtMD(sp.endsAt)}
+                              </p>
+                            </div>
+                            <div className="w-full sm:w-44">
+                              <div className="mb-1 flex items-center justify-between text-[0.68rem] font-bold">
+                                <span className="text-[var(--ink-soft)]">nhiệm vụ</span>
+                                <span className="tabular">
+                                  {done}/{sp.totalTasks}
+                                </span>
+                              </div>
+                              <MiniBar
+                                value={pct}
+                                tone={sp.status === "completed" ? "success" : "royal"}
+                                label={`Tiến độ ${sp.name}`}
+                                animate={false}
+                              />
+                              <p className="mt-0.5 text-[0.66rem] font-semibold text-[var(--ink-soft)] tabular">
+                                còn {sp.openTasks} nhiệm vụ mở
+                              </p>
+                            </div>
+                          </div>
+
+                          {editable ? (
+                            <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-dashed border-[color-mix(in_srgb,var(--ink)_20%,transparent)] pt-2.5">
+                              {allowed.includes("active") && (
+                                <InkButton
+                                  variant="royal"
+                                  size="sm"
+                                  onClick={() => activateSprint(sp)}
+                                  disabled={rowBusy}
+                                  aria-label={`Kích hoạt ${sp.name}`}
+                                >
+                                  <VPlay size={14} /> {rowBusy ? "Đang xử lý…" : "Kích hoạt Sprint"}
+                                </InkButton>
+                              )}
+                              {allowed.includes("completed") && (
+                                <InkButton
+                                  variant="royal"
+                                  size="sm"
+                                  onClick={() => openConfirm(sp, "completed")}
+                                  disabled={rowBusy}
+                                  aria-label={`Hoàn thành ${sp.name}`}
+                                >
+                                  <VCheckCheck size={14} /> Hoàn thành Sprint
+                                </InkButton>
+                              )}
+                              {allowed.includes("cancelled") && (
+                                <InkButton
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openConfirm(sp, "cancelled")}
+                                  disabled={rowBusy}
+                                  aria-label={`Hủy ${sp.name}`}
+                                >
+                                  <VBan size={14} /> Hủy Sprint
+                                </InkButton>
+                              )}
+                              <InkButton
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openEdit(sp)}
+                                disabled={rowBusy}
+                                aria-label={`Sửa ${sp.name}`}
+                              >
+                                <VEdit size={14} /> Sửa Sprint
+                              </InkButton>
+                              <InkButton
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openTask(sp)}
+                                disabled={rowBusy}
+                                aria-label={`Giao nhiệm vụ trong ${sp.name}`}
+                              >
+                                <VSend size={14} /> Giao việc
+                              </InkButton>
+                            </div>
+                          ) : (
+                            <p className="mt-2 border-t border-dashed border-[color-mix(in_srgb,var(--ink)_18%,transparent)] pt-2 font-hand text-[0.85rem] text-[var(--ink-soft)]">
+                              sprint đã đóng — lịch sử được giữ lại
+                            </p>
+                          )}
+
+                          {rowError?.id === sp.id && (
+                            <p
+                              key={rowError.message}
+                              role="alert"
+                              className="mt-2 animate-shake-ink text-[0.72rem] font-semibold text-[var(--danger)]"
+                            >
+                              {rowError.message}
+                            </p>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </SketchCard>
+      )}
+      <MarginNote>
+        hoàn thành / hủy là một chiều — sprint đóng rồi không kích hoạt lại được đâu
+      </MarginNote>
+    </section>
+  );
+
+  /* ---------- render ---------- */
 
   return (
     <div className="space-y-6">
       {/* ===== Tiêu đề ===== */}
       <PageHeading eyebrow="Sổ tay hành trình · Giảng viên" title="Sprint & Task">
-        <InkButton variant="outline" size="sm" onClick={reload}>
+        <InkButton variant="outline" size="sm" onClick={reloadAll}>
           <VRefresh size={15} /> Làm mới
         </InkButton>
       </PageHeading>
 
-      {loading && !board ? (
+      {/* ===== Danh sách sprint theo phiên (vòng đời) ===== */}
+      <FadeIn>{sprintSection}</FadeIn>
+
+      {error ? (
+        <ErrorState message={error} onRetry={reloadAll} />
+      ) : loading && !board ? (
         <div className="space-y-5">
           <SkeletonBlock className="h-24" />
           <div className="grid gap-4 lg:grid-cols-4">
@@ -139,21 +723,35 @@ export default function InstructorSprints() {
             <div className="relative flex flex-wrap items-center gap-2.5 pt-1.5">
               {/* Băng dính đổi màu theo độ gấp của sprint còn lại */}
               <Tape
-                variant={board.daysLeft > 7 ? "blue" : "warm"}
-                className={board.daysLeft <= 3 ? "tape-gold" : ""}
+                variant={boardTerminal ? "slate" : board.daysLeft > 7 ? "blue" : "warm"}
+                className={board.daysLeft <= 3 && !boardTerminal ? "tape-gold" : ""}
                 rotate={-5}
                 style={{ top: -13, left: 2, width: 62, height: 18 }}
               />
               <CodeChip className="!px-2.5 !py-1 !text-[0.74rem]">{board.name}</CodeChip>
               <InkBadge tone="neutral">{board.week}</InkBadge>
-              <InkBadge tone="amber">
-                <VHourglass size={13} /> còn {board.daysLeft} ngày
-              </InkBadge>
+              {boardTerminal ? (
+                <StampMoc
+                  tone={board.status === "completed" ? "blue" : "red"}
+                  rotate={-4}
+                  className="ml-1 text-[0.9rem]"
+                >
+                  {board.status === "completed" ? "Sprint đã hoàn thành" : "Sprint đã hủy"}
+                </StampMoc>
+              ) : (
+                <InkBadge tone="amber">
+                  <VHourglass size={13} /> còn {board.daysLeft} ngày
+                </InkBadge>
+              )}
               <span className="ml-auto hidden font-geist-mono text-[0.66rem] uppercase tracking-[0.16em] text-[var(--ink-soft)] sm:block">
                 chỉ xem · giảng viên
               </span>
             </div>
           </FadeIn>
+
+          {boardTerminal && (
+            <MarginNote className="px-1">bảng chỉ xem — lịch sử được giữ lại</MarginNote>
+          )}
 
           {/* ===== Mục tiêu sprint ===== */}
           <FadeIn delay={0.05}>
@@ -438,6 +1036,368 @@ export default function InstructorSprints() {
           </FadeIn>
         </>
       ) : null}
+
+      {/* ===== Dialog xác nhận hoàn thành / hủy Sprint ===== */}
+      <Dialog
+        open={!!pending}
+        onOpenChange={(open) => {
+          if (!open && !confirmBusy) setPending(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{pending?.kind === "completed" ? "Hoàn thành Sprint?" : "Hủy Sprint?"}</DialogTitle>
+            <DialogDescription>
+              {pending?.kind === "completed"
+                ? "Sau khi hoàn thành, Sprint không kích hoạt lại được. Kiểm tra nhiệm vụ còn mở trước khi xác nhận."
+                : "Sau khi hủy, Sprint không thể kích hoạt lại. Hãy kiểm tra tiến độ trước khi xác nhận."}
+            </DialogDescription>
+          </DialogHeader>
+          {pending && (
+            <div className="sketch-border-thin bg-[var(--paper)] p-3 text-[0.8rem]">
+              <p className="flex flex-wrap items-center gap-2 font-bold">
+                {pending.sprint.name}
+                <SprintStatusBadge status={pending.sprint.status} />
+              </p>
+              <p className="mt-1 text-[var(--ink-soft)] tabular">
+                {fmtMD(pending.sprint.startsAt)} → {fmtMD(pending.sprint.endsAt)} · còn{" "}
+                {pending.sprint.openTasks}/{pending.sprint.totalTasks} nhiệm vụ mở
+              </p>
+            </div>
+          )}
+          {confirmError && (
+            <p
+              key={confirmError}
+              role="alert"
+              className="animate-shake-ink text-[0.8rem] font-semibold text-[var(--danger)]"
+            >
+              {confirmError}
+            </p>
+          )}
+          <DialogFooter>
+            <InkButton variant="ghost" size="sm" onClick={() => setPending(null)} disabled={confirmBusy}>
+              {pending?.kind === "cancelled" ? "Giữ Sprint" : "Để sau"}
+            </InkButton>
+            {pending?.kind === "cancelled" ? (
+              <DangerInkButton onClick={submitConfirm} disabled={confirmBusy} aria-label="Xác nhận hủy Sprint">
+                <VBan size={15} /> {confirmBusy ? "Đang hủy…" : "Xác nhận hủy Sprint"}
+              </DangerInkButton>
+            ) : (
+              <InkButton
+                variant="royal"
+                size="sm"
+                onClick={submitConfirm}
+                disabled={confirmBusy}
+                aria-label="Xác nhận hoàn thành Sprint"
+              >
+                <VCheckCheck size={15} /> {confirmBusy ? "Đang xử lý…" : "Xác nhận hoàn thành"}
+              </InkButton>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== Dialog sửa Sprint ===== */}
+      <Dialog
+        open={!!editTarget}
+        onOpenChange={(open) => {
+          if (!open && !editBusy) {
+            setEditTarget(null);
+            setEditError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sửa Sprint</DialogTitle>
+            <DialogDescription>
+              Chỉnh tên, mục tiêu và hai mốc thời gian — áp dụng cho Sprint đang lập kế hoạch hoặc đang diễn
+              ra.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="sp-edit-name">Tên Sprint</Label>
+              <Input
+                id="sp-edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="VD: Sprint 3"
+                className="focus-ink"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sp-edit-goal">Mục tiêu</Label>
+              <Textarea
+                id="sp-edit-goal"
+                rows={3}
+                value={editForm.goal}
+                onChange={(e) => setEditForm((f) => ({ ...f, goal: e.target.value }))}
+                placeholder="Mục tiêu Sprint cần đạt được..."
+                className="focus-ink resize-none"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="sp-edit-start">Ngày bắt đầu</Label>
+                <Input
+                  id="sp-edit-start"
+                  type="date"
+                  value={editForm.startsAt}
+                  onChange={(e) => setEditForm((f) => ({ ...f, startsAt: e.target.value }))}
+                  className="focus-ink"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sp-edit-end">Ngày kết thúc</Label>
+                <Input
+                  id="sp-edit-end"
+                  type="date"
+                  value={editForm.endsAt}
+                  onChange={(e) => setEditForm((f) => ({ ...f, endsAt: e.target.value }))}
+                  className="focus-ink"
+                />
+              </div>
+            </div>
+            {editError && (
+              <p key={editError} role="alert" className="animate-shake-ink text-[0.8rem] font-semibold text-[var(--danger)]">
+                {editError}
+              </p>
+            )}
+            <DialogFooter>
+              <InkButton
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setEditTarget(null);
+                  setEditError(null);
+                }}
+                disabled={editBusy}
+              >
+                Đóng
+              </InkButton>
+              <InkButton variant="royal" size="sm" onClick={submitEdit} disabled={editBusy}>
+                <VEdit size={15} /> {editBusy ? "Đang xử lý…" : "Lưu thay đổi"}
+              </InkButton>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== Dialog tạo Sprint ===== */}
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          if (!open && !createBusy) setCreateOpen(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tạo Sprint mới</DialogTitle>
+            <DialogDescription>
+              Sprint mới vào trạng thái đã lập kế hoạch — kích hoạt khi đội hình sẵn sàng.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="sp-create-session">Phiên thực tập</Label>
+              <Select
+                value={createForm.sessionId}
+                onValueChange={(v) => setCreateForm((f) => ({ ...f, sessionId: v }))}
+              >
+                <SelectTrigger id="sp-create-session" className="focus-ink w-full" aria-label="Chọn phiên thực tập">
+                  <SelectValue placeholder="Chọn phiên" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(sessions ?? [])
+                    .filter((s) => s.status !== "cancelled")
+                    .map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.code} · {s.project}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sp-create-name">Tên Sprint</Label>
+              <Input
+                id="sp-create-name"
+                value={createForm.name}
+                onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="VD: Sprint 6"
+                className="focus-ink"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sp-create-goal">Mục tiêu</Label>
+              <Textarea
+                id="sp-create-goal"
+                rows={3}
+                value={createForm.goal}
+                onChange={(e) => setCreateForm((f) => ({ ...f, goal: e.target.value }))}
+                placeholder="Mục tiêu Sprint cần đạt được..."
+                className="focus-ink resize-none"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="sp-create-start">Ngày bắt đầu</Label>
+                <Input
+                  id="sp-create-start"
+                  type="date"
+                  value={createForm.startsAt}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, startsAt: e.target.value }))}
+                  className="focus-ink"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sp-create-end">Ngày kết thúc</Label>
+                <Input
+                  id="sp-create-end"
+                  type="date"
+                  value={createForm.endsAt}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, endsAt: e.target.value }))}
+                  className="focus-ink"
+                />
+              </div>
+            </div>
+            {createError && (
+              <p key={createError} role="alert" className="animate-shake-ink text-[0.8rem] font-semibold text-[var(--danger)]">
+                {createError}
+              </p>
+            )}
+            <DialogFooter>
+              <InkButton variant="ghost" size="sm" onClick={() => setCreateOpen(false)} disabled={createBusy}>
+                Huỷ
+              </InkButton>
+              <InkButton variant="royal" size="sm" onClick={submitCreate} disabled={createBusy}>
+                <VPlus size={15} /> {createBusy ? "Đang xử lý…" : "Tạo Sprint"}
+              </InkButton>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== Dialog tạo nhiệm vụ ===== */}
+      <Dialog
+        open={taskOpen}
+        onOpenChange={(open) => {
+          if (!open && !taskBusy) setTaskOpen(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tạo nhiệm vụ</DialogTitle>
+            <DialogDescription>
+              Nhiệm vụ mới rơi vào cột Cần làm của Sprint được chọn — sinh viên tự kéo thẻ trên kanban cá nhân.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="sp-task-sprint">Sprint nhận nhiệm vụ</Label>
+              <Select
+                value={taskForm.sprintId}
+                onValueChange={(v) => setTaskForm((f) => ({ ...f, sprintId: v }))}
+              >
+                <SelectTrigger id="sp-task-sprint" className="focus-ink w-full" aria-label="Chọn Sprint nhận nhiệm vụ">
+                  <SelectValue placeholder={openSprints.length === 0 ? "Không có Sprint đang mở" : "Chọn Sprint"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {openSprints.map((sp) => (
+                    <SelectItem key={sp.id} value={sp.id}>
+                      {sp.name} · {SPRINT_STATUS_META[sp.status].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sp-task-title">Tiêu đề nhiệm vụ</Label>
+              <Input
+                id="sp-task-title"
+                value={taskForm.title}
+                onChange={(e) => setTaskForm((f) => ({ ...f, title: e.target.value }))}
+                placeholder="VD: Hoàn thiện bộ lọc danh sách nhiệm vụ"
+                className="focus-ink"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sp-task-assignee">Người nhận</Label>
+              <Input
+                id="sp-task-assignee"
+                list="sp-task-assignee-options"
+                value={taskForm.assignee}
+                onChange={(e) => setTaskForm((f) => ({ ...f, assignee: e.target.value }))}
+                placeholder="VD: Nguyễn Minh"
+                className="focus-ink"
+              />
+              <datalist id="sp-task-assignee-options">
+                {assigneeOptions.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="sp-task-priority">Ưu tiên</Label>
+                <Select
+                  value={taskForm.priority}
+                  onValueChange={(v) => setTaskForm((f) => ({ ...f, priority: v as Priority }))}
+                >
+                  <SelectTrigger id="sp-task-priority" className="focus-ink w-full" aria-label="Chọn mức ưu tiên">
+                    <SelectValue placeholder="Chọn mức ưu tiên" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRIORITY_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sp-task-points">Story points (1–13)</Label>
+                <Input
+                  id="sp-task-points"
+                  type="number"
+                  min={1}
+                  max={13}
+                  step={1}
+                  value={taskForm.points}
+                  onChange={(e) => setTaskForm((f) => ({ ...f, points: e.target.value }))}
+                  className="focus-ink"
+                />
+              </div>
+            </div>
+            {board && (
+              <p className="font-hand text-[0.9rem] leading-snug text-[var(--ink-soft)]">
+                nhiệm vụ vào {boardShortName(board)} sẽ hiện ngay ở bảng Kanban bên dưới ✎
+              </p>
+            )}
+            {taskError && (
+              <p key={taskError} role="alert" className="animate-shake-ink text-[0.8rem] font-semibold text-[var(--danger)]">
+                {taskError}
+              </p>
+            )}
+            <DialogFooter>
+              <InkButton variant="ghost" size="sm" onClick={() => setTaskOpen(false)} disabled={taskBusy}>
+                Đóng
+              </InkButton>
+              <InkButton
+                variant="royal"
+                size="sm"
+                onClick={submitTask}
+                disabled={taskBusy || openSprints.length === 0}
+                aria-label="Giao nhiệm vụ"
+              >
+                <VSend size={15} /> {taskBusy ? "Đang xử lý…" : "Giao nhiệm vụ"}
+              </InkButton>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,0 +1,1217 @@
+     1→"use client";
+     2→import { SessionSection as Panel } from "@/components/sessions/session-section";
+     3→import { usePathname } from "next/navigation";
+     4→import { InstructorPageTitle as PageTitle } from "@/components/instructor/instructor-page-title";
+     5→import { InstructorNotice } from "@/components/instructor/instructor-ui";
+     6→import { useCallback, useState } from "react";
+     7→import * as api from "@/lib/api/management";
+     8→import { PerformanceMemberPicker } from "./performance-member-picker";
+     9→import { useResource } from "@/lib/api/use-resource";
+    10→import { getSessionUser } from "@/lib/auth/session";
+    11→import { ErrorState, LoadingState } from "@/components/shared/data-state";
+    12→import { AcademicPicker } from "./academic-picker";
+    13→import { useAction } from "./use-action";
+    14→import { Can } from "@/components/auth/can";
+    15→import { CollectionMetrics } from "./collection-insights";
+    16→import { Sparkles } from "@/components/animate-ui/icons/sparkles";
+    17→import { StampMoc, MarginNote } from "@/components/workspace/notebook";
+    18→import { StampBadge } from "@/components/v-intern/doodles";
+    19→import {
+    20→  Badge,
+    21→  btn,
+    22→  buttonClass,
+    23→  Empty,
+    24→  inputClass,
+    25→  Modal,
+    26→  Pager,
+    27→} from "./primitives";
+    28→const evaluationLabels = {
+    29→  draft: "Bản nháp",
+    30→  submitted: "Đã nộp",
+    31→  finalized: "Đã chốt",
+    32→  open: "Đang mở",
+    33→  closed: "Đã đóng",
+    34→  archived: "Đã lưu trữ",
+    35→};
+    36→/** AI suggestion lifecycle states are backend-defined; unknown values
+    37→ * fall back to the raw code so new states stay visible instead of blank. */
+    38→const suggestionStatusLabels: Record<string, string> = {
+    39→  generated: "Mới tạo",
+    40→  accepted: "Đã áp dụng",
+    41→  superseded: "Đã thay thế",
+    42→  failed: "Lỗi tạo gợi ý",
+    43→};
+    44→export function EvaluationManagement() {
+    45→  const isInstructor = Boolean(usePathname()?.startsWith("/instructor"));
+    46→  const [page, setPage] = useState(1),
+    47→    [cycleId, setCycleId] = useState(""),
+    48→    [status, setStatus] = useState(""),
+    49→    [cyclesPage, setCyclesPage] = useState(1),
+    50→    [showCreate, setShowCreate] = useState(false),
+    51→    [cycleEditor, setCycleEditor] =
+    52→      useState<ReturnType<typeof api.parseCycle>>(),
+    53→    [selected, setSelected] = useState<string>();
+    54→  const cycles = useResource(
+    55→      useCallback(
+    56→        (s: AbortSignal) => api.listCycles(cyclesPage, s),
+    57→        [cyclesPage],
+    58→      ),
+    59→    ),
+    60→    evaluations = useResource(
+    61→      useCallback(
+    62→        (s: AbortSignal) =>
+    63→          api.listManagedEvaluations(
+    64→            page,
+    65→            cycleId,
+    66→            status,
+    67→            getSessionUser()?.id,
+    68→            s,
+    69→          ),
+    70→        [page, cycleId, status],
+    71→      ),
+    72→    );
+    73→  return (
+    74→    <>
+    75→      <PageTitle
+    76→        title="Đánh giá AI"
+    77→        subtitle="Giảng viên chốt điểm chính thức · AI cung cấp gợi ý tham khảo"
+    78→        action={
+    79→          <button className={buttonClass} onClick={() => setShowCreate(true)}>
+    80→            Tạo kỳ đánh giá
+    81→          </button>
+    82→        }
+    83→      />
+    84→      {!cycles.loading &&
+    85→        !evaluations.loading &&
+    86→        !cycles.error &&
+    87→        !evaluations.error &&
+    88→        cycles.data &&
+    89→        evaluations.data && (
+    90→          <CollectionMetrics
+    91→            values={[
+    92→              ["Kỳ trong phạm vi quản lý", cycles.data.total],
+    93→              ["Đánh giá theo bộ lọc", evaluations.data.total],
+    94→              [
+    95→                "Bản nháp · trang",
+    96→                evaluations.data.items.filter((e) => e.status === "draft")
+    97→                  .length,
+    98→              ],
+    99→              [
+   100→                "Đã gửi · trang",
+   101→                evaluations.data.items.filter((e) => e.status === "submitted")
+   102→                  .length,
+   103→              ],
+   104→              [
+   105→                "Đã chốt · trang",
+   106→                evaluations.data.items.filter((e) => e.status === "finalized")
+   107→                  .length,
+   108→              ],
+   109→            ]}
+   110→            note="Thống kê trạng thái thuộc trang hiện tại. Điểm AI chỉ tham khảo; không được dùng thay điểm giảng viên."
+   111→          />
+   112→        )}
+   113→      {isInstructor && (
+   114→        <div className="mb-5">
+   115→          <InstructorNotice title="Từ tiêu chí đến điểm chính thức">
+   116→            Chọn kỳ đánh giá, chấm theo từng tiêu chí rồi lưu điểm. Chỉ nộp và
+   117→            chốt khi bạn đã kiểm tra đủ minh chứng. Gợi ý AI được hiển thị riêng
+   118→            để tham khảo.
+   119→          </InstructorNotice>
+   120→          <MarginNote className="mt-3 max-w-md">
+   121→            mực xanh “đã chốt” là điểm chính thức ✎
+   122→          </MarginNote>
+   123→        </div>
+   124→      )}
+   125→      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,3fr)]">
+   126→        <Panel title="Kỳ đánh giá">
+   127→          {cycles.loading ? (
+   128→            <LoadingState />
+   129→          ) : cycles.error ? (
+   130→            <ErrorState error={cycles.error} onRetry={cycles.reload} />
+   131→          ) : (
+   132→            cycles.data && (
+   133→              <>
+   134→                <button
+   135→                  className="mb-3 rounded-control px-1 text-body font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+   136→                  onClick={() => {
+   137→                    setCycleId("");
+   138→                    setPage(1);
+   139→                  }}
+   140→                >
+   141→                  Tất cả kỳ
+   142→                </button>
+   143→                {cycles.data.items.map((c) => (
+   144→                  <div
+   145→                    key={c.id}
+   146→                    className={`workspace-evaluation-cycle border-b border-border py-4 ${cycleId === c.id ? "bg-accent px-3" : ""}`}
+   147→                  >
+   148→                    <button
+   149→                      className="text-left text-body font-semibold"
+   150→                      aria-pressed={cycleId === c.id}
+   151→                      onClick={() => {
+   152→                        setCycleId(c.id);
+   153→                        setPage(1);
+   154→                      }}
+   155→                    >
+   156→                      {c.name}
+   157→                      <small className="block text-muted-foreground">{c.code}</small>
+   158→                    </button>
+   159→                    <div className="mt-2 flex items-center justify-between gap-3">
+   160→                      <Badge>
+   161→                        {isInstructor ? evaluationLabels[c.status] : c.status}
+   162→                      </Badge>
+   163→                      <button
+   164→                        className="rounded-control px-1 text-caption font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+   165→                        onClick={() => setCycleEditor(c)}
+   166→                      >
+   167→                        Tiêu chí / trạng thái
+   168→                      </button>
+   169→                    </div>
+   170→                  </div>
+   171→                ))}
+   172→                <Pager {...cycles.data} onChange={setCyclesPage} />
+   173→              </>
+   174→            )
+   175→          )}
+   176→        </Panel>
+   177→        <Panel
+   178→          title="Đánh giá của bạn"
+   179→          action={
+   180→            cycleId ? (
+   181→              <NewEvaluation
+   182→                cycleId={cycleId}
+   183→                onCreated={(id) => {
+   184→                  setSelected(id);
+   185→                  evaluations.reload();
+   186→                }}
+   187→              />
+   188→            ) : undefined
+   189→          }
+   190→        >
+   191→          <select
+   192→            aria-label="Trạng thái đánh giá"
+   193→            className={`${inputClass} mb-4`}
+   194→            value={status}
+   195→            onChange={(e) => {
+   196→              setStatus(e.target.value);
+   197→              setPage(1);
+   198→            }}
+   199→          >
+   200→            <option value="">Tất cả trạng thái</option>
+   201→            {["draft", "submitted", "finalized"].map((s) => (
+   202→              <option key={s} value={s}>
+   203→                {isInstructor
+   204→                  ? evaluationLabels[s as keyof typeof evaluationLabels]
+   205→                  : s}
+   206→              </option>
+   207→            ))}
+   208→          </select>
+   209→          {evaluations.loading ? (
+   210→            <LoadingState />
+   211→          ) : evaluations.error ? (
+   212→            <ErrorState
+   213→              error={evaluations.error}
+   214→              onRetry={evaluations.reload}
+   215→            />
+   216→          ) : (
+   217→            evaluations.data && (
+   218→              <>
+   219→                {evaluations.data.items.length ? (
+   220→                  <div className="space-y-3">
+   221→                    {evaluations.data.items.map((e) => (
+   222→                      <article
+   223→                        key={e.id}
+   224→                        className={`flex flex-wrap items-center justify-between gap-4 border-b border-border py-5${e.status === "submitted" ? " dashed-cut" : ""}`}
+   225→                      >
+   226→                        <div>
+   227→                          {e.status === "finalized" ? (
+   228→                            <StampMoc tone="blue" size="sm" thump>
+   229→                              {isInstructor
+   230→                                ? evaluationLabels[e.status]
+   231→                                : e.status}
+   232→                            </StampMoc>
+   233→                          ) : (
+   234→                            <Badge>
+   235→                              {isInstructor
+   236→                                ? evaluationLabels[e.status]
+   237→                                : e.status}
+   238→                            </Badge>
+   239→                          )}
+   240→                          <p className="mt-2 text-body font-semibold">
+   241→                            Điểm chính thức: {e.overallScore ?? "Chưa chấm"}
+   242→                          </p>
+   243→                          <p className="mt-1 max-w-md text-body text-muted-foreground">
+   244→                            {e.summary ?? "Chưa có nhận xét"}
+   245→                          </p>
+   246→                        </div>
+   247→                        <button
+   248→                          className={buttonClass}
+   249→                          onClick={() => setSelected(e.id)}
+   250→                        >
+   251→                          Mở đánh giá {e.id.slice(0, 8)}
+   252→                        </button>
+   253→                      </article>
+   254→                    ))}
+   255→                  </div>
+   256→                ) : (
+   257→                  <Empty>
+   258→                    Chưa có đánh giá phù hợp. Chọn kỳ đang mở để tạo đánh giá.
+   259→                  </Empty>
+   260→                )}
+   261→                <Pager {...evaluations.data} onChange={setPage} />
+   262→              </>
+   263→            )
+   264→          )}
+   265→        </Panel>
+   266→      </div>
+   267→      {showCreate && (
+   268→        <Modal title="Tạo kỳ đánh giá" onClose={() => setShowCreate(false)}>
+   269→          <CycleForm
+   270→            onCreated={() => {
+   271→              setShowCreate(false);
+   272→              cycles.reload();
+   273→            }}
+   274→          />
+   275→        </Modal>
+   276→      )}
+   277→      {cycleEditor && (
+   278→        <Modal
+   279→          title={cycleEditor.name}
+   280→          onClose={() => setCycleEditor(undefined)}
+   281→        >
+   282→          <CycleEditor
+   283→            key={cycleEditor.id}
+   284→            cycle={cycleEditor}
+   285→            onChanged={() => {
+   286→              cycles.reload();
+   287→              setCycleEditor(undefined);
+   288→            }}
+   289→          />
+   290→        </Modal>
+   291→      )}
+   292→      {selected && (
+   293→        <Modal
+   294→          title="Chấm điểm chính thức"
+   295→          onClose={() => setSelected(undefined)}
+   296→        >
+   297→          <EvaluationEditor
+   298→            key={selected}
+   299→            id={selected}
+   300→            onChanged={evaluations.reload}
+   301→          />
+   302→        </Modal>
+   303→      )}
+   304→    </>
+   305→  );
+   306→}
+   307→function CycleForm({ onCreated }: { onCreated: () => void }) {
+   308→  const [code, setCode] = useState(""),
+   309→    [name, setName] = useState(""),
+   310→    [projectId, setProjectId] = useState(""),
+   311→    [sessionId, setSessionId] = useState(""),
+   312→    [start, setStart] = useState(""),
+   313→    [end, setEnd] = useState(""),
+   314→    [type, setType] = useState("sprint");
+   315→  const action = useAction(onCreated);
+   316→  return (
+   317→    <form
+   318→      className="space-y-4"
+   319→      onSubmit={(e) => {
+   320→        e.preventDefault();
+   321→        void action.run(() =>
+   322→          api.createCycle({
+   323→            code,
+   324→            name,
+   325→            type,
+   326→            projectId,
+   327→            ...(sessionId ? { sessionId } : {}),
+   328→            startDate: new Date(start).toISOString(),
+   329→            endDate: new Date(end).toISOString(),
+   330→          }),
+   331→        );
+   332→      }}
+   333→    >
+   334→      {Boolean(action.error) && <ErrorState error={action.error} />}
+   335→      <label className="block text-body">
+   336→        Mã kỳ
+   337→        <input
+   338→          required
+   339→          maxLength={64}
+   340→          placeholder="VD: KY2-2026"
+   341→          className={`${inputClass} mt-1`}
+   342→          value={code}
+   343→          onChange={(e) => setCode(e.target.value)}
+   344→        />
+   345→      </label>
+   346→      <label className="block text-body">
+   347→        Tên kỳ
+   348→        <input
+   349→          required
+   350→          maxLength={256}
+   351→          placeholder="VD: Đánh giá giữa kỳ thực tập"
+   352→          className={`${inputClass} mt-1`}
+   353→          value={name}
+   354→          onChange={(e) => setName(e.target.value)}
+   355→        />
+   356→      </label>
+   357→      <AcademicPicker
+   358→        kind="projects"
+   359→        label="Dự án đánh giá"
+   360→        value={projectId}
+   361→        onChange={setProjectId}
+   362→        required
+   363→      />
+   364→      <AcademicPicker
+   365→        kind="sessions"
+   366→        label="Phiên đánh giá"
+   367→        value={sessionId}
+   368→        onChange={setSessionId}
+   369→      />
+   370→      <div className="grid gap-3 sm:grid-cols-2">
+   371→        {[
+   372→          ["Bắt đầu", start, setStart],
+   373→          ["Kết thúc", end, setEnd],
+   374→        ].map(([label, value, set]) => (
+   375→          <label key={String(label)} className="block text-body">
+   376→            {String(label)}
+   377→            <input
+   378→              type="datetime-local"
+   379→              required
+   380→              className={`${inputClass} mt-1`}
+   381→              value={String(value)}
+   382→              onChange={(e) => (set as (x: string) => void)(e.target.value)}
+   383→            />
+   384→          </label>
+   385→        ))}
+   386→      </div>
+   387→      <select
+   388→        aria-label="Loại kỳ"
+   389→        className={inputClass}
+   390→        value={type}
+   391→        onChange={(e) => setType(e.target.value)}
+   392→      >
+   393→        {["sprint", "midterm", "final"].map((t) => (
+   394→          <option key={t} value={t}>
+   395→            {{ sprint: "Theo Sprint", midterm: "Giữa kỳ", final: "Cuối kỳ" }[t]}
+   396→          </option>
+   397→        ))}
+   398→      </select>
+   399→      <p className="text-caption leading-6 text-muted-foreground">
+   400→        Kỳ mới sử dụng bộ tiêu chí chuẩn. Có thể chỉnh trọng số trước khi mở kỳ.
+   401→      </p>
+   402→      <div className="flex justify-end">
+   403→        <button className={buttonClass} disabled={action.busy}>
+   404→          Lưu kỳ đánh giá
+   405→        </button>
+   406→      </div>
+   407→    </form>
+   408→  );
+   409→}
+   410→function CycleEditor({
+   411→  cycle,
+   412→  onChanged,
+   413→}: {
+   414→  cycle: ReturnType<typeof api.parseCycle>;
+   415→  onChanged: () => void;
+   416→}) {
+   417→  const isInstructor = Boolean(usePathname()?.startsWith("/instructor"));
+   418→  const criteria = useResource(
+   419→      useCallback((s: AbortSignal) => api.getCriteria(cycle.id, s), [cycle.id]),
+   420→    ),
+   421→    action = useAction(onChanged);
+   422→  const [name, setName] = useState(cycle.name);
+   423→  const reloadCriteria = () => {
+   424→    action.clearError();
+   425→    criteria.reload();
+   426→  };
+   427→  const choices =
+   428→    cycle.status === "draft"
+   429→      ? ["open", "archived"]
+   430→      : cycle.status === "open"
+   431→        ? ["closed"]
+   432→        : cycle.status === "closed"
+   433→          ? ["archived"]
+   434→          : [];
+   435→  return (
+   436→    <div className="space-y-4">
+   437→      {Boolean(action.error) && <ErrorState error={action.error} />}
+   438→      <Badge>
+   439→        {isInstructor ? evaluationLabels[cycle.status] : cycle.status}
+   440→      </Badge>
+   441→      {cycle.status === "draft" && (
+   442→        <form
+   443→          className="flex flex-wrap gap-3"
+   444→          onSubmit={(e) => {
+   445→            e.preventDefault();
+   446→            void action.run(() =>
+   447→              api.updateCycle(cycle.id, {
+   448→                name,
+   449→                startDate: cycle.startDate,
+   450→                endDate: cycle.endDate,
+   451→              }),
+   452→            );
+   453→          }}
+   454→        >
+   455→          <input
+   456→            aria-label="Tên kỳ"
+   457→            required
+   458→            className={inputClass}
+   459→            value={name}
+   460→            onChange={(e) => setName(e.target.value)}
+   461→          />
+   462→          <button className={buttonClass} disabled={action.busy}>
+   463→            Lưu tên
+   464→          </button>
+   465→        </form>
+   466→      )}
+   467→      {criteria.loading ? (
+   468→        <LoadingState />
+   469→      ) : criteria.error ? (
+   470→        <ErrorState error={criteria.error} onRetry={criteria.reload} />
+   471→      ) : (
+   472→        criteria.data?.map((c) => (
+   473→          <CriterionEditor
+   474→            key={c.id}
+   475→            cycleId={cycle.id}
+   476→            criterion={c}
+   477→            editable={cycle.status === "draft"}
+   478→            onChanged={reloadCriteria}
+   479→          />
+   480→        ))
+   481→      )}
+   482→      {cycle.status === "draft" && (
+   483→        <NewCriterion cycleId={cycle.id} onChanged={reloadCriteria} />
+   484→      )}
+   485→      <div className="flex flex-wrap justify-end gap-3">
+   486→        {choices.map((status) => (
+   487→          <button
+   488→            key={status}
+   489→            className={buttonClass}
+   490→            disabled={action.busy}
+   491→            onClick={() =>
+   492→              void action.run(() => api.transitionCycle(cycle.id, status))
+   493→            }
+   494→          >
+   495→            {isInstructor
+   496→              ? (
+   497→                  {
+   498→                    open: "Mở kỳ đánh giá",
+   499→                    closed: "Đóng kỳ đánh giá",
+   500→                    archived: "Lưu trữ kỳ",
+   501→                  } as Record<string, string>
+   502→                )[status]
+   503→              : `Chuyển kỳ sang ${status}`}
+   504→          </button>
+   505→        ))}
+   506→      </div>
+   507→    </div>
+   508→  );
+   509→}
+   510→function CriterionEditor({
+   511→  cycleId,
+   512→  criterion: c,
+   513→  editable,
+   514→  onChanged,
+   515→}: {
+   516→  cycleId: string;
+   517→  criterion: ReturnType<typeof api.parseCriterion>;
+   518→  editable: boolean;
+   519→  onChanged: () => void;
+   520→}) {
+   521→  const [name, setName] = useState(c.name),
+   522→    [weight, setWeight] = useState(c.weight),
+   523→    [max, setMax] = useState(c.maxScore),
+   524→    action = useAction(onChanged);
+   525→  return (
+   526→    <form
+   527→      className="border-b border-border py-4"
+   528→      onSubmit={(e) => {
+   529→        e.preventDefault();
+   530→        void action.run(() =>
+   531→          api.updateCriterion(cycleId, c.id, { name, weight, maxScore: max }),
+   532→        );
+   533→      }}
+   534→    >
+   535→      {Boolean(action.error) && <ErrorState error={action.error} />}
+   536→      <div className="grid gap-3 sm:grid-cols-3">
+   537→        <label className="text-body">
+   538→          Tiêu chí
+   539→          <input
+   540→            aria-label={`Tên ${c.code}`}
+   541→            className={`${inputClass} mt-1`}
+   542→            required
+   543→            value={name}
+   544→            disabled={!editable}
+   545→            onChange={(e) => setName(e.target.value)}
+   546→          />
+   547→        </label>
+   548→        <label className="text-body">
+   549→          Trọng số (%)
+   550→          <input
+   551→            aria-label={`Trọng số ${c.code}`}
+   552→            className={`${inputClass} mt-1`}
+   553→            type="number"
+   554→            min="0.01"
+   555→            max="100"
+   556→            step="0.01"
+   557→            required
+   558→            disabled={!editable}
+   559→            value={weight}
+   560→            onChange={(e) => setWeight(Number(e.target.value))}
+   561→          />
+   562→        </label>
+   563→        <label className="text-body">
+   564→          Điểm tối đa
+   565→          <input
+   566→            aria-label={`Điểm tối đa ${c.code}`}
+   567→            className={`${inputClass} mt-1`}
+   568→            type="number"
+   569→            min="0.1"
+   570→            max="100"
+   571→            step="0.1"
+   572→            required
+   573→            disabled={!editable}
+   574→            value={max}
+   575→            onChange={(e) => setMax(Number(e.target.value))}
+   576→          />
+   577→        </label>
+   578→      </div>
+   579→      {editable && (
+   580→        <div className="mt-3 flex flex-wrap justify-end gap-3">
+   581→          <button className={buttonClass} disabled={action.busy}>
+   582→            Lưu tiêu chí
+   583→          </button>
+   584→          <button
+   585→            type="button"
+   586→            className="text-body text-destructive"
+   587→            disabled={action.busy}
+   588→            onClick={() =>
+   589→              void action.run(() => api.deleteCriterion(cycleId, c.id))
+   590→            }
+   591→          >
+   592→            Xóa tiêu chí
+   593→          </button>
+   594→        </div>
+   595→      )}
+   596→    </form>
+   597→  );
+   598→}
+   599→function NewCriterion({
+   600→  cycleId,
+   601→  onChanged,
+   602→}: {
+   603→  cycleId: string;
+   604→  onChanged: () => void;
+   605→}) {
+   606→  const [code, setCode] = useState(""),
+   607→    [name, setName] = useState(""),
+   608→    [weight, setWeight] = useState(""),
+   609→    action = useAction(onChanged);
+   610→  return (
+   611→    <form
+   612→      className="space-y-3 border-t border-border py-4"
+   613→      onSubmit={(e) => {
+   614→        e.preventDefault();
+   615→        void action.run(() =>
+   616→          api.createCriterion(cycleId, {
+   617→            code,
+   618→            name,
+   619→            weight: Number(weight),
+   620→            maxScore: 100,
+   621→          }),
+   622→        );
+   623→      }}
+   624→    >
+   625→      {Boolean(action.error) && <ErrorState error={action.error} />}
+   626→      <input
+   627→        aria-label="Mã tiêu chí mới"
+   628→        placeholder="Mã tiêu chí"
+   629→        required
+   630→        maxLength={64}
+   631→        className={inputClass}
+   632→        value={code}
+   633→        onChange={(e) => setCode(e.target.value)}
+   634→      />
+   635→      <input
+   636→        aria-label="Tên tiêu chí mới"
+   637→        placeholder="Tên tiêu chí"
+   638→        required
+   639→        maxLength={128}
+   640→        className={inputClass}
+   641→        value={name}
+   642→        onChange={(e) => setName(e.target.value)}
+   643→      />
+   644→      <input
+   645→        aria-label="Trọng số tiêu chí mới"
+   646→        placeholder="Trọng số %"
+   647→        type="number"
+   648→        min="0.01"
+   649→        max="100"
+   650→        step="0.01"
+   651→        required
+   652→        className={inputClass}
+   653→        value={weight}
+   654→        onChange={(e) => setWeight(e.target.value)}
+   655→      />
+   656→      <div className="flex justify-end">
+   657→        <button className={buttonClass} disabled={action.busy}>
+   658→          Thêm tiêu chí
+   659→        </button>
+   660→      </div>
+   661→    </form>
+   662→  );
+   663→}
+   664→function NewEvaluation({
+   665→  cycleId,
+   666→  onCreated,
+   667→}: {
+   668→  cycleId: string;
+   669→  onCreated: (id: string) => void;
+   670→}) {
+   671→  const [open, setOpen] = useState(false),
+   672→    [internId, setInternId] = useState(""),
+   673→    action = useAction();
+   674→  return (
+   675→    <>
+   676→      <button className={buttonClass} onClick={() => setOpen(!open)}>
+   677→        Tạo đánh giá
+   678→      </button>
+   679→      {open && (
+   680→        <form
+   681→          className="mt-3 space-y-4"
+   682→          onSubmit={(e) => {
+   683→            e.preventDefault();
+   684→            void action.run(async () => {
+   685→              const result = await api.createEvaluation(cycleId, internId);
+   686→              setOpen(false);
+   687→              onCreated(result.id);
+   688→            });
+   689→          }}
+   690→        >
+   691→          {Boolean(action.error) && <ErrorState error={action.error} />}
+   692→          <PerformanceMemberPicker
+   693→            label="Intern đánh giá"
+   694→            required
+   695→            value={internId}
+   696→            onChange={setInternId}
+   697→          />
+   698→          <div className="flex justify-end">
+   699→            <button className={buttonClass} disabled={action.busy || !internId}>
+   700→              Tạo bản nháp
+   701→            </button>
+   702→          </div>
+   703→        </form>
+   704→      )}
+   705→    </>
+   706→  );
+   707→}
+   708→function EvaluationEditor({
+   709→  id,
+   710→  onChanged,
+   711→}: {
+   712→  id: string;
+   713→  onChanged: () => void;
+   714→}) {
+   715→  const detail = useResource(
+   716→    useCallback(
+   717→      async (s: AbortSignal) => {
+   718→        const e = await api.getManagedEvaluation(id, s),
+   719→          criteria = await api.getCriteria(e.cycleId, s);
+   720→        return { evaluation: e, criteria };
+   721→      },
+   722→      [id],
+   723→    ),
+   724→  );
+   725→  return detail.loading ? (
+   726→    <LoadingState />
+   727→  ) : detail.error ? (
+   728→    <ErrorState error={detail.error} onRetry={detail.reload} />
+   729→  ) : detail.data ? (
+   730→    <ScoreEditor
+   731→      key={`${id}-${detail.data.evaluation.status}`}
+   732→      detail={detail.data}
+   733→      reload={() => {
+   734→        detail.reload();
+   735→        onChanged();
+   736→      }}
+   737→    />
+   738→  ) : null;
+   739→}
+   740→export function ScoreEditor({
+   741→  detail,
+   742→  reload,
+   743→}: {
+   744→  detail: {
+   745→    evaluation: Awaited<ReturnType<typeof api.getManagedEvaluation>>;
+   746→    criteria: ReturnType<typeof api.parseCriterion>[];
+   747→  };
+   748→  reload: () => void;
+   749→}) {
+   750→  const isInstructor = Boolean(usePathname()?.startsWith("/instructor"));
+   751→  const e = detail.evaluation,
+   752→    [scores, setScores] = useState<
+   753→      Record<string, { score: string; comment: string }>
+   754→    >(
+   755→      Object.fromEntries(
+   756→        detail.criteria.map((c) => {
+   757→          const saved = e.scores.find((s) => s.criterionId === c.id);
+   758→          return [
+   759→            c.id,
+   760→            {
+   761→              score: saved?.score.toString() ?? "",
+   762→              comment: saved?.comment ?? "",
+   763→            },
+   764→          ];
+   765→        }),
+   766→      ),
+   767→    ),
+   768→    [summary, setSummary] = useState(e.summary ?? ""),
+   769→    [suggestion, setSuggestion] =
+   770→      useState<ReturnType<typeof api.parseAiSuggestion>>();
+   771→  const [suggestionHistoryVersion, setSuggestionHistoryVersion] = useState(0);
+   772→  const action = useAction(),
+   773→    locked = e.status === "finalized";
+   774→  const hasUnsavedChanges =
+   775→    summary !== (e.summary ?? "") ||
+   776→    detail.criteria.some((criterion) => {
+   777→      const saved = e.scores.find(
+   778→        (score) => score.criterionId === criterion.id,
+   779→      );
+   780→      const draft = scores[criterion.id];
+   781→      return (
+   782→        (draft.score === ""
+   783→          ? Boolean(saved)
+   784→          : !saved || Number(draft.score) !== saved.score) ||
+   785→        draft.comment !== (saved?.comment ?? "")
+   786→      );
+   787→    });
+   788→  const needsSave = isInstructor && !locked && hasUnsavedChanges;
+   789→  async function save() {
+   790→    const ok = await action.run(() =>
+   791→      api.saveEvaluation(e.id, {
+   792→        scores: detail.criteria
+   793→          .filter((c) => scores[c.id].score !== "")
+   794→          .map((c) => ({
+   795→            criterionId: c.id,
+   796→            score: Number(scores[c.id].score),
+   797→            comment: scores[c.id].comment,
+   798→          })),
+   799→        summary,
+   800→      }),
+   801→    );
+   802→    if (ok) reload();
+   803→  }
+   804→  return (
+   805→    <div
+   806→      className={`${isInstructor ? "ins-score-editor " : ""}grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_280px]`}
+   807→    >
+   808→      <div className="space-y-4">
+   809→        {Boolean(action.error) && <ErrorState error={action.error} />}
+   810→        <div className="flex flex-wrap items-center gap-3">
+   811→          <Badge>{isInstructor ? evaluationLabels[e.status] : e.status}</Badge>
+   812→          <p className="font-bold">
+   813→            Điểm chính thức: {e.overallScore ?? "Chưa chấm"}
+   814→          </p>
+   815→          {locked && (
+   816→            /* Điểm đã chốt là quyết định cuối — mộc xanh đóng đè bản in. */
+   817→            <StampMoc tone="blue" size="sm" thump>
+   818→              CHỐT ĐIỂM
+   819→            </StampMoc>
+   820→          )}
+   821→        </div>
+   822→        {isInstructor && (
+   823→          <ol className="ins-decision-steps" aria-label="Quy trình đánh giá">
+   824→            {(
+   825→              [
+   826→                ["draft", "Chấm & lưu"],
+   827→                ["submitted", "Đã nộp"],
+   828→                ["finalized", "Đã chốt"],
+   829→              ] as const
+   830→            ).map(([status, label]) => (
+   831→              <li
+   832→                key={status}
+   833→                aria-current={e.status === status ? "step" : undefined}
+   834→              >
+   835→                {label}
+   836→              </li>
+   837→            ))}
+   838→          </ol>
+   839→        )}
+   840→        {needsSave && (
+   841→          <InstructorNotice title="Thay đổi chưa được lưu">
+   842→            Lưu điểm và nhận xét trước khi nộp hoặc chốt, để kết quả chính thức
+   843→            khớp với nội dung bạn đang xem.
+   844→          </InstructorNotice>
+   845→        )}
+   846→        <form
+   847→          className="space-y-4"
+   848→          onSubmit={(event) => {
+   849→            event.preventDefault();
+   850→            void save();
+   851→          }}
+   852→        >
+   853→          {detail.criteria.map((c) => (
+   854→            <fieldset key={c.id} className="border-b border-border pb-5 pt-3">
+   855→              <legend className="text-subsection font-semibold">{c.name}</legend>
+   856→              <p className="mt-1 text-caption text-muted-foreground">
+   857→                Trọng số {c.weight}% · Điểm tối đa {c.maxScore}
+   858→                {c.isRequired ? " · Bắt buộc" : ""}
+   859→              </p>
+   860→              <div className="mt-3 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+   861→              <label className="block text-body">
+   862→                Điểm {c.name}
+   863→                <input
+   864→                  aria-label={`Điểm ${c.name}`}
+   865→                  type="number"
+   866→                  min="0"
+   867→                  max={c.maxScore}
+   868→                  step="0.1"
+   869→                  required={c.isRequired}
+   870→                  disabled={locked || action.busy}
+   871→                  className={`${inputClass} mt-1`}
+   872→                  value={scores[c.id].score}
+   873→                  onChange={(event) =>
+   874→                    setScores({
+   875→                      ...scores,
+   876→                      [c.id]: { ...scores[c.id], score: event.target.value },
+   877→                    })
+   878→                  }
+   879→                />
+   880→              </label>
+   881→              <label className="block text-body">
+   882→                Nhận xét {c.name}
+   883→                <textarea
+   884→                  aria-label={`Nhận xét ${c.name}`}
+   885→                  maxLength={2000}
+   886→                  disabled={locked || action.busy}
+   887→                  className={`${inputClass} mt-1`}
+   888→                  value={scores[c.id].comment}
+   889→                  onChange={(event) =>
+   890→                    setScores({
+   891→                      ...scores,
+   892→                      [c.id]: { ...scores[c.id], comment: event.target.value },
+   893→                    })
+   894→                  }
+   895→                />
+   896→              </label>
+   897→              </div>
+   898→            </fieldset>
+   899→          ))}
+   900→          <label className="block text-body">
+   901→            Tổng kết
+   902→            <textarea
+   903→              className={`${inputClass} mt-1`}
+   904→              maxLength={4000}
+   905→              disabled={locked || action.busy}
+   906→              value={summary}
+   907→              onChange={(event) => setSummary(event.target.value)}
+   908→            />
+   909→          </label>
+   910→          {!locked && (
+   911→            <div className="flex justify-end">
+   912→              <button className={buttonClass} disabled={action.busy}>
+   913→                Lưu điểm chính thức
+   914→              </button>
+   915→            </div>
+   916→          )}
+   917→        </form>
+   918→        <div className="flex flex-wrap gap-3">
+   919→          {e.status === "draft" && (
+   920→            <button
+   921→              className={buttonClass}
+   922→              disabled={action.busy || needsSave}
+   923→              onClick={() =>
+   924→                void action
+   925→                  .run(() => api.advanceEvaluation(e.id, "submit"))
+   926→                  .then((ok) => {
+   927→                    if (ok) reload();
+   928→                  })
+   929→              }
+   930→            >
+   931→              Nộp đánh giá
+   932→            </button>
+   933→          )}
+   934→          {e.status === "submitted" && (
+   935→            <button
+   936→              className={buttonClass}
+   937→              disabled={action.busy || needsSave}
+   938→              onClick={() =>
+   939→                void action
+   940→                  .run(() => api.advanceEvaluation(e.id, "finalize"))
+   941→                  .then((ok) => {
+   942→                    if (ok) reload();
+   943→                  })
+   944→              }
+   945→            >
+   946→              Chốt đánh giá
+   947→            </button>
+   948→          )}
+   949→          {locked && (
+   950→            <p className="text-body text-muted-foreground">
+   951→              Đánh giá đã khóa. Hiệu chỉnh cần quyền quản trị và lưu lịch sử.
+   952→            </p>
+   953→          )}
+   954→        </div>
+   955→      </div>
+   956→      <Panel
+   957→        title={
+   958→          <span className="inline-flex items-center gap-2">
+   959→            <Sparkles size={15} aria-hidden="true" />
+   960→            Gợi ý AI
+   961→          </span>
+   962→        }
+   963→      >
+   964→        <p className="mb-3 text-caption text-muted-foreground">
+   965→          Gợi ý không ghi vào điểm chính thức. Hãy kiểm tra chứng cứ và tự chấm
+   966→          điểm.
+   967→        </p>
+   968→        {/* CT-004: AI suggestions require ai.evaluation.assist (plus draft/submitted
+   969→            state enforced server-side). Hide the affordance instead of a surprise 403. */}
+   970→        <Can perm="ai.evaluation.assist">
+   971→          <button
+   972→            className={btn("secondary")}
+   973→            disabled={action.busy || (isInstructor && locked)}
+   974→            onClick={() =>
+   975→              void action.run(async () => {
+   976→                setSuggestion(await api.suggestEvaluation(e.id));
+   977→                setSuggestionHistoryVersion(version => version + 1);
+   978→              })
+   979→            }
+   980→          >
+   981→            <Sparkles
+   982→              size={15}
+   983→              animation="blink"
+   984→              animate={action.busy}
+   985→              loop
+   986→              aria-hidden="true"
+   987→            />
+   988→            {action.busy ? "Đang xử lý…" : "Yêu cầu gợi ý AI"}
+   989→          </button>
+   990→        </Can>
+   991→        {isInstructor && locked && (
+   992→          <p className="mt-3 text-caption leading-6 text-muted-foreground">
+   993→            Đánh giá đã chốt. Gợi ý AI mới không còn khả dụng cho kết quả này.
+   994→          </p>
+   995→        )}
+   996→        {suggestion && (
+   997→          <div className="mt-4 space-y-3 text-body">
+   998→            <p>
+   999→              <StampBadge
+  1000→                className="text-[var(--stamp-red)]"
+  1001→                rotate={-8}
+  1002→              >
+  1003→                AI ĐỀ XUẤT
+  1004→              </StampBadge>
+  1005→            </p>
+  1006→            <p>{suggestion.summary}</p>
+  1007→            {suggestion.criteria.map((c) => (
+  1008→              <article
+  1009→                key={c.criterionCode}
+  1010→                className="border-b border-border py-4"
+  1011→              >
+  1012→                <strong>
+  1013→                  {detail.criteria.find((x) => x.code === c.criterionCode)
+  1014→                    ?.name ?? c.criterionCode}
+  1015→                  : AI đề xuất {c.suggestedScore}
+  1016→                </strong>
+  1017→                <p className="mt-2">{c.comment}</p>
+  1018→                <ul className="mt-2 list-inside list-disc text-caption">
+  1019→                  {c.evidence.map((x, i) => (
+  1020→                    <li key={i}>{x}</li>
+  1021→                  ))}
+  1022→                </ul>
+  1023→              </article>
+  1024→            ))}
+  1025→          </div>
+  1026→        )}
+  1027→        <SuggestionHistory key={`${e.id}-${suggestionHistoryVersion}`} evaluationId={e.id} criteria={detail.criteria} />
+  1028→      </Panel>
+  1029→    </div>
+  1030→  );
+  1031→}
+  1032→
+  1033→/** Suggestion history rows; each expands into its fetched detail (advisory). */
+  1034→function SuggestionHistory({
+  1035→  evaluationId,
+  1036→  criteria,
+  1037→}: {
+  1038→  evaluationId: string;
+  1039→  criteria: ReturnType<typeof api.parseCriterion>[];
+  1040→}) {
+  1041→  const [openId, setOpenId] = useState<string>();
+  1042→  return (
+  1043→    <Can perm="ai.evaluation.assist">
+  1044→      <SuggestionHistoryList
+  1045→        evaluationId={evaluationId}
+  1046→        criteria={criteria}
+  1047→        openId={openId}
+  1048→        onToggle={setOpenId}
+  1049→      />
+  1050→    </Can>
+  1051→  );
+  1052→}
+  1053→
+  1054→function SuggestionHistoryList({
+  1055→  evaluationId,
+  1056→  criteria,
+  1057→  openId,
+  1058→  onToggle,
+  1059→}: {
+  1060→  evaluationId: string;
+  1061→  criteria: ReturnType<typeof api.parseCriterion>[];
+  1062→  openId?: string;
+  1063→  onToggle: (id: string | undefined) => void;
+  1064→}) {
+  1065→  const history = useResource(
+  1066→    useCallback(
+  1067→      (s: AbortSignal) => api.listEvaluationSuggestions(evaluationId, s),
+  1068→      [evaluationId],
+  1069→    ),
+  1070→  );
+  1071→  return (
+  1072→    <div className="mt-5">
+  1073→      <h3 className="text-subsection font-semibold">Lịch sử gợi ý AI</h3>
+  1074→      {history.loading ? (
+  1075→        <LoadingState label="Đang tải lịch sử gợi ý..." />
+  1076→      ) : history.error ? (
+  1077→        /* Advisory panel: quiet inline error — never competes with the
+  1078→           primary save/finalize alerts for the alert role. */
+  1079→        <p className="mt-2 text-caption text-muted-foreground" role="status">
+  1080→          Không tải được lịch sử gợi ý AI.{" "}
+  1081→          <button
+  1082→            type="button"
+  1083→            className="rounded-control font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+  1084→            onClick={history.reload}
+  1085→          >
+  1086→            Thử lại
+  1087→          </button>
+  1088→        </p>
+  1089→      ) : !history.data || history.data.length === 0 ? (
+  1090→        <p className="mt-2 text-caption text-muted-foreground">
+  1091→          Chưa có gợi ý AI nào được lưu cho đánh giá này.
+  1092→        </p>
+  1093→      ) : (
+  1094→        <ul className="ins-timeline notebook-scroll mt-3 max-h-96 overflow-y-auto pr-1 text-body">
+  1095→          {history.data.map((row, index) => (
+  1096→            <li
+  1097→              key={row.id}
+  1098→              data-current={index === 0 ? "true" : undefined}
+  1099→              className="pb-4"
+  1100→            >
+  1101→              <div className="flex flex-wrap items-center justify-between gap-2">
+  1102→                <span className="text-caption text-muted-foreground">
+  1103→                  {new Date(row.generatedAt).toLocaleString("vi-VN")} ·{" "}
+  1104→                  {suggestionStatusLabels[row.status] ?? row.status}
+  1105→                </span>
+  1106→                <button
+  1107→                  type="button"
+  1108→                  className="min-h-9 rounded-control px-2 text-caption font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+  1109→                  aria-expanded={openId === row.id}
+  1110→                  onClick={() =>
+  1111→                    onToggle(openId === row.id ? undefined : row.id)
+  1112→                  }
+  1113→                >
+  1114→                  {openId === row.id ? "Ẩn chi tiết" : "Chi tiết"}
+  1115→                </button>
+  1116→              </div>
+  1117→              {openId === row.id && (
+  1118→                <SuggestionDetail
+  1119→                  evaluationId={evaluationId}
+  1120→                  suggestionId={row.id}
+  1121→                  criteria={criteria}
+  1122→                />
+  1123→              )}
+  1124→            </li>
+  1125→          ))}
+  1126→        </ul>
+  1127→      )}
+  1128→    </div>
+  1129→  );
+  1130→}
+  1131→
+  1132→/** Fetches one suggestion detail and renders the full advisory payload. */
+  1133→function SuggestionDetail({
+  1134→  evaluationId,
+  1135→  suggestionId,
+  1136→  criteria,
+  1137→}: {
+  1138→  evaluationId: string;
+  1139→  suggestionId: string;
+  1140→  criteria: ReturnType<typeof api.parseCriterion>[];
+  1141→}) {
+  1142→  const suggestionDetail = useResource(
+  1143→    useCallback(
+  1144→      (s: AbortSignal) =>
+  1145→        api.getEvaluationSuggestion(evaluationId, suggestionId, s),
+  1146→      [evaluationId, suggestionId],
+  1147→    ),
+  1148→  );
+  1149→  return (
+  1150→    <div className="mt-3">
+  1151→      {suggestionDetail.loading ? (
+  1152→        <LoadingState label="Đang tải chi tiết gợi ý..." />
+  1153→      ) : suggestionDetail.error ? (
+  1154→        <ErrorState
+  1155→          error={suggestionDetail.error}
+  1156→          onRetry={suggestionDetail.reload}
+  1157→        />
+  1158→      ) : suggestionDetail.data ? (
+  1159→        <div className="space-y-3 rounded-control bg-accent p-3 text-body">
+  1160→          <p className="text-caption text-muted-foreground">
+  1161→            Trạng thái:{" "}
+  1162→            {suggestionStatusLabels[suggestionDetail.data.status] ??
+  1163→              suggestionDetail.data.status}{" "}
+  1164→            · Phiên bản prompt: {suggestionDetail.data.promptVersion}
+  1165→            {suggestionDetail.data.aiRunId
+  1166→              ? ` · Lượt chạy AI: ${suggestionDetail.data.aiRunId.slice(0, 8)}`
+  1167→              : ""}
+  1168→          </p>
+  1169→          <p>{suggestionDetail.data.suggestion.summary}</p>
+  1170→          {suggestionDetail.data.suggestion.strengths.length > 0 && (
+  1171→            <div>
+  1172→              <strong className="text-small">Điểm mạnh</strong>
+  1173→              <ul className="mt-1 list-inside list-disc text-caption">
+  1174→                {suggestionDetail.data.suggestion.strengths.map((x, i) => (
+  1175→                  <li key={i}>{x}</li>
+  1176→                ))}
+  1177→              </ul>
+  1178→            </div>
+  1179→          )}
+  1180→          {suggestionDetail.data.suggestion.improvements.length > 0 && (
+  1181→            <div>
+  1182→              <strong className="marker-red text-small">Cần cải thiện</strong>
+  1183→              <ul className="mt-1 list-inside list-disc text-caption">
+  1184→                {suggestionDetail.data.suggestion.improvements.map(
+  1185→                  (x, i) => (
+  1186→                    <li key={i}>{x}</li>
+  1187→                  ),
+  1188→                )}
+  1189→              </ul>
+  1190→            </div>
+  1191→          )}
+  1192→          {suggestionDetail.data.suggestion.criteria.map((c) => (
+  1193→            <article
+  1194→              key={c.criterionCode}
+  1195→              className="border-t border-border pt-2"
+  1196→            >
+  1197→              <strong>
+  1198→                {criteria.find((x) => x.code === c.criterionCode)?.name ??
+  1199→                  c.criterionCode}
+  1200→                : AI đề xuất {c.suggestedScore}
+  1201→              </strong>
+  1202→              {c.comment && <p className="mt-1">{c.comment}</p>}
+  1203→              {c.evidence.length > 0 && (
+  1204→                <ul className="mt-1 list-inside list-disc text-caption">
+  1205→                  {c.evidence.map((x, i) => (
+  1206→                    <li key={i}>{x}</li>
+  1207→                  ))}
+  1208→                </ul>
+  1209→              )}
+  1210→            </article>
+  1211→          ))}
+  1212→        </div>
+  1213→      ) : null}
+  1214→    </div>
+  1215→  );
+  1216→}
+  1217→

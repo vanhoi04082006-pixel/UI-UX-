@@ -79,6 +79,22 @@
   --color-gold: var(--gold);
   --color-gold-soft: var(--gold-soft);
   --color-chalk-dust: var(--chalk-dust);
+  /* === LANDING GỐC (REPO) · token bổ sung — màu xanh mực, bóng in/đá ===== */
+  --color-blue: var(--blue);
+  --color-blue-deep: var(--blue-deep);
+  --color-blue-mist: var(--blue-mist);
+  --color-coal-soft: var(--coal-soft);
+  --color-chalk-soft: var(--chalk-soft);
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --shadow-hard-2: 2px 2px 0 0 var(--hard-shadow);
+  --shadow-hard-4: 4px 4px 0 0 var(--hard-shadow);
+  --shadow-hard-6: 6px 6px 0 0 var(--hard-shadow);
+  --shadow-coal-2: 2px 2px 0 0 var(--coal);
+  --shadow-coal-4: 4px 4px 0 0 var(--coal);
+  --shadow-coal-6: 6px 6px 0 0 var(--coal);
+  --shadow-marker-4: 4px 4px 0 0 rgba(32, 96, 240, 0.9);
+  --shadow-marker-6: 6px 6px 0 0 rgba(32, 96, 240, 0.9);
+  --animate-float-delayed: float 6.5s ease-in-out 1.5s infinite;
 }
 
 :root {
@@ -676,8 +692,8 @@
   100% { background-position: -120% 0; }
 }
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-9px); }
+  0%, 100% { transform: translateY(0) rotate(var(--float-rotate, 0deg)); }
+  50% { transform: translateY(-10px) rotate(var(--float-rotate, 0deg)); }
 }
 @keyframes bob {
   0%, 100% { transform: translateY(0) rotate(-1deg); }
@@ -1445,4 +1461,152 @@
 }
 @keyframes spin-ink {
   to { transform: rotate(360deg); }
+}
+
+/* =====================================================================
+ * === LANDING GỐC (REPO) · bổ sung — vars bóng ấm + utilities ========
+ * Khôi phục landing page bản repo: nền giấy, sticker, mép giấy…
+ * ===================================================================== */
+
+:root {
+  --ink-warm: #2a221c;
+  --hard-shadow-warm: rgba(42, 34, 28, 0.94);
+  --soft-shadow-warm: rgba(84, 66, 48, 0.16);
+  --soft-shadow-warm-lg: rgba(84, 66, 48, 0.24);
+  --coffee: rgba(120, 84, 40, 0.16);
+  --crease: rgba(84, 66, 48, 0.1);
+}
+.dark {
+  --ink-warm: #f2f1e9;
+  --hard-shadow-warm: rgba(0, 0, 0, 0.6);
+  --soft-shadow-warm: rgba(0, 0, 0, 0.4);
+  --soft-shadow-warm-lg: rgba(0, 0, 0, 0.55);
+  --coffee: rgba(196, 154, 104, 0.2);
+  --crease: rgba(242, 241, 233, 0.09);
+}
+
+/* Băng dính xoay theo --tape-rotate (bản repo: transform trong CSS) */
+.tape,
+.tape-peel {
+  transform: rotate(var(--tape-rotate, -6deg));
+  transition: transform var(--motion-normal, 200ms) var(--motion-ease, ease);
+}
+.group:hover .tape-peel,
+.tape-peel:hover {
+  transform: rotate(calc(var(--tape-rotate, -6deg) - 2deg)) translateY(-1.5px) scale(1.03);
+  opacity: 1;
+}
+
+@layer utilities {
+  /* Nền giấy ô ly */
+  .bg-grid-paper {
+    background-image: linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  /* Nền giấy chấm bi */
+  .bg-dots-paper {
+    background-image: radial-gradient(var(--line) 1.4px, transparent 1.4px);
+    background-size: 24px 24px;
+  }
+
+  /* Nền chấm phấn — dùng trên các section đen cố định */
+  .bg-dots-chalk {
+    background-image: radial-gradient(rgba(242, 241, 233, 0.09) 1.4px, transparent 1.4px);
+    background-size: 24px 24px;
+  }
+
+  /* Làm mờ dần lưới ở mép */
+  .mask-fade-edges {
+    -webkit-mask-image: radial-gradient(
+      ellipse 90% 85% at 50% 40%,
+      black 55%,
+      transparent 100%
+    );
+    mask-image: radial-gradient(
+      ellipse 90% 85% at 50% 40%,
+      black 55%,
+      transparent 100%
+    );
+  }
+
+  /* Thẻ giấy nhỏ viền mực + bóng đổ in */
+  .sketch-card-sm {
+    background: var(--paper-raised);
+    border: 2px solid var(--ink);
+    border-radius: 0.75rem;
+    box-shadow: 3px 3px 0 0 var(--hard-shadow);
+  }
+
+  /* Gáy vở — đường kẻ đôi đỏ trên đỉnh panel như trang vở Việt Nam */
+  .ruling-red-top {
+    border-top: 4px double
+      color-mix(in srgb, var(--stamp-red) 45%, transparent);
+  }
+  .dark .ruling-red-top {
+    border-top: 4px double color-mix(in srgb, var(--stamp-red) 70%, transparent);
+  }
+
+  /* Mép giấy deckle rách phía trên footer */
+  .paper-deckle-top {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12px),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 14' preserveAspectRatio='none'%3E%3Cpath d='M0 8 L 12 3 L 25 10 L 38 4 L 52 9 L 66 3 L 80 11 L 94 5 L 108 9 L 122 3 L 136 10 L 150 4 L 164 9 L 178 3 L 192 11 L 206 5 L 220 9 L 232 4 L 240 8 L 240 14 L 0 14 Z' fill='%23000'/%3E%3C/svg%3E");
+    mask-image: linear-gradient(to bottom, transparent 0, #000 12px),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 14' preserveAspectRatio='none'%3E%3Cpath d='M0 8 L 12 3 L 25 10 L 38 4 L 52 9 L 66 3 L 80 11 L 94 5 L 108 9 L 122 3 L 136 10 L 150 4 L 164 9 L 178 3 L 192 11 L 206 5 L 220 9 L 232 4 L 240 8 L 240 14 L 0 14 Z' fill='%23000'/%3E%3C/svg%3E");
+    -webkit-mask-size: 100% 100%, 240px 14px;
+    mask-size: 100% 100%, 240px 14px;
+    -webkit-mask-repeat: no-repeat, repeat-x;
+    mask-repeat: no-repeat, repeat-x;
+    -webkit-mask-composite: add;
+    mask-composite: add;
+  }
+
+  /* Bản chalk của dashed-cut — cho nền tối cố định (footer, thẻ đen) */
+  .dashed-cut-chalk {
+    border: 2px dashed color-mix(in srgb, var(--chalk) 42%, transparent);
+  }
+
+  /* Bóng giấy ấm */
+  .shadow-warm {
+    box-shadow: 0 10px 30px var(--soft-shadow-warm);
+  }
+  .shadow-warm-lg {
+    box-shadow: 0 18px 44px var(--soft-shadow-warm-lg);
+  }
+
+  /* Sticker — tem dán viền trắng, wiggle khi hover */
+  .sticker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--paper-raised);
+    border: 3px solid var(--paper-raised);
+    outline: 2px solid var(--ink);
+    border-radius: 9999px;
+    box-shadow: 2px 3px 0 0 var(--hard-shadow);
+    transition: transform var(--motion-normal, 200ms) var(--motion-ease, ease);
+  }
+  .group:hover .sticker-wiggle,
+  .sticker-wiggle:hover {
+    animation: v-wiggle 560ms ease-in-out;
+  }
+}
+
+@keyframes v-wiggle {
+  0%,
+  100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(2.5deg);
+  }
+}
+
+/* Tôn trọng reduced-motion cho sticker-wiggle */
+@media (prefers-reduced-motion: reduce) {
+  .group:hover .sticker-wiggle,
+  .sticker-wiggle:hover {
+    animation: none;
+  }
 }

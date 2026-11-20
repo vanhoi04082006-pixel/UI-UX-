@@ -6,6 +6,13 @@ export type Role = "intern" | "instructor" | "admin";
 export type InternState = "active" | "waiting" | "finished";
 export type AccountStatus = "active" | "locked";
 
+/* Trạng thái phiên thực tập — codex: thêm ending (sắp kết thúc)
+ * và cancelled (đã hủy) cho hành động vòng đời phiên. */
+export type SessionStatus = "active" | "upcoming" | "ending" | "closed" | "cancelled";
+
+/* Trạng thái sprint — vòng đời planned → active → completed/cancelled. */
+export type SprintStatus = "planned" | "active" | "completed" | "cancelled";
+
 export interface SessionUser {
   id: string;
   email: string;
@@ -77,7 +84,9 @@ export interface Evaluation {
   aiScore: number;
   finalScore: number;
   comment: string;
-  criteria: { label: string; score: number; max: number }[];
+  /** Tiêu chí chấm — điểm luôn hiển thị dạng "score / max";
+   * weight (trọng số %) tùy chọn khi kỳ có khai báo (codex: criterion weight). */
+  criteria: { label: string; score: number; max: number; weight?: number }[];
   finalizedAt: string;
 }
 
@@ -105,6 +114,9 @@ export interface SalaryEntry {
   type: "KPI" | "Thưởng" | "Điều chỉnh";
   amount: number;
   note: string;
+  /** Kỳ KPI mà giao dịch này thuộc về (vd "Sprint 2 · Tuần 3–4").
+   * Codex fix: tách bạch số dư toàn cục và thu nhập theo kỳ. */
+  period?: string;
 }
 
 export interface Certificate {
@@ -133,18 +145,40 @@ export interface MentorConversation {
 
 /* ---------------------------- INSTRUCTOR ---------------------------- */
 
+/** Thành viên phiên kèm trạng thái phân công — codex: assignment completion. */
+export interface SessionMember {
+  name: string;
+  email: string;
+  assignmentStatus: "active" | "completed";
+}
+
 export interface InstructorSession {
   id: string;
   code: string;
   project: string;
   members: number;
   memberNames: string[];
+  /** Chi tiết thành viên (email + trạng thái phân công) — codex đồng bộ. */
+  memberDetails: SessionMember[];
   sprint: string;
   sprintStatus: string;
   progress: number;
   startDate: string;
   endDate: string;
-  status: "active" | "upcoming" | "closed";
+  status: SessionStatus;
+}
+
+/** Sprint của phiên — vòng đời đầy đủ (codex: sprint lifecycle actions). */
+export interface Sprint {
+  id: string;
+  sessionId: string;
+  name: string;
+  goal: string;
+  startsAt: string;
+  endsAt: string;
+  status: SprintStatus;
+  totalTasks: number;
+  openTasks: number;
 }
 
 export interface SprintBoardTask {
@@ -163,6 +197,8 @@ export interface SprintBoard {
   goal: string;
   week: string;
   daysLeft: number;
+  /** Trạng thái sprint hiện của bảng (đồng bộ từ vòng đời sprint). */
+  status?: SprintStatus;
   columns: { key: TaskStatus; label: string; tasks: SprintBoardTask[] }[];
   burndown: number[];
 }

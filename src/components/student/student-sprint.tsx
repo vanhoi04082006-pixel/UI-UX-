@@ -25,7 +25,7 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { motion } from "framer-motion";
 import { useApp } from "@/lib/store";
 import { useMock } from "@/lib/use-mock";
-import type { Task, TaskStatus } from "@/lib/mock/types";
+import type { SprintBoard, Task, TaskStatus } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import {
   Eyebrow,
@@ -45,6 +45,7 @@ import {
   VColumns,
   VHourglass,
   VKanban,
+  VLock,
   VTarget,
 } from "@/components/icons/v-icons";
 import {
@@ -78,6 +79,12 @@ export default function StudentSprint() {
     () => (data ?? []).map((t) => (overrides[t.id] ? { ...t, ...overrides[t.id] } : t)),
     [data, overrides],
   );
+
+  /* Trạng thái sprint đọc từ bảng chung (board sinh viên và giảng viên dùng
+   * chung một mock) — chỉ cần trường `status` (codex: sprint terminal). */
+  const board = useMock<SprintBoard>("instructor/board");
+  const sprintStatus = board.data?.status;
+  const boardLocked = sprintStatus === "completed" || sprintStatus === "cancelled";
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
@@ -116,6 +123,11 @@ export default function StudentSprint() {
   }, [tasks]);
 
   const moveTask = (task: Task, status: TaskStatus) => {
+    /* Sprint đã kết thúc/hủy — bảng chỉ đọc, lịch sử được giữ nguyên. */
+    if (boardLocked) {
+      toast.info("Bảng chỉ xem — lịch sử được giữ lại");
+      return;
+    }
     if (task.status === status) return;
     /* Nhiệm vụ đã hoàn thành không kéo lùi lại được — cần giảng viên mở lại. */
     if (task.status === "done") {
@@ -159,6 +171,7 @@ export default function StudentSprint() {
 
   const onDragEnd = (e: DragEndEvent) => {
     setActiveTask(null);
+    if (boardLocked) return;
     const { active, over } = e;
     if (!over) return;
     const task = tasks.find((t) => t.id === active.id);
@@ -193,13 +206,36 @@ export default function StudentSprint() {
           </h1>
           <SquiggleUnderline className="mt-1 h-2.5 w-40 text-[var(--royal)]" />
         </div>
-        <MarginNote className="max-w-60">kéo thẻ giữa các cột — thả vào Chờ duyệt để nộp bài</MarginNote>
+        <MarginNote className="max-w-60">
+          {boardLocked ? "bảng chỉ xem — lịch sử được giữ lại" : "kéo thẻ giữa các cột — thả vào Chờ duyệt để nộp bài"}
+        </MarginNote>
       </header>
 
       {total === 0 ? (
         <EmptyBoard />
       ) : (
         <>
+          {/* Tem đầu bảng khi sprint đã khép lại (hoàn thành/hủy) */}
+          {boardLocked && (
+            <div
+              role="status"
+              className={cn(
+                "nb-rise flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[12px_15px_13px_14px] border-2 border-dashed p-3.5",
+                sprintStatus === "completed"
+                  ? "border-[color-mix(in_srgb,var(--success)_55%,transparent)] bg-[color-mix(in_srgb,var(--success)_7%,transparent)]"
+                  : "border-[color-mix(in_srgb,var(--danger)_55%,transparent)] bg-[color-mix(in_srgb,var(--danger)_7%,transparent)]",
+              )}
+            >
+              <InkBadge tone={sprintStatus === "completed" ? "green" : "red"} dot>
+                {sprintStatus === "completed" ? "Sprint đã hoàn thành" : "Sprint đã hủy"}
+              </InkBadge>
+              <p className="min-w-0 flex-1 text-[0.82rem] font-semibold leading-relaxed text-[var(--ink-soft)]">
+                <VLock size={14} className="mr-1 -mt-0.5 inline" aria-hidden="true" />
+                kéo–thả và nút chuyển cột đã khóa — bảng chỉ xem, lịch sử được giữ lại
+              </p>
+            </div>
+          )}
+
           <DndContext
             sensors={sensors}
             collisionDetection={closestCorners}
@@ -215,6 +251,7 @@ export default function StudentSprint() {
                   label={col.label}
                   tape={col.tape}
                   tasks={byStatus.get(col.key) ?? []}
+                  locked={boardLocked}
                   onMove={(task, dir) => {
                     const idx = STATUS_ORDER.indexOf(task.status);
                     const next = STATUS_ORDER[Math.max(0, Math.min(STATUS_ORDER.length - 1, idx + dir))];
@@ -252,12 +289,14 @@ function BoardColumn({
   tape,
   tasks,
   onMove,
+  locked,
 }: {
   columnKey: TaskStatus;
   label: string;
   tape: "slate" | "blue" | "warm" | "mint";
   tasks: Task[];
   onMove: (task: Task, dir: -1 | 1) => void;
+  locked: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: columnKey });
 
@@ -283,10 +322,12 @@ function BoardColumn({
 
       <div className="paper-lined mt-3 min-h-24 flex-1 space-y-2.5 rounded-[8px_10px_9px_10px] p-2">
         {tasks.length === 0 && (
-          <p className="pt-6 text-center font-hand text-[0.95rem] text-[var(--ink-faint)]">trống — thả thẻ vào đây</p>
+          <p className="pt-6 text-center font-hand text-[0.95rem] text-[var(--ink-faint)]">
+            {locked ? "trống" : "trống — thả thẻ vào đây"}
+          </p>
         )}
         {tasks.map((t) => (
-          <BoardCard key={t.id} task={t} onMove={onMove} />
+          <BoardCard key={t.id} task={t} onMove={onMove} locked={locked} />
         ))}
       </div>
     </section>
@@ -295,20 +336,38 @@ function BoardColumn({
 
 /* ------------------------------ Thẻ nhiệm vụ ------------------------------ */
 
-function BoardCard({ task, onMove }: { task: Task; onMove: (task: Task, dir: -1 | 1) => void }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id });
+function BoardCard({
+  task,
+  onMove,
+  locked,
+}: {
+  task: Task;
+  onMove: (task: Task, dir: -1 | 1) => void;
+  locked: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: task.id,
+    disabled: locked,
+  });
 
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
+      {...(locked ? {} : listeners)}
       {...attributes}
       className={cn(
-        "sketch-border-thin group relative cursor-grab bg-[var(--paper-raised)] p-3 shadow-ink-2 transition-all hover:-translate-y-0.5 hover:shadow-ink-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ink)] active:cursor-grabbing",
+        "sketch-border-thin group relative bg-[var(--paper-raised)] p-3 shadow-ink-2 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ink)]",
+        locked
+          ? "cursor-default"
+          : "cursor-grab hover:-translate-y-0.5 hover:shadow-ink-3 active:cursor-grabbing",
         isDragging && "opacity-40",
       )}
       style={{ borderLeft: `4px solid ${PRIORITY_SPINE[task.priority]}` }}
-      aria-label={`Thẻ nhiệm vụ ${task.code}: ${task.title}. Dùng các nút mũi tên để chuyển cột.`}
+      aria-label={
+        locked
+          ? `Thẻ nhiệm vụ ${task.code}: ${task.title}. Bảng chỉ xem.`
+          : `Thẻ nhiệm vụ ${task.code}: ${task.title}. Dùng các nút mũi tên để chuyển cột.`
+      }
     >
       <div className="flex items-center gap-2">
         <CodeChip code={task.code} />
@@ -339,19 +398,29 @@ function BoardCard({ task, onMove }: { task: Task; onMove: (task: Task, dir: -1 
       <div className="absolute -top-2.5 right-1.5 hidden gap-1 group-focus-within:flex">
         <button
           type="button"
+          disabled={locked}
+          aria-disabled={locked}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onMove(task, -1)}
           aria-label="Chuyển sang cột trái"
-          className="focus-ink grid h-6 w-6 place-items-center rounded-full border-2 border-[var(--ink)] bg-[var(--paper-raised)] text-[var(--ink)] shadow-ink-2 transition-transform hover:-translate-y-0.5"
+          className={cn(
+            "focus-ink grid h-6 w-6 place-items-center rounded-full border-2 border-[var(--ink)] bg-[var(--paper-raised)] text-[var(--ink)] shadow-ink-2 transition-transform hover:-translate-y-0.5",
+            locked && "opacity-40",
+          )}
         >
           <VChevronLeft size={13} />
         </button>
         <button
           type="button"
+          disabled={locked}
+          aria-disabled={locked}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onMove(task, 1)}
           aria-label="Chuyển sang cột phải"
-          className="focus-ink grid h-6 w-6 place-items-center rounded-full border-2 border-[var(--ink)] bg-[var(--paper-raised)] text-[var(--ink)] shadow-ink-2 transition-transform hover:-translate-y-0.5"
+          className={cn(
+            "focus-ink grid h-6 w-6 place-items-center rounded-full border-2 border-[var(--ink)] bg-[var(--paper-raised)] text-[var(--ink)] shadow-ink-2 transition-transform hover:-translate-y-0.5",
+            locked && "opacity-40",
+          )}
         >
           <VChevronRight size={13} />
         </button>

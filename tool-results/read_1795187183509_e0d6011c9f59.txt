@@ -1,0 +1,627 @@
+     1→import { beforeEach, describe, expect, it, vi } from "vitest";
+     2→
+     3→/**
+     4→ * GAP-2 COVERAGE: các endpoint mở rộng (applications/github/RBAC/catalogs/
+     5→ * system/AI config/career-roles/certificates/communications/knowledge/KPI/
+     6→ * performance/question-bank/recruitment-rounds/reports/virtual-salary/
+     7→ * sessions/projects/sprints/tasks/AI plans/templates/evaluations/imported
+     8→ * reviews/participation ops/recruitment me/candidates/assignments/settings)
+     9→ * phải đi qua request() THẬT và parser fail-closed của từng module api —
+    10→ * đúng đường trang dùng trong Preview.
+    11→ */
+    12→beforeEach(() => {
+    13→  window.sessionStorage.clear();
+    14→});
+    15→
+    16→async function withPreview<T>(fn: () => Promise<T>): Promise<T> {
+    17→  vi.resetModules();
+    18→  vi.stubEnv("NEXT_PUBLIC_PREVIEW", "1");
+    19→  vi.stubEnv("NODE_ENV", "test");
+    20→  try {
+    21→    return await fn();
+    22→  } finally {
+    23→    vi.unstubAllEnvs();
+    24→    vi.resetModules();
+    25→  }
+    26→}
+    27→
+    28→async function expectOk(label: string, run: () => Promise<unknown>) {
+    29→  const error = await run().then(
+    30→    () => null,
+    31→    (e) => e as unknown,
+    32→  );
+    33→  expect(error, `${label} phải parse được shape mock`).toBeNull();
+    34→}
+    35→
+    36→describe("Preview GAP-2: endpoint bổ sung qua parser thật", () => {
+    37→  it("A) applications public + auth phụ + RBAC mutation", async () => {
+    38→    await withPreview(async () => {
+    39→      const applications = await import("@/lib/api/applications");
+    40→      const admin = await import("@/lib/api/admin");
+    41→      await expectOk("publicRounds", () => applications.publicRounds());
+    42→      await expectOk("myApplication", () => applications.myApplication());
+    43→      await expectOk("verifyApplication", () => applications.verifyApplication("token-x"));
+    44→      await expectOk("leaveCandidateSession", () => applications.leaveCandidateSession());
+    45→      await expectOk("supplementCv", () => applications.supplementCv(new File(["cv"], "cv.pdf")));
+    46→      const requestAccess = await applications.requestApplicationAccess("rr-01", "a@b.vn");
+    47→      expect(requestAccess).toMatchObject({ queued: true });
+    48→      await expectOk("saveUser (create)", () =>
+    49→        admin.saveUser(undefined, { displayName: "Người mới", username: "moi.ntn" }));
+    50→      await expectOk("saveUser (update)", () =>
+    51→        admin.saveUser("pv-intern-2", { displayName: "Đỗ Thuần Minh", username: "minh.do" }));
+    52→      await expectOk("setUserStatus", () => admin.setUserStatus("pv-intern-3", "active"));
+    53→      await expectOk("listPermissions (role)", () => admin.listPermissions(1, "r-admin"));
+    54→      await expectOk("saveGroup (create)", () =>
+    55→        admin.saveGroup(undefined, { code: "k27", name: "K27", description: "Khóa 27" }));
+    56→      await expectOk("saveGroup (update)", () =>
+    57→        admin.saveGroup("g-1", { name: "CNTT K26", description: "Sinh viên khoá 26" }));
+    58→      await expectOk("getGroupMembers", () => admin.getGroupMembers("g-1"));
+    59→      await expectOk("addGroupMember", () => admin.addGroupMember("g-1", "u-intern-6"));
+    60→      await expectOk("removeGroupMember", () => admin.removeGroupMember("g-1", "u-intern-6"));
+    61→      await expectOk("getGroupRoles", () => admin.getGroupRoles("g-1"));
+    62→      await expectOk("setGroupRoles", () => admin.setGroupRoles("g-1", ["intern"]));
+    63→      await expectOk("getHealth", () => admin.getHealth());
+    64→      await expectOk("saveSetting", () =>
+    65→        admin.saveSetting({ key: "virtual_salary.base_amount", value: "520000", description: "Lương cơ sở" }));
+    66→    });
+    67→  });
+    68→
+    69→  it("B) github identity + repository phiên", async () => {
+    70→    await withPreview(async () => {
+    71→      const github = await import("@/lib/api/github");
+    72→      await expectOk("githubStatus", () => github.githubStatus());
+    73→      const authorizeUrl = await github.connectGithub();
+    74→      expect(new URL(authorizeUrl).origin).toBe("https://github.com");
+    75→      await expectOk("repositoryAccountStatus", () => github.repositoryAccountStatus());
+    76→      await expectOk("selectRepositoryAccount", () => github.selectRepositoryAccount());
+    77→      await expectOk("disconnectGithub", () => github.disconnectGithub());
+    78→      await expectOk("sessionRepository", () => github.sessionRepository("ss-f26"));
+    79→      await expectOk("provisionRepository", () => github.provisionRepository("ss-f26"));
+    80→      const invited = await github.inviteRepositoryMembers("ss-f26");
+    81→      expect(invited.processed).toBeGreaterThan(0);
+    82→      await expectOk("inviteRepositoryMember", () =>
+    83→        github.inviteRepositoryMember("ss-f26", "pv-intern-2"));
+    84→      await expectOk("configureGithubWebhook", () => github.configureGithubWebhook("ss-f26"));
+    85→      await expectOk("reconcileRepositoryAccess", () => github.reconcileRepositoryAccess("ss-f26"));
+    86→      const activity = await github.githubRepositoryActivity("ss-f26", 1);
+    87→      expect(activity.total).toBeGreaterThan(0);
+    88→    });
+    89→  });
+    90→
+    91→  it("D+E+F+I) catalogs, hệ thống, AI config, thư đi", async () => {
+    92→    await withPreview(async () => {
+    93→      const admin = await import("@/lib/api/admin");
+    94→      const system = await import("@/lib/api/system-admin");
+    95→      const business = await import("@/lib/api/business-agents");
+    96→      const knowledgeRuns = await import("@/lib/api/knowledge-runs");
+    97→      const communications = await import("@/lib/api/communications");
+    98→      await expectOk("listCatalogTypes", () => admin.listCatalogTypes(1));
+    99→      await expectOk("listCatalogItems", () => admin.listCatalogItems(1, "technology"));
+   100→      await expectOk("createCatalogType", () =>
+   101→        admin.createCatalogType({ code: "campus", name: "Cơ sở", description: "Cơ sở đào tạo" }));
+   102→      await expectOk("saveCatalogItem (create)", () =>
+   103→        admin.saveCatalogItem(undefined, {
+   104→          typeCode: "technology", code: "redis", name: "Redis", value: "redis", sortOrder: 4,
+   105→        }));
+   106→      await expectOk("saveCatalogItem (update)", () =>
+   107→        admin.saveCatalogItem("ci-9", { name: "PostgreSQL 16", value: "pg16", sortOrder: 3 }));
+   108→      await expectOk("getSystemStatus", () => system.getSystemStatus());
+   109→      await expectOk("getSystemContracts", () => system.getSystemContracts());
+   110→      await expectOk("validateSystemContractsDraft", () =>
+   111→        system.validateSystemContractsDraft("{ \"contracts\": [] }"));
+   112→      await expectOk("listSystemRepositories", () =>
+   113→        system.listSystemRepositories(new URLSearchParams("page=1&pageSize=20")));
+   114→      await expectOk("getAiConfiguration", () => system.getAiConfiguration());
+   115→      await expectOk("saveAiConfiguration", () =>
+   116→        system.saveAiConfiguration({ model: "gemini-2.5-flash", timeoutMs: 60000, maxRetries: 3, version: 8 }));
+   117→      await expectOk("getBusinessRuns", () => business.getBusinessRuns(1, "", ""));
+   118→      const run = await knowledgeRuns.createKnowledgeRun("Hạn mức mượn tối đa?", "frontend");
+   119→      expect(run.status).toBe("running");
+   120→      await expectOk("getKnowledgeRun", () => knowledgeRuns.getKnowledgeRun(run.id));
+   121→      await expectOk("cancelKnowledgeRun", () => knowledgeRuns.cancelKnowledgeRun(run.id));
+   122→      const resumed = await knowledgeRuns.resumeKnowledgeRun(run.id);
+   123→      expect(resumed).toMatchObject({ accepted: true });
+   124→      await expectOk("listMail", () => communications.listMail(1));
+   125→      const preview = await communications.previewMail("ml-4");
+   126→      expect(preview.redacted).toBe(true);
+   127→      await expectOk("previewMail (redacted)", () => communications.previewMail("ml-1"));
+   128→      const resent = await communications.resendMail("ml-3", true);
+   129→      expect(resent).toBe(true);
+   130→    });
+   131→  });
+   132→
+   133→  it("G) career roles (admin + public)", async () => {
+   134→    await withPreview(async () => {
+   135→      const careers = await import("@/lib/api/career-roles");
+   136→      const list = await careers.listCareerRoles(new URLSearchParams("page=1&pageSize=100"));
+   137→      expect(list.items.length).toBeGreaterThanOrEqual(5);
+   138→      const content = {
+   139→        name: "Data Intern", description: "Phân tích dữ liệu", level: "intern" as const,
+   140→        language: "vi" as const, requiredSkills: ["SQL"], optionalSkills: ["Python"],
+   141→        competencyWeights: { delivery: 0.5, quality: 0.5 },
+   142→      };
+   143→      await expectOk("createCareerRole", () =>
+   144→        careers.createCareerRole({ ...content, code: "data" }));
+   145→      await expectOk("updateCareerRole", () =>
+   146→        careers.updateCareerRole("frontend", { ...content, version: 3, status: "published", acceptingApplications: true }));
+   147→      await expectOk("archiveCareerRole", () => careers.archiveCareerRole("qa", 1));
+   148→      await expectOk("listCareerRoleRevisions", () => careers.listCareerRoleRevisions("frontend"));
+   149→      const recruiting = await careers.listRecruitingCareers();
+   150→      expect(recruiting.length).toBeGreaterThan(0);
+   151→      expect(recruiting.every((r) => typeof r.label === "string")).toBe(true);
+   152→      const references = await careers.listCareerReferences();
+   153→      expect(references.length).toBeGreaterThan(0);
+   154→      const all = await careers.allCareerRoles();
+   155→      expect(all.length).toBeGreaterThanOrEqual(5);
+   156→    });
+   157→  });
+   158→
+   159→  it("H+K+P) certificates, KPI periods/results, lương ảo (admin)", async () => {
+   160→    await withPreview(async () => {
+   161→      const finance = await import("@/lib/api/finance");
+   162→      const certs = await finance.listCertificates({ page: 1 });
+   163→      expect(certs.items.length).toBeGreaterThanOrEqual(5);
+   164→      expect(certs.items.some((c) => c.id === "cert-01")).toBe(true);
+   165→      expect(certs.items.some((c) => c.id === "cert-02")).toBe(true);
+   166→      await expectOk("issueCertificate", () => finance.issueCertificate("u-intern-5"));
+   167→      const revoked = await finance.revokeCertificate("cert-06", "Sao chép bài nộp");
+   168→      expect(revoked.status).toBe("revoked");
+   169→      const pdf = await finance.downloadCertificatePdf("cert-01");
+   170→      expect(pdf).toBeInstanceOf(Blob);
+   171→      const periods = await finance.listKpiPeriods("", 1);
+   172→      expect(periods.items.some((p) => p.id === "kpi-2026-10" && p.status === "open")).toBe(true);
+   173→      expect(periods.items.some((p) => p.id === "kpi-2026-09" && p.status === "finalized")).toBe(true);
+   174→      await expectOk("createKpiPeriod", () =>
+   175→        finance.createKpiPeriod({ code: "KPI-2026-12", name: "Kỳ 12/2026", startDate: "2026-12-01", endDate: "2026-12-31" }));
+   176→      await expectOk("updateKpiPeriod", () =>
+   177→        finance.updateKpiPeriod("kpi-2026-10", { name: "KPI tháng 10/2026 (sửa)" }));
+   178→      await expectOk("transitionKpiPeriod", () => finance.transitionKpiPeriod("kpi-2026-10", "calculating"));
+   179→      const calculated = await finance.calculateKpiPeriod("kpi-2026-10");
+   180→      expect(calculated.calculated).toBeGreaterThan(0);
+   181→      await expectOk("finalizeKpiPeriod", () => finance.finalizeKpiPeriod("kpi-2026-10"));
+   182→      const results = await finance.listKpiResults("kpi-2026-10", 1);
+   183→      expect(results.items.some((r) => r.userId === "pv-intern-1")).toBe(true);
+   184→      const detail = await finance.getKpiResult("kpi-res-101");
+   185→      expect(detail.metrics.length).toBeGreaterThan(0);
+   186→      await expectOk("listSalaryLedger", () => finance.listSalaryLedger({ page: 1 }));
+   187→      const generated = await finance.generateSalaryForPeriod("kpi-2026-10");
+   188→      expect(generated).toMatchObject({ kpiPeriodId: "kpi-2026-10", unit: "VND" });
+   189→      await expectOk("createSalaryAdjustment", () =>
+   190→        finance.createSalaryAdjustment({
+   191→          userId: "pv-intern-1", type: "bonus", amount: 80000,
+   192→          reason: "Thưởng demo", requestId: "req-adjust-1",
+   193→        }));
+   194→      const balance = await finance.getUserSalaryBalance("pv-intern-1");
+   195→      expect(balance.virtual).toBe(true);
+   196→      expect(balance.balance).toBeGreaterThan(0);
+   197→    });
+   198→  });
+   199→
+   200→  it("J) kho tri thức — quyền admin + CRUD + import dry-run", async () => {
+   201→    await withPreview(async () => {
+   202→      const { PREVIEW_ACCOUNTS_BY_ID } = await import("../accounts");
+   203→      const permissions = PREVIEW_ACCOUNTS_BY_ID["pv-admin-1"].user.permissions;
+   204→      for (const code of ["knowledge.read", "knowledge.manage", "knowledge.publish"]) {
+   205→        expect(permissions, `adminPermissions phải chứa ${code}`).toContain(code);
+   206→      }
+   207→      const knowledge = await import("@/lib/api/knowledge");
+   208→      const list = await knowledge.listKnowledge(new URLSearchParams("page=1&pageSize=20"));
+   209→      expect(list.items.length).toBeGreaterThanOrEqual(6);
+   210→      expect(new Set(list.items.map((d) => d.status))).toEqual(new Set(["draft", "published", "archived"]));
+   211→      const kinds = new Set(list.items.map((d) => d.kind));
+   212→      for (const kind of ["qa", "guide", "exercise", "solution", "rubric", "plan_template", "communication"]) {
+   213→        expect(kinds, `thiếu loại ${kind}`).toContain(kind);
+   214→      }
+   215→      const doc = await knowledge.getKnowledge("KL-GUIDE-02");
+   216→      expect(doc.snapshot.code).toBe("KL-GUIDE-02");
+   217→      await expectOk("checkKnowledgePublication", () => knowledge.checkKnowledgePublication("KL-EX-03"));
+   218→      const draft = {
+   219→        kind: "qa" as const, title: "Q&A test", summary: "Tóm tắt", language: "vi" as const,
+   220→        difficulty: "easy" as const, audience: "student_safe" as const,
+   221→        purposes: ["interview" as const], roleCodes: ["intern"], tags: ["test"],
+   222→        sources: [{ title: "Wiki", url: "https://wiki.vintern.example/kl", reference: "KL/TEST" }],
+   223→        body: { questions: [{ q: "Hi?", a: "Ok" }] },
+   224→      };
+   225→      await expectOk("createKnowledge", () => knowledge.createKnowledge("KL-TEST-99", draft));
+   226→      await expectOk("updateKnowledge", () => knowledge.updateKnowledge("KL-QA-01", 2, draft));
+   227→      const published = await knowledge.publishKnowledge("KL-EX-03", 1);
+   228→      expect(published.status).toBe("published");
+   229→      const archived = await knowledge.archiveKnowledge("KL-PLAN-06", 1);
+   230→      expect(archived.status).toBe("archived");
+   231→      await expectOk("restoreKnowledge", () => knowledge.restoreKnowledge("KL-QA-08", 1, 1));
+   232→      const revisions = await knowledge.listKnowledgeHistory("KL-GUIDE-02", 1);
+   233→      expect(revisions.items.length).toBeGreaterThan(0);
+   234→      const dryRun = await knowledge.knowledgeDryRun([
+   235→        { code: "KL-QA-01", draft },
+   236→        { code: "KL-BRAND-NEW", draft },
+   237→      ]);
+   238→      expect(dryRun.mutationsPerformed).toBe(0);
+   239→      expect(dryRun.items.some((i) => i.exists)).toBe(true);
+   240→    });
+   241→  });
+   242→
+   243→  it("L+M) hiệu suất + ngân hàng câu hỏi", async () => {
+   244→    await withPreview(async () => {
+   245→      const management = await import("@/lib/api/management");
+   246→      const studentDetail = await import("@/lib/api/student-detail");
+   247→      const questionBank = await import("@/lib/api/question-bank");
+   248→      const members = await management.listPerformance(new URLSearchParams("page=1&pageSize=10"));
+   249→      expect(members.items.some((m) => m.userId === "pv-intern-1")).toBe(true);
+   250→      await expectOk("getMemberPerformance", () => management.getMemberPerformance("pv-intern-1"));
+   251→      await expectOk("getMemberRecommendations", () => management.getMemberRecommendations("pv-intern-1"));
+   252→      await expectOk("getStudentDetail", () =>
+   253→        studentDetail.getStudentDetail("pv-intern-1", 1, ""));
+   254→      const questions = await questionBank.listQuestionBank(
+   255→        new URLSearchParams("page=1&pageSize=10&search=useMemo"),
+   256→      );
+   257→      expect(questions.items.length).toBeGreaterThan(0);
+   258→      expect(questions.coverage.length).toBeGreaterThan(0);
+   259→      const content = {
+   260→        roleCode: "frontend", phase: "technical" as const, difficulty: "medium" as const,
+   261→        language: "vi" as const, prompt: " SSR vs CSR?",
+   262→        expectedConcepts: ["render"], exampleAnswer: "SSR server, CSR client.",
+   263→        scoringRubric: "Đúng khái niệm 100.", followUpHints: [], tags: ["next"],
+   264→        isActive: true,
+   265→      };
+   266→      const created = await questionBank.saveQuestion(content);
+   267→      expect(created.isActive).toBe(true);
+   268→      const updated = await questionBank.saveQuestion(content, { id: "qb-1", version: 3 });
+   269→      expect(updated.version).toBeGreaterThan(3);
+   270→      const retired = await questionBank.retireQuestion({ id: "qb-2", version: 1 });
+   271→      expect(retired.isActive).toBe(false);
+   272→    });
+   273→  });
+   274→
+   275→  it("N+O) đợt tuyển, hồ sơ ứng viên, báo cáo", async () => {
+   276→    await withPreview(async () => {
+   277→      const applications = await import("@/lib/api/applications");
+   278→      const recovery = await import("@/lib/api/credential-recovery");
+   279→      const reports = await import("@/lib/api/reports");
+   280→      const rounds = await applications.listRecruitmentRounds();
+   281→      expect(rounds.some((r) => r.status === "open")).toBe(true);
+   282→      const detail = await applications.roundDetail(rounds[0].id);
+   283→      expect(detail.slots.length).toBeGreaterThan(0);
+   284→      expect(detail.slots.some((s) => s.capacity > s.booked)).toBe(true);
+   285→      await expectOk("createRound", () =>
+   286→        applications.createRound({ name: "Đợt 01/2027", opensAt: "2027-01-02", closesAt: "2027-01-20" }));
+   287→      await expectOk("roundStatus", () => applications.roundStatus(rounds[0].id, "closed"));
+   288→      await expectOk("createInterviewSlot", () =>
+   289→        applications.createInterviewSlot(rounds[0].id, {
+   290→          roleCode: "backend", startsAt: "2026-12-02T09:00:00Z", endsAt: "2026-12-02T11:00:00Z",
+   291→          timezone: "Asia/Ho_Chi_Minh", capacity: 3, minimumPreparationMinutes: 30, credentialsLeadMinutes: 60,
+   292→        }));
+   293→      const closed = await applications.closeInterviewSlot(rounds[0].id, "slot-13");
+   294→      expect(closed).toBe(true);
+   295→      const applicationsPage = await applications.roundApplications(rounds[0].id, 1);
+   296→      expect(applicationsPage.total).toBeGreaterThanOrEqual(6);
+   297→      const statuses = new Set(applicationsPage.items.map((a) => a.status));
+   298→      expect(statuses).toContain("new");
+   299→      expect(statuses).toContain("passed");
+   300→      expect(statuses).toContain("failed");
+   301→      await expectOk("staffApplication", () =>
+   302→        applications.staffApplication(rounds[0].id, "app-2026-331"));
+   303→      const rebooked = await applications.rebookApplication(rounds[0].id, "app-2026-336", "slot-11", "retake");
+   304→      expect(rebooked).toBe(true);
+   305→      await expectOk("applicationAction", () =>
+   306→        applications.applicationAction(rounds[0].id, "app-2026-338", "cancel"));
+   307→      const cv = await applications.downloadStaffCv(rounds[0].id, "app-2026-331");
+   308→      expect(cv).toBeInstanceOf(Blob);
+   309→      const resent = await applications.resendApplicationCredentials(rounds[0].id, "app-2026-334", false);
+   310→      expect(resent).toBe(true);
+   311→      await expectOk("previewCredentialRecovery", () =>
+   312→        recovery.previewCredentialRecovery(rounds[0].id, "app-2026-337", "slot-11"));
+   313→      const recovered = await recovery.recoverApplicationCredentials(rounds[0].id, "app-2026-337", {
+   314→        slotId: "slot-11", expectedRevision: "rev-1", reason: "mất email",
+   315→      });
+   316→      expect(recovered.recovered).toBe(true);
+   317→      const list = await reports.listReports(1, "");
+   318→      expect(list.items.length).toBeGreaterThanOrEqual(5);
+   319→      expect(list.counts.length).toBe(5);
+   320→      const saved = await reports.getSavedReport("rp-1");
+   321→      expect(saved.snapshot.members.length).toBeGreaterThan(0);
+   322→      await expectOk("createReport", () =>
+   323→        reports.createReport({
+   324→          projectId: "prj-lib", title: "Báo cáo test", kind: "review", requestId: "req-report-1",
+   325→        }));
+   326→      const pdf = await reports.getReportPdf("rp-1");
+   327→      expect(pdf).toBeInstanceOf(Blob);
+   328→      const xlsx = await reports.getReportExcel("rp-1");
+   329→      expect(xlsx).toBeInstanceOf(Blob);
+   330→    });
+   331→  });
+   332→
+   333→  it("Q+R+S+T) phiên, dự án, burndown, sprint", async () => {
+   334→    await withPreview(async () => {
+   335→      const academic = await import("@/lib/api/academic");
+   336→      const sessionsApi = await import("@/lib/api/sessions");
+   337→      const projectSessions = await import("@/lib/api/project-sessions");
+   338→      const delivery = await import("@/lib/api/delivery");
+   339→      const sessionWork = await import("@/lib/api/session-work");
+   340→      const sessionRows = await academic.listAcademic("sessions", 1);
+   341→      expect(sessionRows.items.map((s) => s.id)).toEqual(
+   342→        expect.arrayContaining(["ss-f26", "ss-s26", "ss-w27"]),
+   343→      );
+   344→      const projectRows = await academic.listAcademic("projects", 1);
+   345→      expect(projectRows.items.map((p) => p.id)).toContain("prj-lib");
+   346→      await expectOk("getAcademic session", () => academic.getAcademic("sessions", "ss-f26"));
+   347→      await expectOk("getAcademic project", () => academic.getAcademic("projects", "prj-lib"));
+   348→      await expectOk("saveAcademic session (create)", () =>
+   349→        academic.saveAcademic("sessions", undefined, {
+   350→          code: "SS-T27", name: "Kỳ test", description: "Mô tả", startDate: "2027-02-01", endDate: "2027-05-01",
+   351→        }));
+   352→      await expectOk("saveAcademic project (update)", () =>
+   353→        academic.saveAcademic("projects", "prj-edu", { name: "App học tiếng Việt", description: "Sửa mô tả" }));
+   354→      await expectOk("transitionSession", () => academic.transitionSession("ss-f26", "ending"));
+   355→      await expectOk("getMembers (sessions)", () => academic.getMembers("sessions", "ss-f26"));
+   356→      await expectOk("getMembers (projects)", () => academic.getMembers("projects", "prj-lib"));
+   357→      await expectOk("getInstructors", () => academic.getInstructors("ss-f26"));
+   358→      await expectOk("instructorOptions", () => academic.instructorOptions(1, ""));
+   359→      await expectOk("getMilestones", () => academic.getMilestones("ss-f26"));
+   360→      await expectOk("saveMilestone (create)", () =>
+   361→        academic.saveMilestone("ss-f26", undefined, { title: "Cột mốc mới", dueDate: "2026-12-20" }));
+   362→      await expectOk("saveMilestone (update)", () =>
+   363→        academic.saveMilestone("ss-f26", "ms-1", { status: "completed" }));
+   364→      await expectOk("deleteMilestone", () => academic.deleteMilestone("ss-f26", "ms-4"));
+   365→      await expectOk("getProjectSlots", () => academic.getProjectSlots("prj-lib"));
+   366→      await expectOk("getProjectFilterOptions", () => academic.getProjectFilterOptions());
+   367→      const projectSessionList = await projectSessions.getProjectSessions("prj-lib");
+   368→      expect(projectSessionList.some((s) => s.id === "ss-f26")).toBe(true);
+   369→      const claimed = await projectSessions.claimProject("prj-blog");
+   370→      expect(claimed).toBe("prj-blog");
+   371→      const detail = await sessionsApi.getSessionDetail("ss-f26");
+   372→      expect(detail.overview.id).toBe("ss-f26");
+   373→      expect(detail.members.length).toBeGreaterThan(0);
+   374→      expect(detail.milestones.length).toBeGreaterThan(0);
+   375→      const burndown = await delivery.fetchSprintBurndown("sp-03");
+   376→      expect(burndown.length).toBeGreaterThan(10);
+   377→      expect(burndown[0].ideal).toBeGreaterThan(0);
+   378→      const sprints = await delivery.listSprints({ page: 1, pageSize: 10 });
+   379→      const statuses = sprints.items.map((s) => s.status);
+   380→      expect(statuses).toEqual(expect.arrayContaining(["active", "completed", "planned"]));
+   381→      await expectOk("getSprint", () => delivery.getSprint("sp-03"));
+   382→      await expectOk("listSessionWork", () =>
+   383→        sessionWork.listSessionWork({ sessionId: "ss-f26", page: 1, pageSize: 20 }));
+   384→      await expectOk("listSessionTimeline", () => sessionWork.listSessionTimeline("ss-f26", 1));
+   385→    });
+   386→  });
+   387→
+   388→  it("U) mutation nhiệm vụ + bài nộp", async () => {
+   389→    await withPreview(async () => {
+   390→      const management = await import("@/lib/api/management");
+   391→      const work = await import("@/lib/api/work");
+   392→      const submissions = await import("@/lib/api/submissions");
+   393→      const created = await management.saveManagedTask(undefined, {
+   394→        title: "Task test preview", priority: "high", storyPoints: 3,
+   395→      });
+   396→      expect(created.status).toBe("todo");
+   397→      const patched = await management.saveManagedTask("ts-20", { status: "review" });
+   398→      expect(patched.version).toBeGreaterThan(2);
+   399→      await expectOk("deleteTask", () => management.deleteTask("ts-24"));
+   400→      const mine = await work.updateOwnTask("ts-21", { status: "review", progress: 60, expectedVersion: 1 });
+   401→      expect(mine.status).toBe("review");
+   402→      await expectOk("getBoard", () => work.getBoard("sp-03"));
+   403→      const submitted = await submissions.submitCode("ts-20", {
+   404→        prUrl: "https://github.com/vintern-2026/library-system/pull/49",
+   405→        summary: "Preview submit", version: 2,
+   406→      });
+   407→      expect(submitted.status).toBe("submitted");
+   408→      const withdrawn = await submissions.withdrawCode(submitted.id);
+   409→      expect(withdrawn.status).toBe("withdrawn");
+   410→      const reviewed = await submissions.confirmCodeReview("sub-1", {
+   411→        rubric: { functional: 85, quality: 80, testing: 78, errors: 82, security: 84, dod: 80 },
+   412→        feedback: "Đạt", taskVersion: 2,
+   413→      });
+   414→      expect(reviewed.status).toBe("approved");
+   415→      const reviews = await submissions.runCodeReview("sub-1");
+   416→      expect(reviews.length).toBeGreaterThan(0);
+   417→    });
+   418→  });
+   419→
+   420→  it("V+W) kế hoạch AI + bản dựng dự án", async () => {
+   421→    await withPreview(async () => {
+   422→      const planning = await import("@/lib/api/planning");
+   423→      const templates = await import("@/lib/api/templates");
+   424→      const materials = await import("@/lib/api/template-materials");
+   425→      const plans = await planning.listPlans("ss-f26");
+   426→      expect(plans.length).toBeGreaterThan(0);
+   427→      expect(plans.some((p) => p.projectId === "prj-lib")).toBe(true);
+   428→      const plan = await planning.getPlan("plan-772");
+   429→      expect(plan.draft?.sprints.length).toBeGreaterThan(0);
+   430→      const generated = await planning.generatePlan({ projectId: "prj-lib", sessionId: "ss-f26" });
+   431→      expect(generated.planId).toBeTruthy();
+   432→      const confirmed = await planning.confirmPlan({
+   433→        projectId: "prj-lib", sessionId: "ss-f26", draft: {}, requestId: "req-plan-1",
+   434→      });
+   435→      expect(confirmed.taskIds.length).toBeGreaterThan(0);
+   436→      const draft = await planning.draftSprintPlan({ projectId: "prj-lib", sessionId: "ss-f26" });
+   437→      expect(draft.draft.sprints.length).toBeGreaterThan(0);
+   438→      const list = await templates.listTemplates({ page: 1, pageSize: 10 });
+   439→      expect(list.items.length).toBeGreaterThanOrEqual(4);
+   440→      const detail = await templates.getTemplate("tpl-lib");
+   441→      expect(detail.runs.some((r) => r.sessionId === "ss-f26")).toBe(true);
+   442→      const activated = await templates.setTemplateStatus({ id: "tpl-edu", version: 1 }, "active");
+   443→      expect(activated.status).toBe("active");
+   444→      const started = await templates.startTemplateSession("tpl-lib", {
+   445→        name: "Kỳ từ bản dựng", startDate: "2027-01-04", endDate: "2027-04-04",
+   446→      });
+   447→      expect(started.sessionId).toBeTruthy();
+   448→      const revisions = await materials.listTemplateRevisions("tpl-lib");
+   449→      expect(revisions.items.length).toBeGreaterThan(0);
+   450→      await expectOk("getTemplateRevision", () => materials.getTemplateRevision("tpl-lib", 2));
+   451→      await expectOk("getTemplateContext", () => templates.getTemplateContext("prj-lib"));
+   452→      const assessment = await materials.getPinnedProjectAssessment("prj-lib");
+   453→      expect(assessment.assessment?.rubric.length).toBeGreaterThan(0);
+   454→      const packagePayload = await materials.getOwnProjectPackage("prj-lib");
+   455→      expect(packagePayload.learningPackage?.starterFiles.length).toBeGreaterThan(0);
+   456→    });
+   457→  });
+   458→
+   459→  it("X+Y) kỳ đánh giá + phiếu đánh giá + review nhập", async () => {
+   460→    await withPreview(async () => {
+   461→      const management = await import("@/lib/api/management");
+   462→      const imported = await import("@/lib/api/imported-reviews");
+   463→      const cycles = await management.listCycles(1);
+   464→      expect(cycles.items.some((c) => c.status === "open")).toBe(true);
+   465→      await expectOk("createCycle", () =>
+   466→        management.createCycle({
+   467→          code: "EV-2027-MID", name: "Giữa kỳ 2027", type: "midterm",
+   468→          projectId: "prj-edu", sessionId: "ss-w27", startDate: "2027-03-01", endDate: "2027-03-15",
+   469→        }));
+   470→      await expectOk("updateCycle", () =>
+   471→        management.updateCycle("cycle-2026-final", { name: "Cuối kỳ Thu 2026", startDate: "2026-11-20", endDate: "2026-12-05" }));
+   472→      await expectOk("transitionCycle", () => management.transitionCycle("cycle-2026-final", "closed"));
+   473→      const criteria = await management.getCriteria("cycle-2026-final");
+   474→      expect(criteria.length).toBeGreaterThan(0);
+   475→      await expectOk("createCriterion", () =>
+   476→        management.createCriterion("cycle-2026-final", { code: "CR-TEST", name: "Kiểm thử", weight: 20, maxScore: 100 }));
+   477→      await expectOk("updateCriterion", () =>
+   478→        management.updateCriterion("cycle-2026-final", "cr-quality", { name: "Chất lượng mã nguồn", weight: 40, maxScore: 100 }));
+   479→      await expectOk("deleteCriterion", () => management.deleteCriterion("cycle-2026-final", "cr-collab"));
+   480→      const evaluations = await management.listManagedEvaluations(1, "", "");
+   481→      const statuses = [...new Set(evaluations.items.map((e) => e.status))];
+   482→      expect(statuses).toEqual(expect.arrayContaining(["draft", "submitted", "finalized"]));
+   483→      expect(evaluations.items.some((e) => e.internId === "pv-intern-1")).toBe(true);
+   484→      await expectOk("createEvaluation", () => management.createEvaluation("cycle-2026-final", "pv-intern-4"));
+   485→      const detail = await management.getManagedEvaluation("ev-2026-mid");
+   486→      expect(detail.scores.length).toBeGreaterThan(0);
+   487→      await expectOk("saveEvaluation", () =>
+   488→        management.saveEvaluation("ev-2026-final-draft", {
+   489→          scores: [{ criterionId: "cr-quality", score: 87, comment: "Ổn" }],
+   490→          summary: "Tiến bộ rõ rệt.",
+   491→        }));
+   492→      const submittedEval = await management.advanceEvaluation("ev-2026-final-draft", "submit");
+   493→      expect(submittedEval.status).toBe("submitted");
+   494→      const finalizedEval = await management.advanceEvaluation("ev-2026-final-draft", "finalize");
+   495→      expect(finalizedEval.status).toBe("finalized");
+   496→      const suggestion = await management.suggestEvaluation("ev-2026-final-draft");
+   497→      expect(suggestion.criteria.length).toBeGreaterThan(0);
+   498→      const suggestions = await management.listEvaluationSuggestions("ev-2026-mid");
+   499→      expect(suggestions.length).toBeGreaterThan(0);
+   500→      const one = await management.getEvaluationSuggestion("ev-2026-mid", "ais-1");
+   501→      expect(one.suggestion).toBeTruthy();
+   502→      const reviews = await imported.listImportedReviews();
+   503→      expect(reviews.length).toBeGreaterThanOrEqual(5);
+   504→      const updated = await imported.updateImportedReview(reviews[0], {
+   505→        score: 90, status: "passed", feedback: "Đã soát lại",
+   506→      });
+   507→      expect(updated).toBeGreaterThan(reviews[0].version);
+   508→    });
+   509→  });
+   510→
+   511→  it("Z) participation ops + thay người + repo access jobs", async () => {
+   512→    await withPreview(async () => {
+   513→      const participation = await import("@/lib/api/participation");
+   514→      const replacements = await import("@/lib/api/replacements");
+   515→      const repositoryAccess = await import("@/lib/api/repository-access");
+   516→      const refreshed = await participation.refreshParticipation("ss-f26");
+   517→      expect(refreshed).toBeTruthy();
+   518→      const policy = await participation.saveParticipationPolicy("ss-f26", {
+   519→        warningFrom: 2, penaltyFrom: 4, replacementFrom: 6,
+   520→        penaltyPoints: -2, penaltyCap: -10, expectedVersion: 3, reason: "Siết chính sách",
+   521→      });
+   522→      expect(policy.version).toBeGreaterThan(3);
+   523→      await expectOk("resolveParticipation", () =>
+   524→        participation.resolveParticipation("ss-f26", "inc-1", {
+   525→          action: "excused", expectedDeadlineVersion: 2, reason: "Nghỉ ốm",
+   526→        }));
+   527→      await expectOk("extendParticipationDeadline", () =>
+   528→        participation.extendParticipationDeadline("ss-f26", "ts-21", {
+   529→          expectedVersion: 1, until: "2026-11-30T17:00:00Z", reason: "Động lực chính đáng",
+   530→        }));
+   531→      const advice = await replacements.replacementAdvice("ss-f26", "inc-1");
+   532→      expect(advice.candidates.length).toBeGreaterThan(0);
+   533→      const preview = await replacements.prepareReplacement("ss-f26", "inc-1", {
+   534→        adviceId: advice.id, candidateId: advice.candidates[0].userId, handoverHours: 4,
+   535→      });
+   536→      expect(preview.document.taskPlan.transfers.length).toBeGreaterThan(0);
+   537→      const approved = await replacements.approveReplacement("ss-f26", "cmd-991", {
+   538→        expectedPreviewHash: preview.previewHash, reason: "Duyệt thay người",
+   539→      });
+   540→      expect(approved.transferredTaskIds.length).toBeGreaterThan(0);
+   541→      const command = await replacements.getReplacementCommand("ss-f26", "cmd-991");
+   542→      expect(command.result?.commandId).toBe("cmd-991");
+   543→      const jobs = await repositoryAccess.sessionRepositoryAccess("ss-f26");
+   544→      expect(jobs.items.length).toBeGreaterThan(0);
+   545→      await expectOk("retryRepositoryAccess", () =>
+   546→        repositoryAccess.retryRepositoryAccess("ss-f26", "raj-2", {
+   547→          expectedRevision: "ra-rev-2", reason: "Thử lại sau lỗi GitHub",
+   548→        }));
+   549→    });
+   550→  });
+   551→
+   552→  it("AA) recruitment me — pv-intern-3 đứng ở bước welcome", async () => {
+   553→    await withPreview(async () => {
+   554→      const { setPreviewAccount } = await import("../store");
+   555→      setPreviewAccount("pv-intern-3");
+   556→      const careers = await import("@/lib/api/career-roles");
+   557→      const recruiting = await careers.listRecruitingCareers();
+   558→      expect(recruiting.length).toBeGreaterThan(0);
+   559→      const recruitment = await import("@/lib/api/recruitment").then((m) => m.recruitmentApi);
+   560→      const profile = await recruitment.me();
+   561→      expect(profile.status).toBe("not_started");
+   562→      expect(profile.selectedRole).toBeNull();
+   563→      expect(profile.attemptNumber).toBe(0);
+   564→      const selected = await recruitment.selectRole("frontend");
+   565→      expect(selected.status).toBe("role_selected");
+   566→      expect(selected.selectedRole).toBe("frontend");
+   567→      const history = await recruitment.history(1);
+   568→      expect(history.total).toBeGreaterThan(0);
+   569→      const interview = await recruitment.start();
+   570→      expect(interview.session.status).toBe("in_progress");
+   571→      expect(interview.questions.length).toBeGreaterThan(0);
+   572→      await expectOk("sessionStatus", () => recruitment.sessionStatus(interview.session.id));
+   573→      const questions = await recruitment.questions(interview.session.id);
+   574→      expect(questions.questions[0].answered).toBe(false);
+   575→      const saved = await recruitment.saveAnswer(interview.session.id, questions.questions[0].id, "Trả lời mẫu");
+   576→      expect(saved.answeredAt).toBeTruthy();
+   577→      const followUp = await recruitment.saveFollowUp(interview.session.id, questions.questions[0].id, "Làm rõ thêm");
+   578→      expect(followUp.saved).toBe(true);
+   579→      const conversation = await import("@/lib/api/recruitment").then((m) => m.conversationView(interview.session.id));
+   580→      expect(conversation.messages.length).toBeGreaterThan(0);
+   581→      const next = await import("@/lib/api/recruitment").then((m) => m.conversationNext(interview.session.id));
+   582→      expect(next.currentQuestion).toBeTruthy();
+   583→      const clarify = await import("@/lib/api/recruitment").then((m) => m.conversationClarify(interview.session.id));
+   584→      expect(clarify.currentQuestion?.kind).toBe("main");
+   585→      const evaluation = await recruitment.submit(interview.session.id);
+   586→      expect(evaluation.result?.decision).toBe("passed");
+   587→      const retried = await recruitment.retryEvaluation(interview.session.id);
+   588→      expect(retried.result).toBeTruthy();
+   589→      const result = await recruitment.result();
+   590→      expect(result.overallScore).toBeGreaterThan(0);
+   591→    });
+   592→  });
+   593→
+   594→  it("AB+AC+AD) ứng viên, phân công, tiện ích intern", async () => {
+   595→    await withPreview(async () => {
+   596→      const academic = await import("@/lib/api/academic");
+   597→      const candidates = await academic.searchCandidates({ page: 1, pageSize: 20 });
+   598→      expect(candidates.items.length).toBeGreaterThanOrEqual(5);
+   599→      expect(candidates.items.some((c) => c.userId === "pv-intern-1")).toBe(true);
+   600→      await expectOk("listCandidates", () => academic.listCandidates(1));
+   601→      await expectOk("getCandidateDetail", () => academic.getCandidateDetail("pv-intern-1"));
+   602→      const assignments = await academic.listSessionAssignments("ss-f26");
+   603→      expect(assignments.some((a) => a.internId === "pv-intern-1" && a.status === "active")).toBe(true);
+   604→      const created = await academic.assignIntern({
+   605→        internId: "pv-intern-3", projectId: "prj-lib", sessionId: "ss-f26", role: "frontend",
+   606→      });
+   607→      expect(created).toBeTruthy();
+   608→      const cancelled = await academic.cancelAssignment("asg-5");
+   609→      expect(cancelled).toBe("asg-5");
+   610→      const completed = await academic.completeAssignment("asg-5");
+   611→      expect(completed).toBe("asg-5");
+   612→      const outcomes = await import("@/lib/api/outcomes");
+   613→      const pdf = await outcomes.getCertificatePdf("cert-01");
+   614→      expect(pdf).toBeInstanceOf(Blob);
+   615→    });
+   616→  });
+   617→
+   618→  it("endpoint vẫn chưa mock → 501 trung thực (cơ chế giữ nguyên)", async () => {
+   619→    await withPreview(async () => {
+   620→      const { previewFetch } = await import("../transport");
+   621→      await expect(
+   622→        previewFetch("/admin/unknown-endpoint-gap2", { token: null }),
+   623→      ).rejects.toMatchObject({ code: "PREVIEW_ENDPOINT_NOT_MOCKED" });
+   624→    });
+   625→  });
+   626→});
+   627→

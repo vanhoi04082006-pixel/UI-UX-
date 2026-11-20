@@ -1,0 +1,2002 @@
+     1→/**
+     2→ * ROUTER PREVIEW — khớp (method, path) thật mà lib/api gọi qua apiFetch.
+     3→ *
+     4→ * Quy tắc trung thực (Section 10/11 master brief):
+     5→ * - Endpoint nào chưa mock → ném ApiError 501 PREVIEW_ENDPOINT_NOT_MOCKED
+     6→ *   (hiện ErrorState; coverage matrix ghi rõ endpoint chưa mock, không bịa).
+     7→ * - Thao tác có trạng thái thật trong phiên: đánh dấu thông báo đã đọc
+     8→ *   cập nhật danh sách mock — hành vi nhất quán, không chỉ vẽ UI.
+     9→ * - Scenario do transport áp phủ (xem transport.ts): mọi handler chỉ lo dữ liệu.
+    10→ */
+    11→import { ApiError } from "@/lib/auth/api-client";
+    12→import {
+    13→  PREVIEW_ACCOUNTS,
+    14→  PREVIEW_ACCOUNTS_BY_ID,
+    15→  currentStoredAccountId,
+    16→  resolvePreviewAccount,
+    17→  type PreviewAccount,
+    18→} from "./accounts";
+    19→import {
+    20→  currentAccountId,
+    21→  resetPreviewState,
+    22→  setPreviewAccount,
+    23→} from "./store";
+    24→import {
+    25→  activityFor,
+    26→  adminDashboard,
+    27→  auditsFor,
+    28→  boardFor,
+    29→  certificatesFor,
+    30→  groupsFor,
+    31→  rolesFor,
+    32→  usersFor,
+    33→  evaluationsFor,
+    34→  instructorDashboard,
+    35→  internPerformance,
+    36→  internWorkspace,
+    37→  kpiDetailFor,
+    38→  kpisFor,
+    39→  ledgerFor,
+    40→  mentorConversationsFor,
+    41→  mentorDetailFor,
+    42→  notificationsFor,
+    43→  ownProjectFor,
+    44→  recommendationsFor,
+    45→  tasksFor,
+    46→} from "./data";
+    47→import { currentScenario } from "./store";
+    48→import {
+    49→  AI_SUGGESTION_ROWS,
+    50→  ASSIGNMENT_ROWS,
+    51→  BANK_QUESTIONS,
+    52→  CAREER_ROLES,
+    53→  CATALOG_ITEMS,
+    54→  CATALOG_TYPES,
+    55→  EVALUATION_CRITERIA,
+    56→  EVALUATION_CYCLES,
+    57→  GROUP_MEMBERS,
+    58→  GROUP_ROLES,
+    59→  IMPORTED_REVIEWS,
+    60→  KPI_PERIODS,
+    61→  KPI_RESULTS,
+    62→  KPI_METRICS,
+    63→  KNOWLEDGE_DOCS,
+    64→  MAIL_LOG,
+    65→  MANAGED_EVALUATIONS,
+    66→  PERFORMANCE_MEMBERS,
+    67→  PLAN_SUMMARIES,
+    68→  PROJECT_MEMBERS,
+    69→  PROJECT_ROWS,
+    70→  PROJECT_SLOTS,
+    71→  PROJECT_SESSIONS,
+    72→  PUBLIC_ROUNDS,
+    73→  RECRUITMENT_CANDIDATES,
+    74→  REPORT_LIST,
+    75→  ROUND_APPLICATIONS,
+    76→  ROUND_SLOTS,
+    77→  SALARY_LEDGER,
+    78→  SESSION_MEMBERS,
+    79→  SESSION_MILESTONES,
+    80→  SESSION_SPRINT_PROGRESS,
+    81→  SESSION_TIMELINE,
+    82→  SESSION_ROWS,
+    83→  SPRINT_ROWS,
+    84→  TEMPLATE_SUMMARIES,
+    85→  aiConfigurationPayload,
+    86→  aiSuggestionPayload,
+    87→  businessRunsPayload,
+    88→  candidateApplication,
+    89→  candidateDetailPayload,
+    90→  githubActivityFor,
+    91→  githubStatusFor,
+    92→  interviewConversationPayload,
+    93→  interviewEvaluationPayload,
+    94→  interviewHistoryPayload,
+    95→  interviewPayload,
+    96→  interviewSessionPayload,
+    97→  knowledgeDocument,
+    98→  knowledgeMetadata,
+    99→  knowledgeRevisions,
+   100→  learningPackagePayload,
+   101→  mailPreview,
+   102→  planDetailPayload,
+   103→  planDraftBody,
+   104→  permissionsForRole,
+   105→  projectTemplateContextPayload,
+   106→  recruitmentMeProfile,
+   107→  replacementAdvicePayload,
+   108→  replacementPreviewPayload,
+   109→  replacementResultPayload,
+   110→  reportCounts,
+   111→  reportDetailPayload,
+   112→  repositoryAccessJobsPayload,
+   113→  repositoryAccountFor,
+   114→  sessionRepositoryPayload,
+   115→  sessionWorkPayload,
+   116→  sha256like,
+   117→  sprintBurndownPayload,
+   118→  studentDetailPayload,
+   119→  systemContractsPayload,
+   120→  systemRepositoriesPayload,
+   121→  systemStatusPayload,
+   122→  knowledgeRunPayload,
+   123→  templateAssessmentPayload,
+   124→  templateDetailPayload,
+   125→  templateRevisionDetail,
+   126→  templateRevisionsPayload,
+   127→  questionCoverage,
+   128→  ADMIN_CERTIFICATES,
+   129→  issuedCertificateFor,
+   130→  staffApplicationPayload,
+   131→  evaluationDetailPayload,
+   132→  recruitmentResultPayload,
+   133→  SETTINGS_ROWS,
+   134→  INSTRUCTOR_ROW,
+   135→} from "./admin-data";
+   136→
+   137→export interface PreviewRequestContext {
+   138→  method: string;
+   139→  path: string; // không có query string
+   140→  query: URLSearchParams;
+   141→  body: unknown;
+   142→  token?: string | null;
+   143→  account: PreviewAccount;
+   144→  scenario: ReturnType<typeof currentScenario>;
+   145→}
+   146→
+   147→interface RouteHandler {
+   148→  method: string;
+   149→  /** Pattern dạng chuẩn hoá: bỏ query, giữ param động nguyên văn. */
+   150→  test: (path: string) => boolean;
+   151→  handle: (ctx: PreviewRequestContext) => unknown;
+   152→}
+   153→
+   154→const err = (status: number, code: string, message: string, details?: unknown) =>
+   155→  new ApiError(status, code, message, details);
+   156→
+   157→/** Đăng nhập demo: đúng tài khoản + mật khẩu demo.
+   158→ *  Persist lựa chọn vào preview store: sessionStorage đóng vai "refresh cookie"
+   159→ *  của preview — reload sau đó /auth/refresh trả lại đúng tài khoản này. */
+   160→function login(ctx: PreviewRequestContext): unknown {
+   161→  const body = (ctx.body ?? {}) as { email?: string; password?: string };
+   162→  const found = PREVIEW_ACCOUNTS.find((a) => a.email === body.email);
+   163→  if (!found || body.password !== found.password)
+   164→    throw err(401, "INVALID_CREDENTIALS", "Email hoặc mật khẩu không chính xác.");
+   165→  rememberSessionAccount(found.id);
+   166→  setPreviewAccount(found.id);
+   167→  return { accessToken: `preview-token-${found.id}`, user: found.user };
+   168→}
+   169→
+   170→function me(ctx: PreviewRequestContext): unknown {
+   171→  return ctx.account.user;
+   172→}
+   173→
+   174→function refresh(ctx: PreviewRequestContext): unknown {
+   175→  /* Khách chưa từng đăng nhập preview (không token, không preview state):
+   176→     401 như refresh cookie thật không tồn tại → guard đưa về /login. Chỉ khi
+   177→     đã login (store có account) hoặc token preview-token-* hợp lệ mới có phiên. */
+   178→  const stored =
+   179→    activeAccountId ?? currentStoredAccountId() ?? currentAccountId();
+   180→  if (!stored && !ctx.token)
+   181→    throw err(401, "NO_PREVIEW_SESSION", "Chưa có phiên preview (đăng nhập bằng tài khoản demo).");
+   182→  rememberSessionAccount(ctx.account.id);
+   183→  return { accessToken: `preview-token-${ctx.account.id}`, user: ctx.account.user };
+   184→}
+   185→
+   186→/** Trong-memory session account bám theo token preview-token-<id>. */
+   187→let activeAccountId: string | null = null;
+   188→function rememberSessionAccount(id: string): void {
+   189→  activeAccountId = id;
+   190→}
+   191→
+   192→/** account cho request: ưu tiên (1) token preview-token-<id>, (2) module
+   193→ *  memory activeAccountId, (3) lựa chọn trong preview store (sessionStorage —
+   194→ *  giữ qua reload, đóng vai "refresh cookie" của preview), (4) mặc định role. */
+   195→function accountForRequest(token?: string | null): PreviewAccount {
+   196→  if (token?.startsWith("preview-token-")) {
+   197→    const id = token.slice("preview-token-".length);
+   198→    const byToken = PREVIEW_ACCOUNTS.find((a) => a.id === id);
+   199→    if (byToken) {
+   200→      activeAccountId = id;
+   201→      return byToken;
+   202→    }
+   203→  }
+   204→  const remembered = activeAccountId
+   205→    ?? currentStoredAccountId()
+   206→    ?? currentAccountId();
+   207→  if (remembered && PREVIEW_ACCOUNTS_BY_ID[remembered]) {
+   208→    activeAccountId = remembered;
+   209→    return PREVIEW_ACCOUNTS_BY_ID[remembered];
+   210→  }
+   211→  const roleGuess = remembered
+   212→    ? PREVIEW_ACCOUNTS_BY_ID[remembered]?.user.roles[0]
+   213→    : undefined;
+   214→  return resolvePreviewAccount(roleGuess ?? null);
+   215→}
+   216→
+   217→
+   218→/** Trang theo contract Nest chuẩn ({data, meta}) — parsePage của parse.ts. */
+   219→function nestPage<T>(items: T[], page: number, pageSize: number) {
+   220→  const total = items.length;
+   221→  const start = (Math.max(1, page) - 1) * pageSize;
+   222→  return {
+   223→    data: items.slice(start, start + pageSize),
+   224→    meta: {
+   225→      total,
+   226→      page: Math.max(1, page),
+   227→      pageSize,
+   228→      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+   229→    },
+   230→  };
+   231→}
+   232→
+   233→function participationFor(scenario: ReturnType<typeof currentScenario>, page: number) {
+   234→  const empty = scenario === "empty";
+   235→  const items = empty
+   236→    ? []
+   237→    : [
+   238→      {
+   239→        id: "inc-1",
+   240→        taskId: "ts-12",
+   241→        internId: "pv-intern-1",
+   242→        sessionId: "ss-f26",
+   243→        deadlineVersion: 2,
+   244→        policyVersion: 3,
+   245→        dueAt: iso(-19, 17),
+   246→        submittedAt: iso(-19, 19),
+   247→        kind: "late",
+   248→        status: "active",
+   249→        ordinal: 1,
+   250→        points: -1,
+   251→        recommendReplacement: false,
+   252→        replacementEligible: false,
+   253→        createdAt: iso(-19, 20),
+   254→        reason: null,
+   255→        taskCode: "TS-12",
+   256→        taskTitle: "Trang chi tiết tài liệu",
+   257→        displayName: "Nguyễn An Khang",
+   258→        sessionName: "Kỳ thực tập Thu 2026",
+   259→        baseScore: 8,
+   260→        latePenalty: -1,
+   261→        score: 7,
+   262→        submissionStatus: "late",
+   263→      },
+   264→      {
+   265→        id: "inc-2",
+   266→        taskId: "ts-24",
+   267→        internId: "pv-intern-1",
+   268→        sessionId: "ss-f26",
+   269→        deadlineVersion: 2,
+   270→        policyVersion: 3,
+   271→        dueAt: iso(1, 17),
+   272→        submittedAt: null,
+   273→        kind: "missing",
+   274→        status: "excused",
+   275→        ordinal: 2,
+   276→        points: 0,
+   277→        recommendReplacement: false,
+   278→        replacementEligible: false,
+   279→        createdAt: iso(1, 18),
+   280→        reason: "Nghỉ ốm có giấy xác nhận.",
+   281→        taskCode: "TS-24",
+   282→        taskTitle: "Xuất báo cáo tồn kho",
+   283→        displayName: "Nguyễn An Khang",
+   284→        sessionName: "Kỳ thực tập Thu 2026",
+   285→        baseScore: null,
+   286→        latePenalty: null,
+   287→        score: null,
+   288→        submissionStatus: null,
+   289→      },
+   290→    ];
+   291→  return {
+   292→    items,
+   293→    summary: { total: items.length, active: items.filter((i) => i.status === "active").length, registeredPenalty: items.reduce((sum, i) => sum + i.points, 0) },
+   294→    page,
+   295→    pageSize: 20,
+   296→  };
+   297→}
+   298→
+   299→function ownSprintsList(scenario: ReturnType<typeof currentScenario>) {
+   300→  if (scenario === "empty") return [];
+   301→  return [
+   302→    { id: "sp-03", code: "SP-03", name: "Sprint 03 — Mượn/trả sách", status: "active", startDate: iso(-7), endDate: iso(7) },
+   303→    { id: "sp-02", code: "SP-02", name: "Sprint 02 — Định danh tài liệu", status: "completed", startDate: iso(-27), endDate: iso(-8) },
+   304→    { id: "sp-01", code: "SP-01", name: "Sprint 01 — Khung dự án", status: "completed", startDate: iso(-47), endDate: iso(-28) },
+   305→  ];
+   306→}
+   307→
+   308→function taskDetail(ctx: PreviewRequestContext): unknown {
+   309→  const id = ctx.path.split("/")[2];
+   310→  return tasksFor(ctx.scenario).find((t) => t.id === id) ?? {
+   311→    ...tasksFor(ctx.scenario)[0],
+   312→    sprint: { id: "sp-03", code: "SP-03", name: "Sprint 03 — Mượn/trả sách", status: "active" },
+   313→  };
+   314→}
+   315→
+   316→function taskComments() {
+   317→  return [
+   318→    { id: "cm-1", content: "Đã thêm kiểm thử cho nhánh vượt hạn mức.", authorId: "pv-intern-1", createdAt: iso(-2, 14) },
+   319→    { id: "cm-2", content: "Nhớ ghi rõ lý do đổi deadline trong mô tả PR.", authorId: "pv-inst-1", createdAt: iso(-1, 9) },
+   320→  ];
+   321→}
+   322→
+   323→function taskHistory() {
+   324→  return [
+   325→    { id: "h-1", fromStatus: "doing", toStatus: "review", changedById: "pv-intern-1", reason: "Nộp PR chờ duyệt", createdAt: iso(-2, 16) },
+   326→    { id: "h-2", fromStatus: "todo", toStatus: "doing", changedById: "pv-intern-1", reason: null, createdAt: iso(-5, 10) },
+   327→  ];
+   328→}
+   329→
+   330→function mentorDetailFromPath(ctx: PreviewRequestContext): ReturnType<typeof mentorDetailFor> {
+   331→  const id = ctx.path.split("/")[5];
+   332→  return mentorDetailFor(id, ctx.scenario);
+   333→}
+   334→
+   335→const iso = (dayOffset: number, hour = 9) =>
+   336→  new Date(Date.now() + dayOffset * 86400000 + hour * 3600000).toISOString();
+   337→
+   338→
+   339→function pageOf(ctx: PreviewRequestContext): number {
+   340→  return Number(ctx.query.get("page") ?? 1) || 1;
+   341→}
+   342→
+   343→function pageSizeOf(ctx: PreviewRequestContext, fallback: number): number {
+   344→  const size = Number(ctx.query.get("pageSize") ?? fallback) || fallback;
+   345→  return Math.max(1, Math.min(200, size));
+   346→}
+   347→
+   348→/** Envelope legacy `{ items, total, page, pageSize }` (question-bank, kpi, career...). */
+   349→function itemsPage<T>(items: T[], page: number, pageSize: number) {
+   350→  return {
+   351→    items,
+   352→    total: items.length,
+   353→    page: Math.max(1, page),
+   354→    pageSize: Math.max(1, pageSize),
+   355→  };
+   356→}
+   357→
+   358→/** Scenario empty → danh sách rỗng (empty state như các endpoint cũ). */
+   359→function nonEmpty<T>(ctx: PreviewRequestContext, items: T[]): T[] {
+   360→  return ctx.scenario === "empty" ? [] : items;
+   361→}
+   362→
+   363→/** PDF/zip nhỉ dùng cho endpoint tải xuống (parser FE kiểm instanceof Blob). */
+   364→function downloadBlob(content: string, type: string): Blob {
+   365→  return new Blob([content], { type });
+   366→}
+   367→
+   368→const tinyPdf = () =>
+   369→  downloadBlob(
+   370→    "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 320 160]>>endobj\nxref\n0 4\ntrailer<</Root 1 0 R/Size 4>>\nstartxref\n0\n%%EOF",
+   371→    "application/pdf",
+   372→  );
+   373→
+   374→const tinyXlsx = () =>
+   375→  downloadBlob(
+   376→    "PK\u0003\u0004mock-workbook.xlsx",
+   377→    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+   378→  );
+   379→
+   380→const tinyCv = () =>
+   381→  downloadBlob("Pham Tan Sinh — CV (mo phong preview).", "application/octet-stream");
+   382→
+   383→/** Đọc body dạng record an toàn cho mutation handlers. */
+   384→function bodyOf(ctx: PreviewRequestContext): Record<string, unknown> {
+   385→  const body = ctx.body;
+   386→  return body && typeof body === "object" && !Array.isArray(body)
+   387→    ? (body as Record<string, unknown>)
+   388→    : {};
+   389→}
+   390→
+   391→function bodyString(ctx: PreviewRequestContext, key: string): string | null {
+   392→  const value = bodyOf(ctx)[key];
+   393→  return typeof value === "string" ? value : null;
+   394→}
+   395→
+   396→function bodyNumber(ctx: PreviewRequestContext, key: string): number | null {
+   397→  const value = bodyOf(ctx)[key];
+   398→  return typeof value === "number" && Number.isFinite(value) ? value : null;
+   399→}
+   400→
+   401→/** Trích id động tại vị trí cố định trong path (đã bỏ query). */
+   402→function segment(path: string, index: number): string {
+   403→  return decodeURIComponent(path.split("/")[index] ?? "");
+   404→}
+   405→
+   406→function requireEnum(value: string | null, allowed: readonly string[], label: string): string {
+   407→  if (!value || !allowed.includes(value))
+   408→    throw err(422, "VALIDATION_ERROR", `Giá trị ${label} không hợp lệ trong Preview.`);
+   409→  return value;
+   410→}
+   411→
+   412→const USER_STATUSES = ["active", "pending", "locked", "deleted"] as const;
+   413→const KPI_PERIOD_STATUSES = ["draft", "open", "calculating", "finalized", "closed"] as const;
+   414→const CYCLE_STATUSES = ["draft", "open", "closed", "archived"] as const;
+   415→const SPRINT_STATUSES = ["planned", "active", "completed", "cancelled"] as const;
+   416→const REPORT_KINDS = ["progress", "performance", "evaluation", "review", "risk"] as const;
+   417→const TASK_STATUSES = ["todo", "doing", "review", "done"] as const;
+   418→const TASK_PRIORITIES = ["low", "medium", "high", "critical"] as const;
+   419→
+   420→/** PATCH /tasks/:id (+ /tasks/:id/my) — cập nhật task mock, tăng version. */
+   421→function updatedTask(ctx: PreviewRequestContext, idIndex: number): unknown {
+   422→  const id = segment(ctx.path, idIndex);
+   423→  const list = tasksFor(ctx.scenario);
+   424→  const base = list.find((t) => t.id === id) ?? list[0];
+   425→  if (!base)
+   426→    return {
+   427→      id,
+   428→      code: "TS-NEW",
+   429→      title: bodyString(ctx, "title") ?? "Nhiệm vụ mới",
+   430→      description: bodyString(ctx, "description"),
+   431→      storyPoints: bodyNumber(ctx, "storyPoints"),
+   432→      status: "todo",
+   433→      priority: "medium",
+   434→      progress: 0,
+   435→      dueDate: bodyString(ctx, "dueDate"),
+   436→      assigneeId: bodyString(ctx, "assigneeId"),
+   437→      projectId: "prj-lib",
+   438→      sprintId: "sp-03",
+   439→      version: 1,
+   440→    };
+   441→  const status = bodyString(ctx, "status");
+   442→  const priority = bodyString(ctx, "priority");
+   443→  const progress = bodyNumber(ctx, "progress");
+   444→  const expectedVersion = bodyNumber(ctx, "expectedVersion");
+   445→  return {
+   446→    ...base,
+   447→    ...(bodyString(ctx, "title") ? { title: bodyString(ctx, "title") } : {}),
+   448→    ...(bodyString(ctx, "description") !== null ? { description: bodyString(ctx, "description") } : {}),
+   449→    ...(bodyString(ctx, "dueDate") ? { dueDate: bodyString(ctx, "dueDate") } : {}),
+   450→    ...(bodyString(ctx, "assigneeId") !== null ? { assigneeId: bodyString(ctx, "assigneeId") } : {}),
+   451→    ...(bodyNumber(ctx, "storyPoints") !== null ? { storyPoints: bodyNumber(ctx, "storyPoints") } : {}),
+   452→    ...(status && (TASK_STATUSES as readonly string[]).includes(status) ? { status: status as typeof base.status } : {}),
+   453→    ...(priority && (TASK_PRIORITIES as readonly string[]).includes(priority) ? { priority: priority as typeof base.priority } : {}),
+   454→    ...(progress !== null ? { progress: Math.max(0, Math.min(100, progress)) } : {}),
+   455→    version: (expectedVersion ?? base.version) + 1,
+   456→  };
+   457→}
+   458→
+   459→function userDetail(ctx: PreviewRequestContext): unknown {
+   460→  const id = ctx.path.split("/")[2];
+   461→  return usersFor(ctx.scenario).find((u) => u.id === id) ?? usersFor(ctx.scenario)[0] ?? {
+   462→    id,
+   463→    email: "unknown@vintern.preview",
+   464→    username: "unknown",
+   465→    displayName: "Người dùng chưa rõ",
+   466→    status: "active",
+   467→    lastLoginAt: null,
+   468→    createdAt: new Date().toISOString(),
+   469→  };
+   470→}
+   471→
+   472→
+   473→function sessionOverviewRows(scenario: ReturnType<typeof currentScenario>) {
+   474→  if (scenario === "empty") return [];
+   475→  return [
+   476→    {
+   477→      id: "ss-f26", code: "SS-F26", name: "Kỳ thực tập Thu 2026", status: "active",
+   478→      startDate: iso(-30), endDate: iso(60),
+   479→      project: { id: "prj-lib", code: "PRJ-LIB", name: "Hệ thống quản lý thư viện số", templateVersion: 2 },
+   480→      memberCount: 6, sprintCount: 3, taskTotal: 24, taskDone: 15, taskPercent: 62,
+   481→      currentSprint: { id: "sp-03", code: "SP-03", name: "Sprint 03 — Mượn/trả sách" },
+   482→      alerts: { overdueTasks: 1, pendingReview: 2, sessionOverdue: false },
+   483→    },
+   484→    {
+   485→      id: "ss-s26", code: "SS-S26", name: "Kỳ thực tập Hè 2026", status: "completed",
+   486→      startDate: iso(-150), endDate: iso(-40),
+   487→      project: { id: "prj-portal", code: "PRJ-PORTAL", name: "Cổng thông tin tuyển dụng sinh viên CNTT", templateVersion: 1 },
+   488→      memberCount: 5, sprintCount: 2, taskTotal: 20, taskDone: 20, taskPercent: 100,
+   489→      currentSprint: null,
+   490→    },
+   491→    {
+   492→      id: "ss-w27", code: "SS-W27", name: "Kỳ thực tập Xuân 2027", status: "upcoming",
+   493→      startDate: iso(40), endDate: iso(130),
+   494→      project: { id: "prj-edu", code: "PRJ-EDU", name: "Ứng dụng học tiếng Việt cho trẻ em", templateVersion: 1 },
+   495→      memberCount: 0, sprintCount: 0, taskTotal: 0, taskDone: 0, taskPercent: 0,
+   496→      currentSprint: null,
+   497→    },
+   498→  ];
+   499→}
+   500→
+   501→function taskSpecFor(): unknown {
+   502→  return {
+   503→    requirements:
+   504→      "Xây API trả sách quá hạn: tính phí trễ theo bậc ngày, ghi giao dịch bù trừ vào sổ, có kiểm thử đơn vị cho bảng giá.",
+   505→    role: "backend",
+   506→    dod: [
+   507→      "Endpoint POST /returns xử lý đúng bậc phí theo số ngày trễ",
+   508→      "Giao dịch bù trừ được ghi vào sổ lương ảo",
+   509→      "Kiểm thử đơn vị phủ bảng giá mọi bậc",
+   510→      "Tài liệu API cập nhật theo chuẩn repo",
+   511→    ],
+   512→    documentation: "docs/api/returns.md",
+   513→    rubricVersion: "rubric-v3",
+   514→    expectedOutput: "Giao dịch bù trừ + JSON phí trễ theo từng dòng mượn",
+   515→    estimatedHours: 12,
+   516→    skillTags: ["nestjs", "testing", "finance"],
+   517→    complexity: "intermediate",
+   518→  };
+   519→}
+   520→
+   521→function taskSubmissionsFor(): unknown[] {
+   522→  return [
+   523→    {
+   524→      id: "sub-1", taskId: "ts-20", internId: "pv-intern-1",
+   525→      prUrl: "https://github.com/vintern-2026/library-system/pull/48",
+   526→      summary: "Bổ sung API trả sách + kiểm thử bậc phí",
+   527→      status: "submitted", score: null, feedback: null,
+   528→      headSha: "9f2c1ab", submittedAt: iso(-1, 11),
+   529→    },
+   530→    {
+   531→      id: "sub-0", taskId: "ts-20", internId: "pv-intern-1",
+   532→      prUrl: "https://github.com/vintern-2026/library-system/pull/44",
+   533→      summary: "Bản nháp đầu: khung controller",
+   534→      status: "withdrawn", score: null, feedback: null,
+   535→      headSha: "1aa9d3e", submittedAt: iso(-4, 16),
+   536→    },
+   537→  ];
+   538→}
+   539→
+   540→
+   541→function codeReviewsFor(): unknown[] {
+   542→  return [
+   543→    {
+   544→      id: "cr-1",
+   545→      headSha: "9f2c1ab",
+   546→      status: "awaiting_instructor",
+   547→      model: "gemini-2.5-pro",
+   548→      inputHash: "in-8821",
+   549→      errorCode: null,
+   550→      result: {
+   551→        score: 82,
+   552→        rubric: { functional: 85, quality: 80, testing: 78, errors: 82, security: 84, dod: 80 },
+   553→        summary: "API trả sách đúng bậc phí; thiếu một nhánh kiểm thử biên.",
+   554→        limitations: ["Không chạy được integration test trong preview"],
+   555→        findings: [
+   556→          { file: "src/returns/fee.ts", line: 42, message: "Bậc phí thứ 3 chưa có test", severity: "warning" },
+   557→          { file: "src/returns/controller.ts", line: 15, message: "Thiếu validate ngày trả trước ngày mượn", severity: "error" },
+   558→        ],
+   559→      },
+   560→      evidence: {
+   561→        complete: true,
+   562→        warnings: [],
+   563→        tests: {
+   564→          status: "passed",
+   565→          passed: 24,
+   566→          failed: 0,
+   567→          summary: "24 passed",
+   568→          executionTimeMs: 1820,
+   569→          score: 96,
+   570→          checks: [{ name: "build", passed: true, log: "OK" }],
+   571→        },
+   572→      },
+   573→    },
+   574→  ];
+   575→}
+   576→
+   577→// ---------------------------------------------------------------- routes ----
+   578→const NOTIFICATION_CATEGORIES = [
+   579→  "system", "task", "session", "evaluation", "announcement",
+   580→  "recruitment", "kpi", "salary", "certificate",
+   581→] as const;
+   582→
+   583→const routes: RouteHandler[] = [
+   584→  // ---- auth
+   585→  { method: "POST", test: (p) => p === "/auth/login", handle: login },
+   586→  {
+   587→    method: "POST",
+   588→    test: (p) => p === "/auth/register",
+   589→    handle: () => ({ registered: true }),
+   590→  },
+   591→  { method: "POST", test: (p) => p === "/auth/refresh", handle: refresh },
+   592→  {
+   593→    method: "POST",
+   594→    test: (p) => p === "/auth/logout",
+   595→    handle: () => {
+   596→      // Đăng xuất preview: xóa "refresh cookie" mô phỏng để reload không tự vào lại.
+   597→      activeAccountId = null;
+   598→      resetPreviewState();
+   599→      return null;
+   600→    },
+   601→  },
+   602→  { method: "GET", test: (p) => p === "/auth/me", handle: me },
+   603→  // ---- dashboard
+   604→  { method: "GET", test: (p) => p === "/dashboard/admin", handle: (c) => adminDashboard(c.scenario) },
+   605→  { method: "GET", test: (p) => p === "/dashboard/instructor", handle: (c) => instructorDashboard(c.account.id, c.scenario) },
+   606→  // ---- admin lists
+   607→  { method: "GET", test: (p) => p === "/users", handle: (c) => nestPage(usersFor(c.scenario), pageOf(c), 10) },
+   608→  { method: "GET", test: (p) => /^\/users\/[^/]+$/.test(p), handle: (c) => userDetail(c) },
+   609→  { method: "GET", test: (p) => p === "/roles", handle: () => nestPage(rolesFor(), 1, 10) },
+   610→  { method: "GET", test: (p) => p === "/permissions", handle: () => nestPage([], 1, 10) },
+   611→  { method: "GET", test: (p) => p === "/groups", handle: () => nestPage(groupsFor(), 1, 10) },
+   612→  { method: "GET", test: (p) => p === "/audit-logs", handle: (c) => nestPage(auditsFor(c.scenario), pageOf(c), 10) },
+   613→  { method: "GET", test: (p) => p === "/activity-events", handle: (c) => nestPage(activityFor(c.scenario), pageOf(c), 10) },
+   614→  {
+   615→    method: "GET",
+   616→    test: (p) => p === "/settings",
+   617→    handle: () => ({ settings: SETTINGS_ROWS.map((row) => ({ ...row })) }),
+   618→  },
+   619→  {
+   620→    method: "GET",
+   621→    test: (p) => p === "/health",
+   622→    handle: () => ({
+   623→      status: "ok",
+   624→      checks: {
+   625→        backend: "ok",
+   626→        database: "ok",
+   627→        dbLatencyMs: 12,
+   628→        ai: "ok",
+   629→        aiProvider: "google",
+   630→        aiModel: "gemini-2.5-pro",
+   631→      },
+   632→      uptimeSeconds: 86400,
+   633→      timestamp: new Date().toISOString(),
+   634→    }),
+   635→  },
+   636→  // ---- intern workspace + outcomes
+   637→  { method: "GET", test: (p) => p === "/intern/me/workspace", handle: (c) => internWorkspace(c.account.id, c.scenario) },
+   638→  { method: "GET", test: (p) => p === "/intern/me/evaluations", handle: (c) => ({ items: evaluationsFor(c.scenario) }) },
+   639→  {
+   640→    method: "GET",
+   641→    test: (p) => /^\/intern\/me\/evaluations\/[^/]+$/.test(p),
+   642→    handle: (c) => evaluationsFor(c.scenario)[0] ?? err(404, "NOT_FOUND", "Không tìm thấy đánh giá."),
+   643→  },
+   644→  { method: "GET", test: (p) => p === "/intern/me/performance", handle: (c) => internPerformance(c.scenario) },
+   645→  { method: "GET", test: (p) => p === "/intern/me/kpi", handle: (c) => ({ items: kpisFor(c.scenario) }) },
+   646→  {
+   647→    method: "GET",
+   648→    test: (p) => /^\/intern\/me\/kpi\/[^/]+$/.test(p),
+   649→    handle: (c) => kpiDetailFromPath(c),
+   650→  },
+   651→  { method: "GET", test: (p) => p === "/intern/me/virtual-salary", handle: (c) => salaryFor(c) },
+   652→  {
+   653→    method: "GET",
+   654→    test: (p) => p === "/intern/me/virtual-salary/ledger",
+   655→    handle: (c) => paged(ledgerFor(c.scenario), Number(c.query.get("page") ?? 1), 20),
+   656→  },
+   657→  { method: "GET", test: (p) => p === "/intern/me/certificates", handle: (c) => ({ items: certificatesFor(c.scenario) }) },
+   658→  {
+   659→    method: "GET",
+   660→    test: (p) => /^\/intern\/me\/certificates\/[^/]+$/.test(p),
+   661→    handle: (c) => certificatesFor(c.scenario)[0] ?? err(404, "NOT_FOUND", "Không tìm thấy chứng nhận."),
+   662→  },
+   663→  { method: "GET", test: (p) => p === "/intern/me/ai-recommendations", handle: (c) => recommendationsFor(c.scenario) },
+   664→  { method: "POST", test: (p) => p === "/intern/me/ai-recommendations/refresh", handle: (c) => recommendationsFor(c.scenario) },
+   665→  // ---- intern work / sprint / project / mentor
+   666→  {
+   667→    method: "GET",
+   668→    test: (p) => p === "/intern/me/sprint/board",
+   669→    handle: (c) => boardFor(c.scenario),
+   670→  },
+   671→  {
+   672→    method: "GET",
+   673→    test: (p) => /^\/intern\/me\/sprints\/[^/]+\/board$/.test(p),
+   674→    handle: (c) => boardFor(c.scenario),
+   675→  },
+   676→  {
+   677→    method: "GET",
+   678→    test: (p) => /^\/sprints\/[^/]+\/completion$/.test(p),
+   679→    handle: (c) => {
+   680→      const tasks = tasksFor(c.scenario);
+   681→      const done = tasks.filter((t) => t.status === "done");
+   682→      const committed = tasks.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
+   683→      return {
+   684→        total: tasks.length,
+   685→        done: done.length,
+   686→        open: tasks.length - done.length,
+   687→        committedStoryPoints: committed,
+   688→        completedStoryPoints: done.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0),
+   689→      };
+   690→    },
+   691→  },
+   692→  {
+   693→    method: "GET",
+   694→    test: (p) => p === "/intern/me/sprints",
+   695→    handle: (c) => nestPage(ownSprintsList(c.scenario), Number(c.query.get("page") ?? 1), 50),
+   696→  },
+   697→  {
+   698→    method: "GET",
+   699→    test: (p) => p === "/intern/me/project",
+   700→    handle: (c) => ownProjectFor(c.scenario),
+   701→  },
+   702→  {
+   703→    method: "GET",
+   704→    test: (p) => p === "/tasks",
+   705→    handle: (c) => nestPage(tasksFor(c.scenario), Number(c.query.get("page") ?? 1), Number(c.query.get("pageSize") ?? 20)),
+   706→  },
+   707→  {
+   708→    method: "GET",
+   709→    test: (p) => /^\/tasks\/[^/]+$/.test(p),
+   710→    handle: (c) => taskDetail(c),
+   711→  },
+   712→  {
+   713→    method: "GET",
+   714→    test: (p) => /^\/tasks\/[^/]+\/comments$/.test(p),
+   715→    handle: (c) => nestPage(taskComments(), Number(c.query.get("page") ?? 1), 20),
+   716→  },
+   717→  {
+   718→    method: "POST",
+   719→    test: (p) => /^\/tasks\/[^/]+\/comments$/.test(p),
+   720→    handle: (c) => {
+   721→      const body = (c.body ?? {}) as { content?: string };
+   722→      return {
+   723→        id: `cm-${Date.now()}`,
+   724→        content:
+   725→          typeof body.content === "string" && body.content.trim()
+   726→            ? body.content
+   727→            : "Nhận xét (mặc định khi gửi rỗng).",
+   728→        authorId: c.account.id,
+   729→        createdAt: new Date().toISOString(),
+   730→      };
+   731→    },
+   732→  },
+   733→  {
+   734→    method: "GET",
+   735→    test: (p) => /^\/tasks\/[^/]+\/history$/.test(p),
+   736→    handle: (c) => nestPage(taskHistory(), Number(c.query.get("page") ?? 1), 20),
+   737→  },
+   738→  // ---- session overview (instructor/admin dashboard + trang sessions)
+   739→  {
+   740→    method: "GET",
+   741→    test: (p) => p === "/sessions/overview",
+   742→    handle: (c) => nestPage(sessionOverviewRows(c.scenario), pageOf(c), 10),
+   743→  },
+   744→  // ---- task spec + submissions (chi tiết công việc)
+   745→  {
+   746→    method: "GET",
+   747→    test: (p) => /^\/tasks\/[^/]+\/spec$/.test(p),
+   748→    handle: (c) => (c.scenario === "empty" ? null : taskSpecFor()),
+   749→  },
+   750→  {
+   751→    method: "GET",
+   752→    test: (p) => /^\/tasks\/[^/]+\/spec\/source$/.test(p),
+   753→    handle: () => ({
+   754→      requirements: "Xây API trả sách quá hạn theo bậc phí.",
+   755→      notes: "Nguồn spec mẫu trong preview.",
+   756→    }),
+   757→  },
+   758→  {
+   759→    method: "GET",
+   760→    test: (p) => /^\/tasks\/[^/]+\/submissions$/.test(p),
+   761→    handle: (c) => (c.scenario === "empty" ? [] : taskSubmissionsFor()),
+   762→  },
+   763→  {
+   764→    method: "GET",
+   765→    test: (p) => /^\/submissions\/[^/]+\/code-reviews$/.test(p),
+   766→    handle: (c) => (c.scenario === "empty" ? [] : codeReviewsFor()),
+   767→  },
+   768→  // ---- github repository access (intern participation page)
+   769→  {
+   770→    method: "GET",
+   771→    test: (p) => p === "/github/me/repository-access",
+   772→    handle: (c) => ({
+   773→      items: c.scenario === "empty" ? [] : [
+   774→        {
+   775→          id: "ra-1",
+   776→          sessionId: "ss-f26",
+   777→          status: "done",
+   778→          displayStatus: "done",
+   779→          errorCode: null,
+   780→          attempts: 1,
+   781→          updatedAt: iso(-2, 10),
+   782→          nextAttemptAt: iso(-2, 11),
+   783→          revision: "ra-rev-1",
+   784→          displayName: "Nguyễn An Khang",
+   785→          sessionName: "Kỳ thực tập Thu 2026",
+   786→          projectName: "Hệ thống quản lý thư viện số",
+   787→          role: "joining",
+   788→          outcome: "repository-member",
+   789→          repositoryUrl: "https://github.com/vintern-2026/library-system",
+   790→          retryAllowed: false,
+   791→        },
+   792→      ],
+   793→      summary: [{ status: "done", total: c.scenario === "empty" ? 0 : 1 }],
+   794→      limit: 5,
+   795→    }),
+   796→  },
+   797→  // ---- participation replacements (intern)
+   798→  {
+   799→    method: "GET",
+   800→    test: (p) => p === "/participation/me/replacements",
+   801→    handle: () => ({ limit: 3, items: [] }),
+   802→  },
+   803→  // ---- participation (intern + instructor)
+   804→  {
+   805→    method: "GET",
+   806→    test: (p) => p === "/participation/me",
+   807→    handle: (c) => participationFor(c.scenario, 1),
+   808→  },
+   809→  {
+   810→    method: "GET",
+   811→    test: (p) => /^\/sessions\/[^/]+\/participation$/.test(p),
+   812→    handle: (c) => ({
+   813→      ...participationFor(c.scenario, 1),
+   814→      policy: {
+   815→        version: 3,
+   816→        configured: true,
+   817→        activeFrom: iso(-60),
+   818→        warningFrom: 2,
+   819→        penaltyFrom: 4,
+   820→        replacementFrom: 6,
+   821→        penaltyPoints: -2,
+   822→        penaltyCap: -10,
+   823→      },
+   824→    }),
+   825→  },
+   826→  // ---- notifications (mọi role)
+   827→  { method: "GET", test: (p) => p === "/notifications", handle: (c) => notificationsPaged(c) },
+   828→  { method: "GET", test: (p) => p === "/notifications/unread-count", handle: (c) => ({ count: unreadCount(c) }) },
+   829→  {
+   830→    method: "POST",
+   831→    test: (p) => /^\/notifications\/[^/]+\/read$/.test(p),
+   832→    handle: (c) => {
+   833→      markRead(c.path.split("/")[2]);
+   834→      return null;
+   835→    },
+   836→  },
+   837→  { method: "POST", test: (p) => p === "/notifications/read-all", handle: (c) => ({ updated: markAllRead(c) }) },
+   838→  { method: "GET", test: (p) => p === "/notifications/preferences", handle: () => ({ preferences: preferences }) },
+   839→  {
+   840→    method: "PUT",
+   841→    test: (p) => p === "/notifications/preferences",
+   842→    handle: (c) => {
+   843→      const body = (c.body ?? {}) as { category?: string; enabled?: boolean };
+   844→      const category = NOTIFICATION_CATEGORIES.find((x) => x === body.category);
+   845→      if (!category) throw err(422, "VALIDATION_ERROR", "Danh mục thông báo không hợp lệ.");
+   846→      const found = preferences.find((p) => p.category === category);
+   847→      if (found) found.enabled = Boolean(body.enabled);
+   848→      return { preferences: preferences };
+   849→    },
+   850→  },
+   851→  // ---- AI mentor (intern)
+   852→  {
+   853→    method: "GET",
+   854→    test: (p) => p === "/intern/me/ai-mentor/conversations",
+   855→    handle: (c) => mentorConversationsFor(c.scenario),
+   856→  },
+   857→  {
+   858→    method: "POST",
+   859→    test: (p) => p === "/intern/me/ai-mentor/conversations",
+   860→    handle: (c) => mentorConversationsFor(c.scenario).items[0] ?? null,
+   861→  },
+   862→  {
+   863→    method: "GET",
+   864→    test: (p) => /^\/intern\/me\/ai-mentor\/conversations\/[^/]+$/.test(p),
+   865→    handle: (c) => mentorDetailFromPath(c),
+   866→  },
+   867→  {
+   868→    method: "POST",
+   869→    test: (p) => /^\/intern\/me\/ai-mentor\/conversations\/[^/]+\/archive$/.test(p),
+   870→    handle: (c) => mentorDetailFromPath(c).conversation,
+   871→  },
+   872→  {
+   873→    method: "POST",
+   874→    test: (p) => /^\/intern\/me\/ai-mentor\/conversations\/[^/]+\/messages$/.test(p),
+   875→    handle: (c) => {
+   876→      const detail = mentorDetailFromPath(c);
+   877→      const body = (c.body ?? {}) as { content?: string };
+   878→      return {
+   879→        conversation: detail.conversation,
+   880→        userMessage: {
+   881→          id: "mm-user-new",
+   882→          role: "user",
+   883→          content: typeof body.content === "string" ? body.content : "",
+   884→          aiRunId: null,
+   885→          createdAt: new Date().toISOString(),
+   886→        },
+   887→        assistantMessage: {
+   888→          id: "mm-ai-new",
+   889→          role: "assistant",
+   890→          content:
+   891→            "Gợi ý mô phỏng: chia nhỏ thay đổi, viết test cho nhánh chính và ghi chú quyết định trong mô tả PR.",
+   892→          aiRunId: "run-772",
+   893→          createdAt: new Date().toISOString(),
+   894→        },
+   895→        summary: "Trả lời AI mentor (mô phỏng).",
+   896→        followUps: [
+   897→          "Chia task này thành các bước nhỏ hơn được không?",
+   898→          "Nên viết test gì trước khi mở PR?",
+   899→        ],
+   900→      };
+   901→    },
+   902→  },
+   903→  // ---- verify public
+   904→  {
+   905→    method: "GET",
+   906→    test: (p) => /^\/certificates\/verify\/[^/]+$/.test(p),
+   907→    handle: (c) => {
+   908→      const code = decodeURIComponent(c.path.split("/")[3]);
+   909→      const cert = certificatesFor("populated").find((x) => x.verificationCode === code);
+   910→      if (!cert)
+   911→        throw err(404, "CERTIFICATE_NOT_FOUND", "Không tìm thấy chứng nhận với mã này.");
+   912→      return {
+   913→        valid: cert.status === "issued",
+   914→        status: cert.status,
+   915→        certificateNumber: cert.certificateNumber,
+   916→        holderName: "Nguyễn An Khang",
+   917→        role: "Frontend Developer",
+   918→        projectName: cert.projectName,
+   919→        sessionName: cert.sessionName,
+   920→        completedAt: cert.completedAt,
+   921→        issuedAt: cert.issuedAt,
+   922→        revokedAt: cert.revokedAt,
+   923→      };
+   924→    },
+   925→  },
+   926→
+   927→  /* ==================== GAP-2: mở rộng endpoint cho Preview ==================== */
+   928→
+   929→  // ---- A) ứng tuyển công khai + auth phụ
+   930→  {
+   931→    method: "GET",
+   932→    test: (p) => p === "/applications/rounds",
+   933→    handle: () => ({
+   934→      items: PUBLIC_ROUNDS.map((r) => ({ id: r.id, name: r.name, closesAt: r.closesAt })),
+   935→    }),
+   936→  },
+   937→  { method: "GET", test: (p) => p === "/applications/me", handle: () => candidateApplication() },
+   938→  {
+   939→    method: "POST",
+   940→    test: (p) => p === "/applications",
+   941→    handle: () => ({ received: true }),
+   942→  },
+   943→  {
+   944→    method: "POST",
+   945→    test: (p) => p === "/applications/verify",
+   946→    handle: () => ({ verified: true, emailHint: "t***inh@vintern.preview" }),
+   947→  },
+   948→  {
+   949→    method: "POST",
+   950→    test: (p) => p === "/applications/me/cv",
+   951→    handle: () => candidateApplication(),
+   952→  },
+   953→  {
+   954→    method: "POST",
+   955→    test: (p) => p === "/applications/leave",
+   956→    handle: () => ({ cleared: true }),
+   957→  },
+   958→  {
+   959→    method: "POST",
+   960→    test: (p) => p === "/applications/request-access",
+   961→    handle: () => ({ queued: true, message: "Liên kết theo dõi hồ sơ sẽ được gửi qua email nếu hồ sơ tồn tại." }),
+   962→  },
+   963→  {
+   964→    method: "POST",
+   965→    test: (p) => p === "/auth/forgot-password",
+   966→    handle: () => ({ queued: true }),
+   967→  },
+   968→  {
+   969→    method: "POST",
+   970→    test: (p) => p === "/auth/change-password",
+   971→    handle: () => ({ changed: true }),
+   972→  },
+   973→
+   974→  // ---- B) danh tính GitHub
+   975→  {
+   976→    method: "GET",
+   977→    test: (p) => p === "/github/me",
+   978→    handle: (c) => githubStatusFor(c.account.id),
+   979→  },
+   980→  {
+   981→    method: "POST",
+   982→    test: (p) => p === "/github/connect",
+   983→    handle: () => ({
+   984→      authorizeUrl:
+   985→        "https://github.com/login/oauth/authorize?client_id=preview-vintern&scope=repo%20read%3Aorg",
+   986→    }),
+   987→  },
+   988→  {
+   989→    method: "DELETE",
+   990→    test: (p) => p === "/github/me",
+   991→    handle: () => ({ disconnected: true }),
+   992→  },
+   993→  {
+   994→    method: "GET",
+   995→    test: (p) => p === "/github/repository-account",
+   996→    handle: (c) => repositoryAccountFor(c.account.id),
+   997→  },
+   998→  {
+   999→    method: "POST",
+  1000→    test: (p) => p === "/github/repository-account",
+  1001→    handle: () => repositoryAccountFor("pv-admin-1"),
+  1002→  },
+  1003→  {
+  1004→    method: "GET",
+  1005→    test: (p) => /^\/sessions\/[^/]+\/github$/.test(p),
+  1006→    handle: (c) => sessionRepositoryPayload(segment(c.path, 2)),
+  1007→  },
+  1008→  {
+  1009→    method: "POST",
+  1010→    test: (p) => /^\/sessions\/[^/]+\/github\/provision$/.test(p),
+  1011→    handle: (c) => sessionRepositoryPayload(segment(c.path, 2)),
+  1012→  },
+  1013→  {
+  1014→    method: "POST",
+  1015→    test: (p) => /^\/sessions\/[^/]+\/github\/invite$/.test(p),
+  1016→    handle: () => ({ processed: 2, invited: 1, skipped: 3 }),
+  1017→  },
+  1018→  {
+  1019→    method: "POST",
+  1020→    test: (p) => /^\/sessions\/[^/]+\/github\/members\/[^/]+\/invite$/.test(p),
+  1021→    handle: (c) => ({ processed: 1, userId: segment(c.path, 5) }),
+  1022→  },
+  1023→  {
+  1024→    method: "POST",
+  1025→    test: (p) => /^\/sessions\/[^/]+\/github\/webhook$/.test(p),
+  1026→    handle: (c) => sessionRepositoryPayload(segment(c.path, 2)),
+  1027→  },
+  1028→  {
+  1029→    method: "POST",
+  1030→    test: (p) => /^\/sessions\/[^/]+\/github\/reconcile$/.test(p),
+  1031→    handle: (c) => sessionRepositoryPayload(segment(c.path, 2)),
+  1032→  },
+  1033→  {
+  1034→    method: "GET",
+  1035→    test: (p) => /^\/sessions\/[^/]+\/github\/activity$/.test(p),
+  1036→    handle: (c) => githubActivityFor(segment(c.path, 2)),
+  1037→  },
+  1038→
+  1039→  // ---- C) quản trị người dùng/vai trò/nhóm (mutation)
+  1040→  {
+  1041→    method: "POST",
+  1042→    test: (p) => p === "/users",
+  1043→    handle: (c) => {
+  1044→      const body = bodyOf(c);
+  1045→      return {
+  1046→        id: `pv-user-${Date.now().toString(36)}`,
+  1047→        email: typeof body.email === "string" && body.email ? body.email : "moi@vintern.preview",
+  1048→        username: bodyString(c, "username") ?? "moi.sinh",
+  1049→        displayName: bodyString(c, "displayName") ?? "Người dùng mới",
+  1050→        status: "pending",
+  1051→        lastLoginAt: null,
+  1052→        createdAt: new Date().toISOString(),
+  1053→      };
+  1054→    },
+  1055→  },
+  1056→  {
+  1057→    method: "PATCH",
+  1058→    test: (p) => /^\/users\/[^/]+\/status$/.test(p),
+  1059→    handle: (c) => {
+  1060→      const id = segment(c.path, 2);
+  1061→      const status = requireEnum(bodyString(c, "status"), USER_STATUSES, "trạng thái");
+  1062→      const found = usersFor(c.scenario).find((u) => u.id === id);
+  1063→      if (found) found.status = status as typeof found.status;
+  1064→      return (
+  1065→        found ?? {
+  1066→          id,
+  1067→          email: "unknown@vintern.preview",
+  1068→          username: "unknown",
+  1069→          displayName: "Người dùng chưa rõ",
+  1070→          status,
+  1071→          lastLoginAt: null,
+  1072→          createdAt: new Date().toISOString(),
+  1073→        }
+  1074→      );
+  1075→    },
+  1076→  },
+  1077→  {
+  1078→    method: "PATCH",
+  1079→    test: (p) => /^\/users\/[^/]+$/.test(p),
+  1080→    handle: (c) => {
+  1081→      const id = segment(c.path, 2);
+  1082→      const found = usersFor(c.scenario).find((u) => u.id === id);
+  1083→      if (!found)
+  1084→        throw err(404, "USER_NOT_FOUND", "Không tìm thấy người dùng trong Preview.");
+  1085→      const displayName = bodyString(c, "displayName");
+  1086→      const username = bodyString(c, "username");
+  1087→      if (displayName) found.displayName = displayName;
+  1088→      if (username) found.username = username;
+  1089→      return found;
+  1090→    },
+  1091→  },
+  1092→  {
+  1093→    method: "GET",
+  1094→    test: (p) => /^\/roles\/[^/]+\/permissions$/.test(p),
+  1095→    handle: (c) => nestPage(permissionsForRole(segment(c.path, 2)), pageOf(c), 10),
+  1096→  },
+  1097→  {
+  1098→    method: "POST",
+  1099→    test: (p) => p === "/groups",
+  1100→    handle: (c) => ({
+  1101→      id: `g-${Date.now().toString(36)}`,
+  1102→      code: bodyString(c, "code") ?? "nhom-moi",
+  1103→      name: bodyString(c, "name") ?? "Nhóm mới",
+  1104→      description: bodyString(c, "description"),
+  1105→    }),
+  1106→  },
+  1107→  {
+  1108→    method: "PATCH",
+  1109→    test: (p) => /^\/groups\/[^/]+$/.test(p),
+  1110→    handle: (c) => {
+  1111→      const id = segment(c.path, 2);
+  1112→      const found = groupsFor().find((g) => g.id === id);
+  1113→      if (!found) throw err(404, "GROUP_NOT_FOUND", "Không tìm thấy nhóm trong Preview.");
+  1114→      const name = bodyString(c, "name");
+  1115→      const description = bodyString(c, "description");
+  1116→      if (name) found.name = name;
+  1117→      if (description !== null) found.description = description;
+  1118→      return found;
+  1119→    },
+  1120→  },
+  1121→  {
+  1122→    method: "GET",
+  1123→    test: (p) => /^\/groups\/[^/]+\/members$/.test(p),
+  1124→    handle: () => ({ members: GROUP_MEMBERS }),
+  1125→  },
+  1126→  {
+  1127→    method: "POST",
+  1128→    test: (p) => /^\/groups\/[^/]+\/members$/.test(p),
+  1129→    handle: () => null,
+  1130→  },
+  1131→  {
+  1132→    method: "DELETE",
+  1133→    test: (p) => /^\/groups\/[^/]+\/members\/[^/]+$/.test(p),
+  1134→    handle: () => null,
+  1135→  },
+  1136→  {
+  1137→    method: "GET",
+  1138→    test: (p) => /^\/groups\/[^/]+\/roles$/.test(p),
+  1139→    handle: () => ({ roles: GROUP_ROLES }),
+  1140→  },
+  1141→  {
+  1142→    method: "PUT",
+  1143→    test: (p) => /^\/groups\/[^/]+\/roles$/.test(p),
+  1144→    handle: (c) => {
+  1145→      const raw = bodyOf(c).roleCodes;
+  1146→      const roles = Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : GROUP_ROLES;
+  1147→      return { roles };
+  1148→    },
+  1149→  },
+  1150→
+  1151→  // ---- D) danh mục
+  1152→  {
+  1153→    method: "GET",
+  1154→    test: (p) => p === "/catalogs/types",
+  1155→    handle: (c) => nestPage(nonEmpty(c, CATALOG_TYPES), pageOf(c), 10),
+  1156→  },
+  1157→  {
+  1158→    method: "GET",
+  1159→    test: (p) => p === "/catalogs/items",
+  1160→    handle: (c) => {
+  1161→      const typeCode = c.query.get("typeCode");
+  1162→      const items = nonEmpty(c, CATALOG_ITEMS).filter((i) => !typeCode || i.typeCode === typeCode);
+  1163→      return nestPage(items, pageOf(c), 10);
+  1164→    },
+  1165→  },
+  1166→  {
+  1167→    method: "POST",
+  1168→    test: (p) => p === "/catalogs/types",
+  1169→    handle: (c) => ({
+  1170→      id: `ct-${Date.now().toString(36)}`,
+  1171→      code: bodyString(c, "code") ?? "loai-moi",
+  1172→      name: bodyString(c, "name") ?? "Loại mới",
+  1173→      description: bodyString(c, "description"),
+  1174→    }),
+  1175→  },
+  1176→  {
+  1177→    method: "POST",
+  1178→    test: (p) => p === "/catalogs/items",
+  1179→    handle: (c) => ({
+  1180→      id: `ci-${Date.now().toString(36)}`,
+  1181→      code: bodyString(c, "code") ?? "gia-tri-moi",
+  1182→      name: bodyString(c, "name") ?? "Giá trị mới",
+  1183→      value: bodyString(c, "value"),
+  1184→      sortOrder: bodyNumber(c, "sortOrder") ?? 99,
+  1185→      isActive: true,
+  1186→    }),
+  1187→  },
+  1188→  {
+  1189→    method: "PATCH",
+  1190→    test: (p) => /^\/catalogs\/items\/[^/]+$/.test(p),
+  1191→    handle: (c) => {
+  1192→      const id = segment(c.path, 3);
+  1193→      const found = CATALOG_ITEMS.find((i) => i.id === id);
+  1194→      if (!found) throw err(404, "CATALOG_ITEM_NOT_FOUND", "Không tìm thấy giá trị danh mục.");
+  1195→      const name = bodyString(c, "name");
+  1196→      const value = bodyString(c, "value");
+  1197→      const isActive = bodyOf(c).isActive;
+  1198→      if (name) found.name = name;
+  1199→      if (value !== null) found.value = value;
+  1200→      if (typeof isActive === "boolean") found.isActive = isActive;
+  1201→      return found;
+  1202→    },
+  1203→  },
+  1204→
+  1205→  // ---- E) hệ thống
+  1206→  {
+  1207→    method: "GET",
+  1208→    test: (p) => p === "/admin/system/status",
+  1209→    handle: () => systemStatusPayload(),
+  1210→  },
+  1211→  {
+  1212→    method: "GET",
+  1213→    test: (p) => p === "/admin/system/contracts",
+  1214→    handle: () => systemContractsPayload(true),
+  1215→  },
+  1216→  {
+  1217→    method: "POST",
+  1218→    test: (p) => p === "/admin/system/contracts/validate",
+  1219→    handle: () => systemContractsPayload(false),
+  1220→  },
+  1221→  {
+  1222→    method: "GET",
+  1223→    test: (p) => p === "/admin/system/repositories",
+  1224→    handle: () => systemRepositoriesPayload(),
+  1225→  },
+  1226→
+  1227→  // ---- F) cấu hình AI + agent
+  1228→  {
+  1229→    method: "GET",
+  1230→    test: (p) => p === "/admin/ai-configuration",
+  1231→    handle: () => aiConfigurationPayload(),
+  1232→  },
+  1233→  {
+  1234→    method: "PUT",
+  1235→    test: (p) => p === "/admin/ai-configuration",
+  1236→    handle: (c) => {
+  1237→      const base = aiConfigurationPayload();
+  1238→      const model = bodyString(c, "model");
+  1239→      const timeoutMs = bodyNumber(c, "timeoutMs");
+  1240→      const maxRetries = bodyNumber(c, "maxRetries");
+  1241→      const version = bodyNumber(c, "version");
+  1242→      return {
+  1243→        ...base,
+  1244→        policy: {
+  1245→          model: model ?? base.policy.model,
+  1246→          timeoutMs: timeoutMs ?? base.policy.timeoutMs,
+  1247→          maxRetries: maxRetries ?? base.policy.maxRetries,
+  1248→          version: version ?? base.policy.version,
+  1249→        },
+  1250→        source: "Cấu hình vừa lưu qua Preview",
+  1251→      };
+  1252→    },
+  1253→  },
+  1254→  {
+  1255→    method: "GET",
+  1256→    test: (p) => p === "/admin/agents/business-runs",
+  1257→    handle: () => businessRunsPayload(),
+  1258→  },
+  1259→  {
+  1260→    method: "POST",
+  1261→    test: (p) => p === "/admin/agents/knowledge-runs",
+  1262→    handle: (c) => {
+  1263→      const run = knowledgeRunPayload(`kr-${Date.now().toString(36)}`, "running");
+  1264→      const requestId = bodyString(c, "requestId");
+  1265→      return requestId ? { ...run, requestId } : run;
+  1266→    },
+  1267→  },
+  1268→  {
+  1269→    method: "GET",
+  1270→    test: (p) => /^\/admin\/agents\/knowledge-runs\/[^/]+$/.test(p),
+  1271→    handle: (c) => knowledgeRunPayload(segment(c.path, 4), "succeeded"),
+  1272→  },
+  1273→  {
+  1274→    method: "POST",
+  1275→    test: (p) => /^\/admin\/agents\/knowledge-runs\/[^/]+\/cancel$/.test(p),
+  1276→    handle: (c) => knowledgeRunPayload(segment(c.path, 4), "cancelled"),
+  1277→  },
+  1278→  {
+  1279→    method: "POST",
+  1280→    test: (p) => /^\/admin\/agents\/knowledge-runs\/[^/]+\/resume$/.test(p),
+  1281→    handle: (c) => ({ id: segment(c.path, 4), accepted: true }),
+  1282→  },
+  1283→
+  1284→  // ---- G) nghề nghiệp
+  1285→  {
+  1286→    method: "GET",
+  1287→    test: (p) => p === "/admin/career-roles",
+  1288→    handle: (c) => itemsPage(nonEmpty(c, CAREER_ROLES), pageOf(c), pageSizeOf(c, 20)),
+  1289→  },
+  1290→  {
+  1291→    method: "POST",
+  1292→    test: (p) => p === "/admin/career-roles",
+  1293→    handle: (c) => {
+  1294→      const body = bodyOf(c);
+  1295→      const weights = body.competencyWeights;
+  1296→      return {
+  1297→        code: bodyString(c, "code") ?? "nghe-moi",
+  1298→        name: bodyString(c, "name") ?? "Nghề mới",
+  1299→        description: bodyString(c, "description") ?? "",
+  1300→        level: bodyString(c, "level") ?? "intern",
+  1301→        language: bodyString(c, "language") ?? "vi",
+  1302→        requiredSkills: Array.isArray(body.requiredSkills) ? body.requiredSkills.filter((x): x is string => typeof x === "string") : [],
+  1303→        optionalSkills: Array.isArray(body.optionalSkills) ? body.optionalSkills.filter((x): x is string => typeof x === "string") : [],
+  1304→        competencyWeights:
+  1305→          weights && typeof weights === "object" && !Array.isArray(weights)
+  1306→            ? Object.fromEntries(Object.entries(weights).map(([k, v]) => [k, typeof v === "number" ? v : 0]))
+  1307→            : {},
+  1308→        status: "draft",
+  1309→        acceptingApplications: false,
+  1310→        version: 1,
+  1311→        createdAt: new Date().toISOString(),
+  1312→        updatedAt: new Date().toISOString(),
+  1313→      };
+  1314→    },
+  1315→  },
+  1316→  {
+  1317→    method: "PUT",
+  1318→    test: (p) => /^\/admin\/career-roles\/[^/]+$/.test(p),
+  1319→    handle: (c) => {
+  1320→      const code = segment(c.path, 3);
+  1321→      const found = CAREER_ROLES.find((r) => r.code === code);
+  1322→      if (!found) throw err(404, "CAREER_ROLE_NOT_FOUND", "Không tìm thấy nghề.");
+  1323→      const body = bodyOf(c);
+  1324→      const name = bodyString(c, "name");
+  1325→      const description = bodyString(c, "description");
+  1326→      if (name) found.name = name;
+  1327→      if (description !== null) found.description = description;
+  1328→      const status = bodyString(c, "status");
+  1329→      if (status && ["draft", "published", "archived"].includes(status))
+  1330→        found.status = status as typeof found.status;
+  1331→      if (typeof body.acceptingApplications === "boolean")
+  1332→        found.acceptingApplications = body.acceptingApplications;
+  1333→      return { ...found, version: found.version + 1, updatedAt: new Date().toISOString() };
+  1334→    },
+  1335→  },
+  1336→  {
+  1337→    method: "POST",
+  1338→    test: (p) => /^\/admin\/career-roles\/[^/]+\/archive$/.test(p),
+  1339→    handle: (c) => {
+  1340→      const code = segment(c.path, 3);
+  1341→      const found = CAREER_ROLES.find((r) => r.code === code);
+  1342→      if (!found) throw err(404, "CAREER_ROLE_NOT_FOUND", "Không tìm thấy nghề.");
+  1343→      return {
+  1344→        ...found,
+  1345→        status: "archived",
+  1346→        acceptingApplications: false,
+  1347→        version: (bodyNumber(c, "version") ?? found.version) + 1,
+  1348→        updatedAt: new Date().toISOString(),
+  1349→      };
+  1350→    },
+  1351→  },
+  1352→  {
+  1353→    method: "GET",
+  1354→    test: (p) => /^\/admin\/career-roles\/[^/]+\/revisions$/.test(p),
+  1355→    handle: (c) => {
+  1356→      const code = segment(c.path, 3);
+  1357→      const found = CAREER_ROLES.find((r) => r.code === code) ?? CAREER_ROLES[0];
+  1358→      const rows = Array.from({ length: found.version }, (_, i) => {
+  1359→        const version = i + 1;
+  1360→        return {
+  1361→          version,
+  1362→          snapshot: { ...found, version, status: version === found.version ? found.status : "archived" },
+  1363→          createdBy: "pv-admin-1",
+  1364→          createdAt: iso(-(found.version - i) * 15),
+  1365→        };
+  1366→      }).reverse();
+  1367→      return itemsPage(rows, pageOf(c), 10);
+  1368→    },
+  1369→  },
+  1370→  {
+  1371→    method: "GET",
+  1372→    test: (p) => p === "/career-roles",
+  1373→    handle: () => ({
+  1374→      items: CAREER_ROLES
+  1375→        .filter((r) => r.status === "published" && r.acceptingApplications)
+  1376→        .map((r) => ({
+  1377→          code: r.code,
+  1378→          label: r.label ?? r.name,
+  1379→          description: r.description,
+  1380→          level: r.level,
+  1381→          language: r.language,
+  1382→          requiredSkills: r.requiredSkills,
+  1383→          optionalSkills: r.optionalSkills,
+  1384→          version: r.version,
+  1385→        })),
+  1386→    }),
+  1387→  },
+  1388→  {
+  1389→    method: "GET",
+  1390→    test: (p) => p === "/career-roles/reference",
+  1391→    handle: () => ({
+  1392→      items: CAREER_ROLES.map((r) => ({ code: r.code, label: r.label ?? r.name })),
+  1393→    }),
+  1394→  },
+  1395→
+  1396→  // ---- H) chứng nhận (console admin)
+  1397→  {
+  1398→    method: "GET",
+  1399→    test: (p) => p === "/certificates",
+  1400→    handle: (c) => ({
+  1401→      items: nonEmpty(c, ADMIN_CERTIFICATES),
+  1402→      total: c.scenario === "empty" ? 0 : ADMIN_CERTIFICATES.length,
+  1403→      page: pageOf(c),
+  1404→      pageSize: pageSizeOf(c, 20),
+  1405→    }),
+  1406→  },
+  1407→  {
+  1408→    method: "POST",
+  1409→    test: (p) => p === "/certificates/issue",
+  1410→    handle: (c) => issuedCertificateFor(bodyString(c, "userId") ?? "pv-intern-1"),
+  1411→  },
+  1412→  {
+  1413→    method: "POST",
+  1414→    test: (p) => /^\/certificates\/[^/]+\/revoke$/.test(p),
+  1415→    handle: (c) => {
+  1416→      const id = segment(c.path, 2);
+  1417→      const found = ADMIN_CERTIFICATES.find((x) => x.id === id);
+  1418→      if (!found) throw err(404, "CERTIFICATE_NOT_FOUND", "Không tìm thấy chứng nhận.");
+  1419→      return {
+  1420→        ...found,
+  1421→        status: "revoked",
+  1422→        revokedAt: new Date().toISOString(),
+  1423→        revokeReason: bodyString(c, "reason") ?? "Thu hồi qua console Preview.",
+  1424→      };
+  1425→    },
+  1426→  },
+  1427→  {
+  1428→    method: "GET",
+  1429→    test: (p) => /^\/certificates\/[^/]+\/pdf$/.test(p),
+  1430→    handle: () => tinyPdf(),
+  1431→  },
+  1432→
+  1433→  // ---- I) log thư đi
+  1434→  {
+  1435→    method: "GET",
+  1436→    test: (p) => p === "/admin/communications",
+  1437→    handle: (c) => ({
+  1438→      items: nonEmpty(c, MAIL_LOG),
+  1439→      total: c.scenario === "empty" ? 0 : MAIL_LOG.length,
+  1440→      page: pageOf(c),
+  1441→      pageSize: pageSizeOf(c, 20),
+  1442→      transportConfigured: true,
+  1443→      deliveryMode: "smtp",
+  1444→    }),
+  1445→  },
+  1446→  {
+  1447→    method: "GET",
+  1448→    test: (p) => /^\/admin\/communications\/[^/]+\/preview$/.test(p),
+  1449→    handle: (c) => mailPreview(segment(c.path, 3)),
+  1450→  },
+  1451→  {
+  1452→    method: "POST",
+  1453→    test: (p) => /^\/admin\/communications\/[^/]+\/resend$/.test(p),
+  1454→    handle: () => ({ queued: true }),
+  1455→  },
+  1456→
+  1457→  // ---- J) kho tri thức
+  1458→  {
+  1459→    method: "GET",
+  1460→    test: (p) => p === "/admin/knowledge",
+  1461→    handle: (c) =>
+  1462→      itemsPage(
+  1463→        nonEmpty(c, KNOWLEDGE_DOCS.map(knowledgeMetadata)),
+  1464→        pageOf(c),
+  1465→        pageSizeOf(c, 20),
+  1466→      ),
+  1467→  },
+  1468→  {
+  1469→    method: "POST",
+  1470→    test: (p) => p === "/admin/knowledge/import/dry-run",
+  1471→    handle: (c) => {
+  1472→      const body = bodyOf(c);
+  1473→      const entries = Array.isArray(body.entries) ? body.entries : [];
+  1474→      const rows = entries.map((entry, index) => {
+  1475→        const row = entry && typeof entry === "object" && !Array.isArray(entry)
+  1476→          ? (entry as Record<string, unknown>)
+  1477→          : {};
+  1478→        const code = typeof row.code === "string" ? row.code : null;
+  1479→        const exists = code ? KNOWLEDGE_DOCS.some((d) => d.code === code) : false;
+  1480→        return {
+  1481→          index,
+  1482→          code,
+  1483→          validDraft: true,
+  1484→          publishable: true,
+  1485→          exists,
+  1486→          currentVersion: exists ? (KNOWLEDGE_DOCS.find((d) => d.code === code)?.version ?? 1) : null,
+  1487→          issues: [],
+  1488→          publicationIssues: [],
+  1489→        };
+  1490→      });
+  1491→      return {
+  1492→        total: rows.length,
+  1493→        validDrafts: rows.length,
+  1494→        publishable: rows.length,
+  1495→        mutationsPerformed: 0,
+  1496→        items: rows,
+  1497→      };
+  1498→    },
+  1499→  },
+  1500→  {
+  1501→    method: "GET",
+  1502→    test: (p) => /^\/admin\/knowledge\/[^/]+$/.test(p),
+  1503→    handle: (c) => {
+  1504→      const code = segment(c.path, 3);
+  1505→      const seed = KNOWLEDGE_DOCS.find((d) => d.code === code);
+  1506→      if (!seed) throw err(404, "KNOWLEDGE_NOT_FOUND", "Không tìm thấy tài liệu tri thức.");
+  1507→      return knowledgeDocument(seed);
+  1508→    },
+  1509→  },
+  1510→  {
+  1511→    method: "POST",
+  1512→    test: (p) => p === "/admin/knowledge",
+  1513→    handle: (c) => {
+  1514→      const body = bodyOf(c);
+  1515→      const code = bodyString(c, "code") ?? `KL-NEW-${Date.now().toString(36).toUpperCase()}`;
+  1516→      const draft = body.draft && typeof body.draft === "object" && !Array.isArray(body.draft)
+  1517→        ? (body.draft as Record<string, unknown>)
+  1518→        : {};
+  1519→      const seed = {
+  1520→        id: `kl-${Date.now().toString(36)}`,
+  1521→        code,
+  1522→        version: 1,
+  1523→        status: "draft" as const,
+  1524→        kind: (typeof draft.kind === "string" && draft.kind ? draft.kind : "qa") as "qa",
+  1525→        title: typeof draft.title === "string" && draft.title ? draft.title : "Tài liệu mới",
+  1526→        summary: typeof draft.summary === "string" && draft.summary ? draft.summary : "Tóm tắt mới.",
+  1527→        audience: "student_safe" as const,
+  1528→        purposes: ["mentoring"],
+  1529→        difficulty: null,
+  1530→      };
+  1531→      return knowledgeDocument(seed);
+  1532→    },
+  1533→  },
+  1534→  {
+  1535→    method: "PUT",
+  1536→    test: (p) => /^\/admin\/knowledge\/[^/]+$/.test(p),
+  1537→    handle: (c) => {
+  1538→      const code = segment(c.path, 3);
+  1539→      const seed = KNOWLEDGE_DOCS.find((d) => d.code === code);
+  1540→      if (!seed) throw err(404, "KNOWLEDGE_NOT_FOUND", "Không tìm thấy tài liệu tri thức.");
+  1541→      const expected = bodyNumber(c, "version") ?? seed.version;
+  1542→      return knowledgeDocument({ ...seed, version: expected + 1 });
+  1543→    },
+  1544→  },
+  1545→  {
+  1546→    method: "POST",
+  1547→    test: (p) => /^\/admin\/knowledge\/[^/]+\/publish$/.test(p),
+  1548→    handle: (c) => {
+  1549→      const code = segment(c.path, 3);
+  1550→      const seed = KNOWLEDGE_DOCS.find((d) => d.code === code);
+  1551→      if (!seed) throw err(404, "KNOWLEDGE_NOT_FOUND", "Không tìm thấy tài liệu tri thức.");
+  1552→      const version = bodyNumber(c, "version") ?? seed.version;
+  1553→      return knowledgeDocument({ ...seed, status: "published", version });
+  1554→    },
+  1555→  },
+  1556→  {
+  1557→    method: "POST",
+  1558→    test: (p) => /^\/admin\/knowledge\/[^/]+\/archive$/.test(p),
+  1559→    handle: (c) => {
+  1560→      const code = segment(c.path, 3);
+  1561→      const seed = KNOWLEDGE_DOCS.find((d) => d.code === code);
+  1562→      if (!seed) throw err(404, "KNOWLEDGE_NOT_FOUND", "Không tìm thấy tài liệu tri thức.");
+  1563→      const version = bodyNumber(c, "version") ?? seed.version;
+  1564→      return knowledgeDocument({ ...seed, status: "archived", version });
+  1565→    },
+  1566→  },
+  1567→  {
+  1568→    method: "POST",
+  1569→    test: (p) => /^\/admin\/knowledge\/[^/]+\/restore$/.test(p),
+  1570→    handle: (c) => {
+  1571→      const code = segment(c.path, 3);
+  1572→      const seed = KNOWLEDGE_DOCS.find((d) => d.code === code);
+  1573→      if (!seed) throw err(404, "KNOWLEDGE_NOT_FOUND", "Không tìm thấy tài liệu tri thức.");
+  1574→      const version = bodyNumber(c, "version") ?? seed.version;
+  1575→      return knowledgeDocument({ ...seed, status: "draft", version: version + 1 });
+  1576→    },
+  1577→  },
+  1578→  {
+  1579→    method: "GET",
+  1580→    test: (p) => /^\/admin\/knowledge\/[^/]+\/revisions$/.test(p),
+  1581→    handle: (c) => {
+  1582→      const code = segment(c.path, 3);
+  1583→      const seed = KNOWLEDGE_DOCS.find((d) => d.code === code);
+  1584→      if (!seed) throw err(404, "KNOWLEDGE_NOT_FOUND", "Không tìm thấy tài liệu tri thức.");
+  1585→      return itemsPage(knowledgeRevisions(seed), pageOf(c), 10);
+  1586→    },
+  1587→  },
+  1588→  {
+  1589→    method: "GET",
+  1590→    test: (p) => /^\/admin\/knowledge\/[^/]+\/publication-check$/.test(p),
+  1591→    handle: (c) => {
+  1592→      const code = segment(c.path, 3);
+  1593→      const seed = KNOWLEDGE_DOCS.find((d) => d.code === code);
+  1594→      if (!seed) throw err(404, "KNOWLEDGE_NOT_FOUND", "Không tìm thấy tài liệu tri thức.");
+  1595→      return {
+  1596→        code: seed.code,
+  1597→        currentVersion: seed.version,
+  1598→        status: seed.status,
+  1599→        sha256: sha256like(`${seed.code}-v${seed.version}`),
+  1600→        publishable: seed.status !== "published",
+  1601→        issues: seed.status === "published" ? ["Tài liệu đã phát hành ở phiên bản này."] : [],
+  1602→      };
+  1603→    },
+  1604→  },
+  1605→
+  1606→  // ---- K) kỳ KPI + kết quả KPI
+  1607→  {
+  1608→    method: "GET",
+  1609→    test: (p) => p === "/kpi-periods",
+  1610→    handle: (c) => ({
+  1611→      items: nonEmpty(c, KPI_PERIODS),
+  1612→      total: c.scenario === "empty" ? 0 : KPI_PERIODS.length,
+  1613→      pageSize: 20,
+  1614→    }),
+  1615→  },
+  1616→  {
+  1617→    method: "POST",
+  1618→    test: (p) => p === "/kpi-periods",
+  1619→    handle: (c) => {
+  1620→      const now = new Date().toISOString();
+  1621→      return {
+  1622→        id: `kpi-${Date.now().toString(36)}`,
+  1623→        code: bodyString(c, "code") ?? "KPI-NEW",
+  1624→        name: bodyString(c, "name") ?? "Kỳ KPI mới",
+  1625→        startDate: bodyString(c, "startDate") ?? iso(0),
+  1626→        endDate: bodyString(c, "endDate") ?? iso(30),
+  1627→        status: "draft",
+  1628→        ruleVersion: "kpi-rule-v3",
+  1629→        createdAt: now,
+  1630→        updatedAt: now,
+  1631→      };
+  1632→    },
+  1633→  },
+  1634→  {
+  1635→    method: "PATCH",
+  1636→    test: (p) => /^\/kpi-periods\/[^/]+$/.test(p),
+  1637→    handle: (c) => {
+  1638→      const id = segment(c.path, 2);
+  1639→      const found = KPI_PERIODS.find((k) => k.id === id);
+  1640→      if (!found) throw err(404, "KPI_PERIOD_NOT_FOUND", "Không tìm thấy kỳ KPI.");
+  1641→      const name = bodyString(c, "name");
+  1642→      const startDate = bodyString(c, "startDate");
+  1643→      const endDate = bodyString(c, "endDate");
+  1644→      if (name) found.name = name;
+  1645→      if (startDate) found.startDate = startDate;
+  1646→      if (endDate) found.endDate = endDate;
+  1647→      return { ...found, updatedAt: new Date().toISOString() };
+  1648→    },
+  1649→  },
+  1650→  {
+  1651→    method: "POST",
+  1652→    test: (p) => /^\/kpi-periods\/[^/]+\/status$/.test(p),
+  1653→    handle: (c) => {
+  1654→      const id = segment(c.path, 2);
+  1655→      const found = KPI_PERIODS.find((k) => k.id === id);
+  1656→      if (!found) throw err(404, "KPI_PERIOD_NOT_FOUND", "Không tìm thấy kỳ KPI.");
+  1657→      const status = requireEnum(bodyString(c, "status"), KPI_PERIOD_STATUSES, "trạng thái kỳ KPI");
+  1658→      return { ...found, status, updatedAt: new Date().toISOString() };
+  1659→    },
+  1660→  },
+  1661→  {
+  1662→    method: "POST",
+  1663→    test: (p) => /^\/kpi-periods\/[^/]+\/calculate$/.test(p),
+  1664→    handle: (c) => {
+  1665→      const id = segment(c.path, 2);
+  1666→      const found = KPI_PERIODS.find((k) => k.id === id) ?? KPI_PERIODS[0];
+  1667→      return {
+  1668→        period: { ...found, status: "calculating", updatedAt: new Date().toISOString() },
+  1669→        calculated: c.scenario === "empty" ? 0 : 4,
+  1670→        insufficientData: c.scenario === "empty" ? 0 : 2,
+  1671→      };
+  1672→    },
+  1673→  },
+  1674→  {
+  1675→    method: "POST",
+  1676→    test: (p) => /^\/kpi-periods\/[^/]+\/finalize$/.test(p),
+  1677→    handle: (c) => {
+  1678→      const id = segment(c.path, 2);
+  1679→      const found = KPI_PERIODS.find((k) => k.id === id) ?? KPI_PERIODS[0];
+  1680→      return { ...found, status: "finalized", updatedAt: new Date().toISOString() };
+  1681→    },
+  1682→  },
+  1683→  {
+  1684→    method: "GET",
+  1685→    test: (p) => /^\/kpi-periods\/[^/]+\/results$/.test(p),
+  1686→    handle: (c) => {
+  1687→      const periodId = segment(c.path, 2);
+  1688→      const rows = nonEmpty(c, KPI_RESULTS).filter((r) => r.periodId === periodId);
+  1689→      return { items: rows, total: rows.length, pageSize: 20 };
+  1690→    },
+  1691→  },
+  1692→  {
+  1693→    method: "GET",
+  1694→    test: (p) => /^\/kpi-results\/[^/]+$/.test(p),
+  1695→    handle: (c) => {
+  1696→      const id = segment(c.path, 2);
+  1697→      const result = KPI_RESULTS.find((r) => r.id === id) ?? KPI_RESULTS[0];
+  1698→      if (!result) throw err(404, "KPI_RESULT_NOT_FOUND", "Không tìm thấy kết quả KPI.");
+  1699→      return { result, metrics: KPI_METRICS };
+  1700→    },
+  1701→  },
+  1702→
+  1703→  // ---- L) hiệu suất
+  1704→  {
+  1705→    method: "GET",
+  1706→    test: (p) => p === "/performance/interns",
+  1707→    handle: (c) => {
+  1708→      const items = nonEmpty(c, PERFORMANCE_MEMBERS);
+  1709→      return {
+  1710→        items,
+  1711→        total: items.length,
+  1712→        page: pageOf(c),
+  1713→        pageSize: pageSizeOf(c, 10),
+  1714→      };
+  1715→    },
+  1716→  },
+  1717→  {
+  1718→    method: "GET",
+  1719→    test: (p) => /^\/performance\/interns\/[^/]+$/.test(p),
+  1720→    handle: (c) => internPerformance(c.scenario),
+  1721→  },
+  1722→  {
+  1723→    method: "GET",
+  1724→    test: (p) => /^\/performance\/interns\/[^/]+\/ai-recommendations$/.test(p),
+  1725→    handle: (c) => recommendationsFor(c.scenario),
+  1726→  },
+  1727→  {
+  1728→    method: "GET",
+  1729→    test: (p) => /^\/performance\/interns\/[^/]+\/detail$/.test(p),
+  1730→    handle: (c) => studentDetailPayload(segment(c.path, 3), pageOf(c)),
+  1731→  },
+  1732→
+  1733→  // ---- M) ngân hàng câu hỏi
+  1734→  {
+  1735→    method: "GET",
+  1736→    test: (p) => p === "/admin/question-bank",
+  1737→    handle: (c) => {
+  1738→      const q = (c.query.get("q") ?? c.query.get("search") ?? "").trim().toLowerCase();
+  1739→      const roleCode = c.query.get("roleCode") ?? "";
+  1740→      const phase = c.query.get("phase") ?? "";
+  1741→      const status = c.query.get("status") ?? "";
+  1742→      const rows = nonEmpty(c, BANK_QUESTIONS).filter((item) => {
+  1743→        if (q && !item.prompt.toLowerCase().includes(q) && !item.tags.some((t) => t.toLowerCase().includes(q)))
+  1744→          return false;
+  1745→        if (roleCode && item.roleCode !== roleCode) return false;
+  1746→        if (phase && item.phase !== phase) return false;
+  1747→        if (status && (status === "active") !== item.isActive) return false;
+  1748→        return true;
+  1749→      });
+  1750→      return {
+  1751→        items: rows,
+  1752→        total: rows.length,
+  1753→        page: pageOf(c),
+  1754→        pageSize: pageSizeOf(c, 10),
+  1755→        coverage: c.scenario === "empty" ? [] : questionCoverage(),
+  1756→      };
+  1757→    },
+  1758→  },
+  1759→  {
+  1760→    method: "POST",
+  1761→    test: (p) => p === "/admin/question-bank",
+  1762→    handle: (c) => {
+  1763→      const body = bodyOf(c);
+  1764→      return {
+  1765→        id: `qb-${Date.now().toString(36)}`,
+  1766→        roleCode: bodyString(c, "roleCode") ?? "frontend",
+  1767→        phase: bodyString(c, "phase") ?? "technical",
+  1768→        difficulty: bodyString(c, "difficulty") ?? "medium",
+  1769→        language: bodyString(c, "language") ?? "vi",
+  1770→        prompt: bodyString(c, "prompt") ?? "Câu hỏi mới?",
+  1771→        expectedConcepts: Array.isArray(body.expectedConcepts) ? body.expectedConcepts.filter((x): x is string => typeof x === "string") : [],
+  1772→        exampleAnswer: bodyString(c, "exampleAnswer") ?? "Câu trả lời mẫu.",
+  1773→        scoringRubric: bodyString(c, "scoringRubric") ?? "Rubric mẫu.",
+  1774→        followUpHints: Array.isArray(body.followUpHints) ? body.followUpHints.filter((x): x is string => typeof x === "string") : [],
+  1775→        tags: Array.isArray(body.tags) ? body.tags.filter((x): x is string => typeof x === "string") : [],
+  1776→        isActive: true,
+  1777→        sortOrder: bodyNumber(c, "sortOrder") ?? 99,
+  1778→        version: 1,
+  1779→        updatedAt: new Date().toISOString(),
+  1780→      };
+  1781→    },
+  1782→  },
+  1783→  {
+  1784→    method: "PUT",
+  1785→    test: (p) => /^\/admin\/question-bank\/[^/]+$/.test(p),
+  1786→    handle: (c) => {
+  1787→      const id = segment(c.path, 3);
+  1788→      const found = BANK_QUESTIONS.find((q) => q.id === id);
+  1789→      if (!found) throw err(404, "QUESTION_NOT_FOUND", "Không tìm thấy câu hỏi.");
+  1790→      const prompt = bodyString(c, "prompt");
+  1791→      if (prompt) found.prompt = prompt;
+  1792→      const difficulty = bodyString(c, "difficulty");
+  1793→      if (difficulty && ["easy", "medium", "hard"].includes(difficulty))
+  1794→        found.difficulty = difficulty as typeof found.difficulty;
+  1795→      const isActive = bodyOf(c).isActive;
+  1796→      if (typeof isActive === "boolean") found.isActive = isActive;
+  1797→      return { ...found, version: found.version + 1, updatedAt: new Date().toISOString() };
+  1798→    },
+  1799→  },
+  1800→  {
+  1801→    method: "DELETE",
+  1802→    test: (p) => /^\/admin\/question-bank\/[^/]+$/.test(p),
+  1803→    handle: (c) => {
+  1804→      const id = segment(c.path, 3);
+  1805→      const found = BANK_QUESTIONS.find((q) => q.id === id);
+  1806→      if (!found) throw err(404, "QUESTION_NOT_FOUND", "Không tìm thấy câu hỏi.");
+  1807→      found.isActive = false;
+  1808→      return { ...found, version: found.version + 1, updatedAt: new Date().toISOString() };
+  1809→    },
+  1810→  },
+  1811→
+  1812→  // ---- N) đợt tuyển + hồ sơ trong đợt
+  1813→  {
+  1814→    method: "GET",
+  1815→    test: (p) => p === "/recruitment-rounds",
+  1816→    handle: (c) => ({ items: nonEmpty(c, PUBLIC_ROUNDS) }),
+  1817→  },
+  1818→  {
+  1819→    method: "POST",
+  1820→    test: (p) => p === "/recruitment-rounds",
+  1821→    handle: (c) => ({
+  1822→      id: `rr-${Date.now().toString(36)}`,
+  1823→      name: bodyString(c, "name") ?? "Đợt tuyển mới",
+  1824→      status: "open",
+  1825→      opensAt: bodyString(c, "opensAt") ?? iso(0),
+  1826→      closesAt: bodyString(c, "closesAt") ?? iso(20, 17),
+  1827→    }),
+  1828→  },
+  1829→  {
+  1830→    method: "GET",
+  1831→    test: (p) => /^\/recruitment-rounds\/[^/]+$/.test(p),
+  1832→    handle: (c) => {
+  1833→      const id = segment(c.path, 2);
+  1834→      const round = PUBLIC_ROUNDS.find((r) => r.id === id) ?? PUBLIC_ROUNDS[0];
+  1835→      return { ...round, slots: ROUND_SLOTS };
+  1836→    },
+  1837→  },
+  1838→  {
+  1839→    method: "POST",
+  1840→    test: (p) => /^\/recruitment-rounds\/[^/]+\/status$/.test(p),
+  1841→    handle: (c) => {
+  1842→      const id = segment(c.path, 2);
+  1843→      const round = PUBLIC_ROUNDS.find((r) => r.id === id) ?? PUBLIC_ROUNDS[0];
+  1844→      const status = bodyString(c, "status");
+  1845→      return { ...round, status: status ?? round.status };
+  1846→    },
+  1847→  },
+  1848→  {
+  1849→    method: "POST",
+  1850→    test: (p) => /^\/recruitment-rounds\/[^/]+\/slots$/.test(p),
+  1851→    handle: (c) => {
+  1852→      const id = segment(c.path, 2);
+  1853→      const round = PUBLIC_ROUNDS.find((r) => r.id === id) ?? PUBLIC_ROUNDS[0];
+  1854→      const slot = {
+  1855→        id: `slot-${Date.now().toString(36)}`,
+  1856→        roleCode: bodyString(c, "roleCode") ?? "frontend",
+  1857→        startsAt: bodyString(c, "startsAt") ?? iso(3, 9),
+  1858→        endsAt: bodyString(c, "endsAt") ?? iso(3, 11),
+  1859→        timezone: bodyString(c, "timezone") ?? "Asia/Ho_Chi_Minh",
+  1860→        capacity: bodyNumber(c, "capacity") ?? 4,
+  1861→        booked: 0,
+  1862→        status: "open",
+  1863→        minimumPreparationMinutes: bodyNumber(c, "minimumPreparationMinutes") ?? 30,
+  1864→        credentialsLeadMinutes: bodyNumber(c, "credentialsLeadMinutes") ?? 60,
+  1865→      };
+  1866→      return { ...round, slots: [...ROUND_SLOTS, slot] };
+  1867→    },
+  1868→  },
+  1869→  {
+  1870→    method: "POST",
+  1871→    test: (p) => /^\/recruitment-rounds\/[^/]+\/slots\/[^/]+\/close$/.test(p),
+  1872→    handle: () => ({ closed: true }),
+  1873→  },
+  1874→  {
+  1875→    method: "GET",
+  1876→    test: (p) => /^\/recruitment-rounds\/[^/]+\/applications$/.test(p),
+  1877→    handle: (c) => ({
+  1878→      items: nonEmpty(c, ROUND_APPLICATIONS),
+  1879→      total: c.scenario === "empty" ? 0 : ROUND_APPLICATIONS.length,
+  1880→      page: pageOf(c),
+  1881→    }),
+  1882→  },
+  1883→  {
+  1884→    method: "GET",
+  1885→    test: (p) => /^\/recruitment-rounds\/[^/]+\/applications\/[^/]+$/.test(p),
+  1886→    handle: (c) => staffApplicationPayload(segment(c.path, 4)),
+  1887→  },
+  1888→  {
+  1889→    method: "GET",
+  1890→    test: (p) => /^\/recruitment-rounds\/[^/]+\/applications\/[^/]+\/cv$/.test(p),
+  1891→    handle: () => tinyCv(),
+  1892→  },
+  1893→  {
+  1894→    method: "POST",
+  1895→    test: (p) => /^\/recruitment-rounds\/[^/]+\/applications\/[^/]+\/retake$/.test(p),
+  1896→    handle: () => ({ rebooked: true, slotId: "slot-11" }),
+  1897→  },
+  1898→  {
+  1899→    method: "POST",
+  1900→    test: (p) => /^\/recruitment-rounds\/[^/]+\/applications\/[^/]+\/(reschedule|cancel|retry)$/.test(p),
+  1901→    handle: (c) => ({ updated: true, applicationId: segment(c.path, 4) }),
+  1902→  },
+  1903→  {
+  1904→    method: "POST",
+  1905→    test: (p) => /^\/recruitment-rounds\/[^/]+\/applications\/[^/]+\/resend-credentials$/.test(p),
+  1906→    handle: () => ({ queued: true }),
+  1907→  },
+  1908→  {
+  1909→    method: "GET",
+  1910→    test: (p) => /^\/recruitment-rounds\/[^/]+\/applications\/[^/]+\/credential-recovery$/.test(p),
+  1911→    handle: () => ({
+  1912→      allowed: true,
+  1913→      message: "Cho phép gửi lại thông tin đăng nhập một lần trong khung giờ này.",
+  1914→      revision: `rev-${Date.now().toString(36)}`,
+  1915→      expiresAt: iso(0, 18),
+  1916→    }),
+  1917→  },
+  1918→  {
+  1919→    method: "POST",
+  1920→    test: (p) => /^\/recruitment-rounds\/[^/]+\/applications\/[^/]+\/recover-credentials$/.test(p),
+  1921→    handle: () => ({ recovered: true, duplicate: false, mailId: "ml-11" }),
+  1922→  },
+  1923→
+  1924→  // ---- O) báo cáo
+  1925→  {
+  1926→    method: "GET",
+  1927→    test: (p) => p === "/reports",
+  1928→    handle: (c) => {
+  1929→      const kind = c.query.get("kind") ?? "";
+  1930→      const rows = nonEmpty(c, REPORT_LIST).filter((r) => !kind || r.kind === kind);
+  1931→      return { items: rows, total: rows.length, counts: c.scenario === "empty" ? [] : reportCounts() };
+  1932→    },
+  1933→  },
+  1934→  {
+  1935→    method: "GET",
+  1936→    test: (p) => /^\/reports\/[^/]+$/.test(p),
+  1937→    handle: (c) => reportDetailPayload(segment(c.path, 2)),
+  1938→  },
+  1939→  {
+  1940→    method: "POST",
+  1941→    test: (p) => p === "/reports",
+  1942→    handle: (c) => {
+  1943→      const kind = requireEnum(bodyString(c, "kind"), REPORT_KINDS, "loại báo cáo");
+  1944→      const projectId = bodyString(c, "projectId") ?? "prj-lib";
+  1945→      const project = PROJECT_ROWS.find((p) => p.id === projectId) ?? PROJECT_ROWS[0];
+  1946→      const detail = reportDetailPayload("rp-1");
+  1947→      return {
+  1948→        ...detail,
+  1949→        id: `rp-${Date.now().toString(36)}`,
+  1950→        title: bodyString(c, "title") ?? `Báo cáo ${kind} mới`,
+  1951→        kind,
+  1952→        projectId,
+  1953→        projectName: project.name,
+  1954→        createdAt: new Date().toISOString(),
+  1955→        snapshot: { ...detail.snapshot, projectName: project.name, scope: { ...detail.snapshot.scope, projectId } },
+  1956→      };
+  1957→    },
+  1958→  },
+  1959→  {
+  1960→    method: "GET",
+  1961→    test: (p) => /^\/reports\/[^/]+\/pdf$/.test(p),
+  1962→    handle: () => tinyPdf(),
+  1963→  },
+  1964→  {
+  1965→    method: "GET",
+  1966→    test: (p) => /^\/reports\/[^/]+\/xlsx$/.test(p),
+  1967→    handle: () => tinyXlsx(),
+  1968→  },
+  1969→
+  1970→  // ---- P) lương ảo (admin)
+  1971→  {
+  1972→    method: "GET",
+  1973→    test: (p) => p === "/virtual-salary",
+  1974→    handle: (c) => ({
+  1975→      items: nonEmpty(c, SALARY_LEDGER),
+  1976→      total: c.scenario === "empty" ? 0 : SALARY_LEDGER.length,
+  1977→      pageSize: 20,
+  1978→    }),
+  1979→  },
+  1980→  {
+  1981→    method: "POST",
+  1982→    test: (p) => /^\/virtual-salary\/generate\/[^/]+$/.test(p),
+  1983→    handle: (c) => ({
+  1984→      kpiPeriodId: segment(c.path, 3),
+  1985→      generated: c.scenario === "empty" ? 0 : 4,
+  1986→      skipped: c.scenario === "empty" ? 0 : 2,
+  1987→      unit: "VND",
+  1988→    }),
+  1989→  },
+  1990→  {
+  1991→    method: "POST",
+  1992→    test: (p) => p === "/virtual-salary/adjustments",
+  1993→    handle: (c) => ({
+  1994→      id: `lg-${Date.now().toString(36)}`,
+  1995→      userId: bodyString(c, "userId") ?? "pv-intern-1",
+  1996→      kpiPeriodId: null,
+  1997→      type: bodyString(c, "type") ?? "adjustment",
+  1998→      amount: bodyNumber(c, "amount") ?? 50000,
+  1999→      unit: "VND",
+  2000→      description: bodyString(c, "reason") ?? "Điều chỉnh thủ công (Preview)",
+
+[showing lines 1-2000 of 3109; use offset=2001 with limit to continue reading]

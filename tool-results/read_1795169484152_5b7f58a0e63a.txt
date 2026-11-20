@@ -1,0 +1,668 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { AnimatePresence, motion } from "framer-motion";
+     4→     4→import { VX } from "@/components/icons/v-icons";
+     5→     5→import { useEffect, useState } from "react";
+     6→     6→import { Stagger, StaggerItem } from "@/components/notebook/reveal";
+     7→     7→import { InkBadge } from "@/components/notebook/ui";
+     8→     8→import {
+     9→     9→  VAward,
+    10→    10→  VBell,
+    11→    11→  VBot,
+    12→    12→  VBook,
+    13→    13→  VChartColumn,
+    14→    14→  VClipboardCheck,
+    15→    15→  VColumns,
+    16→    16→  VFileText,
+    17→    17→  VHome,
+    18→    18→  VKanban,
+    19→    19→  VListTodo,
+    20→    20→  VLogo,
+    21→    21→  VLogoMark,
+    22→    22→  VLogout,
+    23→    23→  VMenu,
+    24→    24→  VNotebookPen,
+    25→    25→  VPanelLeft,
+    26→    26→  VPencil,
+    27→    27→  VSearch,
+    28→    28→  VShapes,
+    29→    29→  VShield,
+    30→    30→  VUser,
+    31→    31→  VUsers,
+    32→    32→} from "@/components/icons/v-icons";
+    33→    33→import {
+    34→    34→  ShellNotifContext,
+    35→    35→  useShellNotif,
+    36→    36→  useShellNotifications,
+    37→    37→} from "@/components/shared/bell-utils";
+    38→    38→import { NotificationBell } from "@/components/shared/notification-bell";
+    39→    39→import { ThemeToggle } from "@/components/shared/theme-toggle";
+    40→    40→import {
+    41→    41→  Command,
+    42→    42→  CommandEmpty,
+    43→    43→  CommandGroup,
+    44→    44→  CommandInput,
+    45→    45→  CommandItem,
+    46→    46→  CommandList,
+    47→    47→} from "@/components/ui/command";
+    48→    48→import {
+    49→    49→  Dialog,
+    50→    50→  DialogContent,
+    51→    51→  DialogDescription,
+    52→    52→  DialogHeader,
+    53→    53→  DialogTitle,
+    54→    54→} from "@/components/ui/dialog";
+    55→    55→import { NAV_CONFIG, routeLabel, useApp } from "@/lib/store";
+    56→    56→import type { InternState, Role, SessionUser } from "@/lib/mock/types";
+    57→    57→import type { VIconComponent } from "@/components/icons/v-icons";
+    58→    58→
+    59→    59→import StudentOverview from "@/components/student/student-overview";
+    60→    60→import StudentWork from "@/components/student/student-work";
+    61→    61→import StudentSprint from "@/components/student/student-sprint";
+    62→    62→import StudentMentor from "@/components/student/student-mentor";
+    63→    63→import StudentEvaluations from "@/components/student/student-evaluations";
+    64→    64→import StudentKpi from "@/components/student/student-kpi";
+    65→    65→import StudentCertificates from "@/components/student/student-certificates";
+    66→    66→import StudentNotifications from "@/components/student/student-notifications";
+    67→    67→import StudentProfile from "@/components/student/student-profile";
+    68→    68→import InstructorOverview from "@/components/staff/instructor-overview";
+    69→    69→import InstructorSessions from "@/components/staff/instructor-sessions";
+    70→    70→import InstructorSprints from "@/components/staff/instructor-sprints";
+    71→    71→import InstructorGrading from "@/components/staff/instructor-grading";
+    72→    72→import InstructorReports from "@/components/staff/instructor-reports";
+    73→    73→import AdminOverview from "@/components/staff/admin-overview";
+    74→    74→import AdminUsers from "@/components/staff/admin-users";
+    75→    75→import AdminQuestions from "@/components/staff/admin-questions";
+    76→    76→import AdminTemplates from "@/components/staff/admin-templates";
+    77→    77→import StaffNotifications from "@/components/staff/staff-notifications";
+    78→    78→import StaffProfile from "@/components/staff/staff-profile";
+    79→    79→
+    80→    80→/* Icon theo route key — dùng bộ V-Icons riêng của hệ thống. */
+    81→    81→const ROUTE_ICONS: Record<string, VIconComponent> = {
+    82→    82→  overview: VHome,
+    83→    83→  work: VListTodo,
+    84→    84→  sprint: VKanban,
+    85→    85→  mentor: VBot,
+    86→    86→  evaluations: VClipboardCheck,
+    87→    87→  kpi: VChartColumn,
+    88→    88→  certificates: VAward,
+    89→    89→  notifications: VBell,
+    90→    90→  profile: VUser,
+    91→    91→  sessions: VUsers,
+    92→    92→  sprints: VColumns,
+    93→    93→  grading: VPencil,
+    94→    94→  reports: VFileText,
+    95→    95→  users: VUsers,
+    96→    96→  questions: VBook,
+    97→    97→  templates: VShapes,
+    98→    98→};
+    99→    99→
+   100→   100→const ROLE_LABEL: Record<Role, string> = {
+   101→   101→  intern: "Sinh viên",
+   102→   102→  instructor: "Giảng viên",
+   103→   103→  admin: "Quản trị viên",
+   104→   104→};
+   105→   105→
+   106→   106→const ROLE_ICON: Record<Role, VIconComponent> = {
+   107→   107→  intern: VNotebookPen,
+   108→   108→  instructor: VClipboardCheck,
+   109→   109→  admin: VShield,
+   110→   110→};
+   111→   111→
+   112→   112→/* Badge trạng thái sinh viên cho thẻ người dùng sidebar. */
+   113→   113→const INTERN_STATE_META: Record<InternState, { label: string; tone: string }> = {
+   114→   114→  active: { label: "Đang thực tập", tone: "blue" },
+   115→   115→  waiting: { label: "Chờ phân công", tone: "amber" },
+   116→   116→  finished: { label: "Hoàn thành", tone: "green" },
+   117→   117→};
+   118→   118→
+   119→   119→/* Các route khóa với sinh viên "chờ phân công". */
+   120→   120→const WAITING_BLOCKED_KEYS = ["work", "sprint", "mentor", "evaluations", "kpi", "certificates"];
+   121→   121→
+   122→   122→function isRouteAvailable(user: SessionUser, key: string): boolean {
+   123→   123→  return !(user.role === "intern" && user.internState === "waiting" && WAITING_BLOCKED_KEYS.includes(key));
+   124→   124→}
+   125→   125→
+   126→   126→/* =====================================================================
+   127→   127→ * SIDEBAR — dùng chung desktop & drawer mobile.
+   128→   128→ * ===================================================================== */
+   129→   129→function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+   130→   130→  const user = useApp((s) => s.user)!;
+   131→   131→  const route = useApp((s) => s.route);
+   132→   132→  const navigate = useApp((s) => s.navigate);
+   133→   133→  const { unreadCount } = useShellNotif();
+   134→   134→  const groups = NAV_CONFIG[user.role].groups;
+   135→   135→  const RoleIcon = ROLE_ICON[user.role];
+   136→   136→  const stateMeta =
+   137→   137→    user.role === "intern" && user.internState ? INTERN_STATE_META[user.internState] : null;
+   138→   138→
+   139→   139→  return (
+   140→   140→    <div className="flex h-full min-h-0 flex-col">
+   141→   141→      {/* Logo + nhãn vai trò */}
+   142→   142→      <div className="border-b-2 border-dashed border-[color-mix(in_srgb,var(--ink)_22%,transparent)] px-4 pb-4 pt-5">
+   143→   143→        <button
+   144→   144→          type="button"
+   145→   145→          onClick={() => navigate("overview")}
+   146→   146→          className="focus-ink block text-left transition-transform hover:-rotate-1"
+   147→   147→          aria-label="V-Intern — về Tổng quan"
+   148→   148→        >
+   149→   149→          <VLogo size={26} className="text-[var(--ink)]" />
+   150→   150→        </button>
+   151→   151→        <div className="mt-3 flex items-center gap-2">
+   152→   152→          <span className="grid h-7 w-7 place-items-center rounded-md border-2 border-[var(--ink)] bg-[var(--blue-mist)] text-[var(--royal)]">
+   153→   153→            <RoleIcon size={15} />
+   154→   154→          </span>
+   155→   155→          <div className="leading-tight">
+   156→   156→            <p className="text-[0.8rem] font-bold">{ROLE_LABEL[user.role]}</p>
+   157→   157→            <p className="text-[0.68rem] text-[var(--ink-soft)]">
+   158→   158→              {user.role === "intern" && user.internState === "waiting"
+   159→   159→                ? "Đang chờ phân công"
+   160→   160→                : user.role === "intern" && user.internState === "finished"
+   161→   161→                  ? "Kỳ thực tập đã hoàn thành"
+   162→   162→                  : user.title.split("·")[1]?.trim() ?? "Không gian làm việc"}
+   163→   163→            </p>
+   164→   164→          </div>
+   165→   165→        </div>
+   166→   166→      </div>
+   167→   167→
+   168→   168→      {/* Điều hướng nhóm — stagger entrance (tôn trọng reduced-motion) */}
+   169→   169→      <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Điều hướng chính">
+   170→   170→        <Stagger>
+   171→   171→          {groups.map((group) => (
+   172→   172→            <StaggerItem key={group.label} className="mb-4">
+   173→   173→              <p className="eyebrow mb-1.5 px-2 !text-[0.62rem]">{group.label}</p>
+   174→   174→              <ul className="space-y-0.5">
+   175→   175→                {group.items.map((item) => {
+   176→   176→                  const Icon = ROUTE_ICONS[item.key] ?? VListTodo;
+   177→   177→                  const active = route === item.key;
+   178→   178→                  const available = isRouteAvailable(user, item.key);
+   179→   179→                  return (
+   180→   180→                    <li key={item.key}>
+   181→   181→                      <button
+   182→   182→                        type="button"
+   183→   183→                        disabled={!available}
+   184→   184→                        onClick={() => {
+   185→   185→                          navigate(item.key);
+   186→   186→                          onNavigate?.();
+   187→   187→                        }}
+   188→   188→                        aria-current={active ? "page" : undefined}
+   189→   189→                        title={available ? item.label : "Chưa khả dụng — cần dự án được phân công"}
+   190→   190→                        className={`focus-ink flex min-h-11 w-full items-center gap-2.5 rounded-[9px_11px_9px_11px] px-3 text-left text-[0.85rem] font-semibold transition-all ${
+   191→   191→                          active
+   192→   192→                            ? "nav-marker glow-ring border-2 border-[var(--ink)]"
+   193→   193→                            : available
+   194→   194→                              ? "hover:-translate-y-px hover:bg-[var(--blue-mist)]"
+   195→   195→                              : "cursor-not-allowed opacity-35"
+   196→   196→                        }`}
+   197→   197→                      >
+   198→   198→                        <Icon size={17} className="shrink-0" />
+   199→   199→                        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+   200→   200→                        {item.badge && (
+   201→   201→                          <InkBadge tone="neutral" className="shrink-0 px-1.5 py-0 text-[0.58rem]">
+   202→   202→                            {item.badge}
+   203→   203→                          </InkBadge>
+   204→   204→                        )}
+   205→   205→                        {item.key === "notifications" && unreadCount > 0 && (
+   206→   206→                          <InkBadge
+   207→   207→                            key={unreadCount}
+   208→   208→                            tone="blue"
+   209→   209→                            dot
+   210→   210→                            className="animate-pop-in shrink-0 px-1.5 py-0 tabular text-[0.58rem]"
+   211→   211→                          >
+   212→   212→                            {unreadCount > 99 ? "99+" : String(unreadCount)}
+   213→   213→                          </InkBadge>
+   214→   214→                        )}
+   215→   215→                      </button>
+   216→   216→                    </li>
+   217→   217→                  );
+   218→   218→                })}
+   219→   219→              </ul>
+   220→   220→            </StaggerItem>
+   221→   221→          ))}
+   222→   222→        </Stagger>
+   223→   223→      </nav>
+   224→   224→
+   225→   225→      {/* Ghi chú chờ phân công + thẻ người dùng */}
+   226→   226→      <div className="border-t-2 border-dashed border-[color-mix(in_srgb,var(--ink)_22%,transparent)] p-3">
+   227→   227→        {user.role === "intern" && user.internState === "waiting" && (
+   228→   228→          <div className="ants-border mb-2.5 rounded-[10px] bg-[var(--paper-raised)] px-3 py-2.5">
+   229→   229→            <p className="font-hand text-[0.82rem] leading-snug text-[var(--ink-soft)]">
+   230→   230→              Đang chờ phân công dự án — Công việc, Sprint, Đánh giá, KPI & Chứng nhận sẽ mở ngay
+   231→   231→              khi bạn được gán vào nhóm ✎
+   232→   232→            </p>
+   233→   233→          </div>
+   234→   234→        )}
+   235→   235→        <div className="sticker-pop flex items-center gap-2.5 rounded-[10px] border-2 border-[var(--ink)] bg-[var(--paper-raised)] p-2.5 shadow-ink-2">
+   236→   236→          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-[var(--ink)] bg-[var(--royal)] text-xs font-extrabold text-white dark:text-[#101018]">
+   237→   237→            {user.initials}
+   238→   238→          </span>
+   239→   239→          <div className="min-w-0 flex-1 leading-tight">
+   240→   240→            <p className="truncate text-[0.8rem] font-bold">{user.name}</p>
+   241→   241→            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+   242→   242→              <InkBadge tone="neutral" className="px-1.5 py-0 text-[0.56rem]">
+   243→   243→                {ROLE_LABEL[user.role]}
+   244→   244→              </InkBadge>
+   245→   245→              {stateMeta && (
+   246→   246→                <InkBadge tone={stateMeta.tone} dot className="px-1.5 py-0 text-[0.56rem]">
+   247→   247→                  {stateMeta.label}
+   248→   248→                </InkBadge>
+   249→   249→              )}
+   250→   250→            </div>
+   251→   251→            <p className="mt-1 truncate text-[0.66rem] text-[var(--ink-soft)]">{user.email}</p>
+   252→   252→          </div>
+   253→   253→        </div>
+   254→   254→      </div>
+   255→   255→    </div>
+   256→   256→  );
+   257→   257→}
+   258→   258→
+   259→   259→/* =====================================================================
+   260→   260→ * TOPBAR — breadcrumb + chip hệ thống + bảng lệnh + chuông + theme.
+   261→   261→ * ===================================================================== */
+   262→   262→function Topbar({ onOpenPalette }: { onOpenPalette: () => void }) {
+   263→   263→  const user = useApp((s) => s.user)!;
+   264→   264→  const route = useApp((s) => s.route);
+   265→   265→  const logout = useApp((s) => s.logout);
+   266→   266→  const setSidebarOpen = useApp((s) => s.setSidebarOpen);
+   267→   267→
+   268→   268→  return (
+   269→   269→    <header className="no-print sticky top-0 z-40 flex h-16 items-center gap-2 border-b-2 border-[var(--ink)] bg-[var(--paper)] px-3 sm:px-4">
+   270→   270→      <button
+   271→   271→        type="button"
+   272→   272→        onClick={() => setSidebarOpen(true)}
+   273→   273→        aria-label="Mở menu"
+   274→   274→        className="focus-ink grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-ink-2 lg:hidden"
+   275→   275→      >
+   276→   276→        <VMenu size={18} />
+   277→   277→      </button>
+   278→   278→
+   279→   279→      {/* Breadcrumb */}
+   280→   280→      <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
+   281→   281→        <ol className="flex items-center gap-1.5 text-[0.78rem] text-[var(--ink-soft)]">
+   282→   282→          <li className="hidden shrink-0 sm:flex" aria-hidden="true">
+   283→   283→            <VLogoMark size={15} className="text-[var(--ink)]" />
+   284→   284→          </li>
+   285→   285→          <li className="hidden sm:inline">V-Intern</li>
+   286→   286→          <li aria-hidden="true" className="hidden sm:inline">/</li>
+   287→   287→          <li>{ROLE_LABEL[user.role]}</li>
+   288→   288→          <li aria-hidden="true">/</li>
+   289→   289→          <li className="truncate font-bold text-[var(--ink)]">{routeLabel(user.role, route)}</li>
+   290→   290→        </ol>
+   291→   291→      </nav>
+   292→   292→
+   293→   293→      {/* Trạng thái hệ thống (desktop) */}
+   294→   294→      <span
+   295→   295→        title="Uptime 99.7%"
+   296→   296→        aria-label="Hệ thống hoạt động — uptime 99,7%"
+   297→   297→        className="hidden shrink-0 items-center gap-2 rounded-full border-2 border-dashed border-[color-mix(in_srgb,var(--ink)_35%,transparent)] px-3 py-1.5 text-[0.72rem] font-semibold text-[var(--ink-soft)] lg:inline-flex"
+   298→   298→      >
+   299→   299→        <span className="ws-dot-live" aria-hidden="true" />
+   300→   300→        Hệ thống hoạt động
+   301→   301→      </span>
+   302→   302→
+   303→   303→      <div className="flex shrink-0 items-center gap-2">
+   304→   304→        {/* Bảng lệnh ⌘K */}
+   305→   305→        <button
+   306→   306→          type="button"
+   307→   307→          onClick={onOpenPalette}
+   308→   308→          aria-label="Mở bảng lệnh nhanh"
+   309→   309→          aria-keyshortcuts="Control+K"
+   310→   310→          title="Bảng lệnh nhanh — ⌘K hoặc /"
+   311→   311→          className="focus-ink inline-flex h-10 items-center gap-2 rounded-full border-2 border-[var(--ink)] bg-[var(--paper-raised)] px-3.5 text-[var(--ink)] shadow-ink-2 transition-all hover:-translate-y-0.5 hover:bg-[var(--blue-mist)]"
+   312→   312→        >
+   313→   313→          <VSearch size={16} />
+   314→   314→          <kbd className="hidden rounded-md border-2 border-[color-mix(in_srgb,var(--ink)_45%,transparent)] px-1.5 py-px font-geist-mono text-[0.62rem] font-bold text-[var(--ink-soft)] sm:inline-block">
+   315→   315→            ⌘K
+   316→   316→          </kbd>
+   317→   317→        </button>
+   318→   318→
+   319→   319→        <ThemeToggle />
+   320→   320→        <NotificationBell />
+   321→   321→        <button
+   322→   322→          type="button"
+   323→   323→          onClick={logout}
+   324→   324→          aria-label="Đăng xuất"
+   325→   325→          title="Đăng xuất"
+   326→   326→          className="focus-ink inline-flex h-10 items-center gap-2 rounded-full border-2 border-[var(--ink)] bg-[var(--paper-raised)] px-3 text-[0.78rem] font-bold text-[var(--ink)] shadow-ink-2 transition-all hover:-translate-y-0.5 hover:bg-[var(--note-pink)] hover:text-[var(--note-pink-ink)]"
+   327→   327→        >
+   328→   328→          <VLogout size={16} />
+   329→   329→          <span className="hidden md:inline">Đăng xuất</span>
+   330→   330→        </button>
+   331→   331→      </div>
+   332→   332→    </header>
+   333→   333→  );
+   334→   334→}
+   335→   335→
+   336→   336→/* =====================================================================
+   337→   337→ * COMMAND PALETTE — ⌘K / Ctrl+K / "/" (cmdk trong Dialog notebook).
+   338→   338→ * ===================================================================== */
+   339→   339→const SEARCH_TARGET_TAGS = ["INPUT", "TEXTAREA", "SELECT"];
+   340→   340→
+   341→   341→function isTypingTarget(target: EventTarget | null): boolean {
+   342→   342→  return (
+   343→   343→    target instanceof HTMLElement &&
+   344→   344→    (SEARCH_TARGET_TAGS.includes(target.tagName) || target.isContentEditable)
+   345→   345→  );
+   346→   346→}
+   347→   347→
+   348→   348→/* Style dùng chung cho các nhóm & item trong palette (merge đè base shadcn). */
+   349→   349→const PALETTE_GROUP_CLS =
+   350→   350→  "[&_[cmdk-group-heading]]:font-hand [&_[cmdk-group-heading]]:text-[0.72rem] [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-[var(--ink-soft)]";
+   351→   351→const PALETTE_ITEM_CLS =
+   352→   352→  "gap-2.5 rounded-[9px_11px_9px_11px] px-3 py-2.5 text-[0.85rem] font-semibold data-[selected=true]:bg-[var(--blue-mist)] data-[selected=true]:text-[var(--ink)]";
+   353→   353→
+   354→   354→function CommandPalette({
+   355→   355→  open,
+   356→   356→  onOpenChange,
+   357→   357→}: {
+   358→   358→  open: boolean;
+   359→   359→  onOpenChange: (open: boolean) => void;
+   360→   360→}) {
+   361→   361→  const user = useApp((s) => s.user)!;
+   362→   362→  const route = useApp((s) => s.route);
+   363→   363→  const navigate = useApp((s) => s.navigate);
+   364→   364→  const logout = useApp((s) => s.logout);
+   365→   365→  const goLanding = useApp((s) => s.goLanding);
+   366→   366→  const { unreadCount } = useShellNotif();
+   367→   367→  const groups = NAV_CONFIG[user.role].groups;
+   368→   368→  const unreadLabel = unreadCount > 99 ? "99+" : String(unreadCount);
+   369→   369→
+   370→   370→  /* ⌘K / Ctrl+K bật–tắt · "/" mở khi con trỏ không đang ở ô nhập */
+   371→   371→  useEffect(() => {
+   372→   372→    const onKey = (e: KeyboardEvent) => {
+   373→   373→      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+   374→   374→        e.preventDefault();
+   375→   375→        onOpenChange(!open);
+   376→   376→        return;
+   377→   377→      }
+   378→   378→      if (e.key === "/" && !isTypingTarget(e.target)) {
+   379→   379→        e.preventDefault();
+   380→   380→        onOpenChange(true);
+   381→   381→      }
+   382→   382→    };
+   383→   383→    window.addEventListener("keydown", onKey);
+   384→   384→    return () => window.removeEventListener("keydown", onKey);
+   385→   385→  }, [open, onOpenChange]);
+   386→   386→
+   387→   387→  const close = () => onOpenChange(false);
+   388→   388→  const go = (key: string) => {
+   389→   389→    navigate(key);
+   390→   390→    close();
+   391→   391→  };
+   392→   392→
+   393→   393→  return (
+   394→   394→    <Dialog open={open} onOpenChange={onOpenChange}>
+   395→   395→      <DialogContent
+   396→   396→        showCloseButton={false}
+   397→   397→        className="top-[12%] translate-y-0 gap-0 overflow-hidden rounded-[14px_18px_14px_18px] border-2 border-[var(--ink)] bg-[var(--paper)] p-0 shadow-ink-6 sm:max-w-[34rem]"
+   398→   398→      >
+   399→   399→        <DialogHeader className="sr-only">
+   400→   400→          <DialogTitle>Bảng lệnh nhanh</DialogTitle>
+   401→   401→          <DialogDescription>
+   402→   402→            Tìm trang theo vai trò {ROLE_LABEL[user.role]} và các thao tác nhanh của V-Intern.
+   403→   403→          </DialogDescription>
+   404→   404→        </DialogHeader>
+   405→   405→
+   406→   406→        <Command
+   407→   407→          className="bg-transparent text-[var(--ink)] rounded-none
+   408→   408→            [&_[data-slot=command-input-wrapper]]:h-12 [&_[data-slot=command-input-wrapper]]:gap-2.5
+   409→   409→            [&_[data-slot=command-input-wrapper]]:border-b-2 [&_[data-slot=command-input-wrapper]]:border-[var(--ink)]
+   410→   410→            [&_[data-slot=command-input-wrapper]]:bg-[var(--paper-raised)] [&_[data-slot=command-input-wrapper]]:px-4
+   411→   411→            [&_[data-slot=command-input]]:text-[0.92rem]"
+   412→   412→        >
+   413→   413→          <CommandInput placeholder="Tìm trang hoặc thao tác… (phím / cũng mở được)" />
+   414→   414→          <CommandList className="max-h-[min(22rem,60vh)] p-1.5">
+   415→   415→            <CommandEmpty className="py-8 font-hand text-[0.95rem] text-[var(--ink-soft)]">
+   416→   416→              Không tìm thấy trang nào — thử gõ từ khóa khác nhé ✎
+   417→   417→            </CommandEmpty>
+   418→   418→
+   419→   419→            {/* Điều hướng — toàn bộ route của vai trò hiện tại */}
+   420→   420→            {groups.map((group) => (
+   421→   421→              <CommandGroup key={group.label} heading={`Điều hướng · ${group.label}`} className={PALETTE_GROUP_CLS}>
+   422→   422→                {group.items.map((item) => {
+   423→   423→                  const Icon = ROUTE_ICONS[item.key] ?? VListTodo;
+   424→   424→                  const available = isRouteAvailable(user, item.key);
+   425→   425→                  return (
+   426→   426→                    <CommandItem
+   427→   427→                      key={item.key}
+   428→   428→                      value={`${item.key} ${item.label}`}
+   429→   429→                      disabled={!available}
+   430→   430→                      onSelect={() => available && go(item.key)}
+   431→   431→                      className={PALETTE_ITEM_CLS}
+   432→   432→                    >
+   433→   433→                      <Icon size={17} />
+   434→   434→                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+   435→   435→                      {route === item.key && (
+   436→   436→                        <span className="ml-auto shrink-0 font-hand text-[0.65rem] text-[var(--royal)]">
+   437→   437→                          đang xem
+   438→   438→                        </span>
+   439→   439→                      )}
+   440→   440→                      {item.key === "notifications" && unreadCount > 0 && (
+   441→   441→                        <span className="ml-auto grid min-w-[18px] shrink-0 place-items-center rounded-full border border-[var(--ink)] bg-[var(--royal)] px-1 text-[0.6rem] font-bold tabular text-white dark:text-[#101018]">
+   442→   442→                          {unreadLabel}
+   443→   443→                        </span>
+   444→   444→                      )}
+   445→   445→                      {!available && (
+   446→   446→                        <span className="ml-auto shrink-0 text-[0.62rem] text-[var(--ink-faint)]">
+   447→   447→                          chờ phân công
+   448→   448→                        </span>
+   449→   449→                      )}
+   450→   450→                    </CommandItem>
+   451→   451→                  );
+   452→   452→                })}
+   453→   453→              </CommandGroup>
+   454→   454→            ))}
+   455→   455→
+   456→   456→            {/* Tài khoản */}
+   457→   457→            <CommandGroup heading="Tài khoản" className={PALETTE_GROUP_CLS}>
+   458→   458→              <CommandItem value="hồ sơ profile cá nhân" onSelect={() => go("profile")} className={PALETTE_ITEM_CLS}>
+   459→   459→                <VUser size={17} />
+   460→   460→                <span className="min-w-0 flex-1 truncate">Hồ sơ cá nhân</span>
+   461→   461→              </CommandItem>
+   462→   462→              <CommandItem value="thông báo notifications hộp thư" onSelect={() => go("notifications")} className={PALETTE_ITEM_CLS}>
+   463→   463→                <VBell size={17} />
+   464→   464→                <span className="min-w-0 flex-1 truncate">Hộp thư thông báo</span>
+   465→   465→                {unreadCount > 0 && (
+   466→   466→                  <span className="ml-auto grid min-w-[18px] shrink-0 place-items-center rounded-full border border-[var(--ink)] bg-[var(--royal)] px-1 text-[0.6rem] font-bold tabular text-white dark:text-[#101018]">
+   467→   467→                    {unreadLabel}
+   468→   468→                  </span>
+   469→   469→                )}
+   470→   470→              </CommandItem>
+   471→   471→              <CommandItem
+   472→   472→                value="đăng xuất logout"
+   473→   473→                onSelect={() => {
+   474→   474→                  close();
+   475→   475→                  logout();
+   476→   476→                }}
+   477→   477→                className={PALETTE_ITEM_CLS}
+   478→   478→              >
+   479→   479→                <VLogout size={17} />
+   480→   480→                <span className="min-w-0 flex-1 truncate">Đăng xuất</span>
+   481→   481→              </CommandItem>
+   482→   482→            </CommandGroup>
+   483→   483→
+   484→   484→            {/* Trang chủ công khai */}
+   485→   485→            <CommandGroup heading="Trang chủ công khai" className={PALETTE_GROUP_CLS}>
+   486→   486→              <CommandItem
+   487→   487→                value="trang chủ công khai landing v-intern"
+   488→   488→                onSelect={() => {
+   489→   489→                  close();
+   490→   490→                  goLanding();
+   491→   491→                }}
+   492→   492→                className={PALETTE_ITEM_CLS}
+   493→   493→              >
+   494→   494→                <VLogoMark size={17} />
+   495→   495→                <span className="min-w-0 flex-1 truncate">Về trang chủ công khai</span>
+   496→   496→              </CommandItem>
+   497→   497→            </CommandGroup>
+   498→   498→          </CommandList>
+   499→   499→
+   500→   500→          <p className="flex items-center justify-center gap-2 border-t-2 border-dashed border-[color-mix(in_srgb,var(--ink)_25%,transparent)] px-4 py-2 text-[0.65rem] text-[var(--ink-soft)]">
+   501→   501→            <kbd className="rounded border border-[var(--ink-soft)] px-1 font-geist-mono text-[0.58rem]">esc</kbd>
+   502→   502→            đóng
+   503→   503→            <span aria-hidden="true">·</span>
+   504→   504→            <kbd className="rounded border border-[var(--ink-soft)] px-1 font-geist-mono text-[0.58rem]">↵</kbd>
+   505→   505→            mở trang
+   506→   506→          </p>
+   507→   507→        </Command>
+   508→   508→      </DialogContent>
+   509→   509→    </Dialog>
+   510→   510→  );
+   511→   511→}
+   512→   512→
+   513→   513→function PageFor(role: Role, route: string) {
+   514→   514→  if (role === "intern") {
+   515→   515→    switch (route) {
+   516→   516→      case "work": return <StudentWork />;
+   517→   517→      case "sprint": return <StudentSprint />;
+   518→   518→      case "mentor": return <StudentMentor />;
+   519→   519→      case "evaluations": return <StudentEvaluations />;
+   520→   520→      case "kpi": return <StudentKpi />;
+   521→   521→      case "certificates": return <StudentCertificates />;
+   522→   522→      case "notifications": return <StudentNotifications />;
+   523→   523→      case "profile": return <StudentProfile />;
+   524→   524→      default: return <StudentOverview />;
+   525→   525→    }
+   526→   526→  }
+   527→   527→  if (role === "instructor") {
+   528→   528→    switch (route) {
+   529→   529→      case "sessions": return <InstructorSessions />;
+   530→   530→      case "sprints": return <InstructorSprints />;
+   531→   531→      case "grading": return <InstructorGrading />;
+   532→   532→      case "reports": return <InstructorReports />;
+   533→   533→      case "notifications": return <StaffNotifications />;
+   534→   534→      case "profile": return <StaffProfile />;
+   535→   535→      default: return <InstructorOverview />;
+   536→   536→    }
+   537→   537→  }
+   538→   538→  switch (route) {
+   539→   539→    case "users": return <AdminUsers />;
+   540→   540→    case "questions": return <AdminQuestions />;
+   541→   541→    case "templates": return <AdminTemplates />;
+   542→   542→    case "notifications": return <StaffNotifications />;
+   543→   543→    case "profile": return <StaffProfile />;
+   544→   544→    default: return <AdminOverview />;
+   545→   545→  }
+   546→   546→}
+   547→   547→
+   548→   548→export default function AppShell() {
+   549→   549→  const user = useApp((s) => s.user);
+   550→   550→  const route = useApp((s) => s.route);
+   551→   551→  const sidebarOpen = useApp((s) => s.sidebarOpen);
+   552→   552→  const setSidebarOpen = useApp((s) => s.setSidebarOpen);
+   553→   553→  const [paletteOpen, setPaletteOpen] = useState(false);
+   554→   554→
+   555→   555→  /* Nguồn dữ liệu thông báo duy nhất của shell — chuông & badge sidebar
+   556→   556→     cùng đọc từ context này (poll 45s + server-persisted read state). */
+   557→   557→  const notif = useShellNotifications(user);
+   558→   558→
+   559→   559→  /* Khi đăng xuất, AnimatePresence giữ shell cũ trong lúc mờ dần —
+   560→   560→     user khi đó là null, trả về null thay vì crash đọc user.role. */
+   561→   561→  if (!user) return null;
+   562→   562→
+   563→   563→  return (
+   564→   564→    <ShellNotifContext.Provider value={notif}>
+   565→   565→      <div
+   566→   566→        className="workspace-ui flex min-h-screen bg-[var(--paper)] text-[var(--ink)]"
+   567→   567→        data-role={user.role}
+   568→   568→      >
+   569→   569→        {/* Sidebar desktop — gáy lò xo chỉ cho sinh viên */}
+   570→   570→        <aside
+   571→   571→          className={`no-print fixed inset-y-0 left-0 z-40 hidden w-60 border-r-2 border-[var(--ink)] bg-[var(--sidebar)] lg:block ${
+   572→   572→            user.role === "intern" ? "spiral-edge" : ""
+   573→   573→          }`}
+   574→   574→        >
+   575→   575→          <div className="h-full pt-0 pl-2">
+   576→   576→            <SidebarContent />
+   577→   577→          </div>
+   578→   578→        </aside>
+   579→   579→
+   580→   580→        {/* Drawer mobile — header có bảng lệnh + chuông; nav stagger */}
+   581→   581→        <AnimatePresence>
+   582→   582→          {sidebarOpen && (
+   583→   583→            <>
+   584→   584→              <motion.button
+   585→   585→                type="button"
+   586→   586→                aria-label="Đóng menu"
+   587→   587→                className="fixed inset-0 z-40 bg-[rgba(23,23,28,0.45)] backdrop-blur-[2px] lg:hidden"
+   588→   588→                initial={{ opacity: 0 }}
+   589→   589→                animate={{ opacity: 1 }}
+   590→   590→                exit={{ opacity: 0 }}
+   591→   591→                onClick={() => setSidebarOpen(false)}
+   592→   592→              />
+   593→   593→              <motion.aside
+   594→   594→                className="no-print fixed inset-y-0 left-0 z-50 flex w-[17.5rem] flex-col border-r-2 border-[var(--ink)] bg-[var(--sidebar)] shadow-ink-6 lg:hidden"
+   595→   595→                initial={{ x: "-100%" }}
+   596→   596→                animate={{ x: 0 }}
+   597→   597→                exit={{ x: "-100%" }}
+   598→   598→                transition={{ type: "spring", stiffness: 320, damping: 32 }}
+   599→   599→                aria-label="Menu điều hướng"
+   600→   600→              >
+   601→   601→                <div className="flex shrink-0 items-center gap-2 border-b-2 border-dashed border-[color-mix(in_srgb,var(--ink)_22%,transparent)] px-3 pb-3 pt-4">
+   602→   602→                  <button
+   603→   603→                    type="button"
+   604→   604→                    onClick={() => {
+   605→   605→                      setSidebarOpen(false);
+   606→   606→                      setPaletteOpen(true);
+   607→   607→                    }}
+   608→   608→                    aria-label="Mở bảng lệnh nhanh"
+   609→   609→                    title="Bảng lệnh nhanh — / hoặc ⌘K"
+   610→   610→                    className="focus-ink inline-flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border-2 border-dashed border-[color-mix(in_srgb,var(--ink)_35%,transparent)] px-3 text-[0.75rem] font-semibold text-[var(--ink-soft)] transition-colors hover:border-[var(--ink)] hover:text-[var(--ink)]"
+   611→   611→                  >
+   612→   612→                    <VSearch size={14} />
+   613→   613→                    <span className="truncate">Tìm nhanh…</span>
+   614→   614→                    <kbd className="ml-auto shrink-0 rounded border border-[var(--ink-soft)] px-1 font-geist-mono text-[0.58rem]">
+   615→   615→                      /
+   616→   616→                    </kbd>
+   617→   617→                  </button>
+   618→   618→                  <NotificationBell />
+   619→   619→                  <button
+   620→   620→                    type="button"
+   621→   621→                    onClick={() => setSidebarOpen(false)}
+   622→   622→                    aria-label="Đóng menu"
+   623→   623→                    className="focus-ink grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-[var(--ink)] bg-[var(--paper-raised)]"
+   624→   624→                  >
+   625→   625→                    <VX size={16} />
+   626→   626→                  </button>
+   627→   627→                </div>
+   628→   628→                <div className="min-h-0 flex-1">
+   629→   629→                  <SidebarContent onNavigate={() => setSidebarOpen(false)} />
+   630→   630→                </div>
+   631→   631→                <p className="flex shrink-0 items-center justify-center gap-1.5 border-t-2 border-dashed border-[color-mix(in_srgb,var(--ink)_22%,transparent)] py-2.5 text-center font-hand text-[0.72rem] text-[var(--ink-soft)]">
+   632→   632→                  <VPanelLeft size={14} aria-hidden="true" />
+   633→   633→                  Vuốt từ mép trái để quay lại
+   634→   634→                </p>
+   635→   635→              </motion.aside>
+   636→   636→            </>
+   637→   637→          )}
+   638→   638→        </AnimatePresence>
+   639→   639→
+   640→   640→        {/* Vùng nội dung */}
+   641→   641→        <div className="flex min-w-0 flex-1 flex-col lg:pl-60">
+   642→   642→          <Topbar onOpenPalette={() => setPaletteOpen(true)} />
+   643→   643→          <main id="workspace-content" className="mx-auto w-full max-w-[76rem] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+   644→   644→            <AnimatePresence mode="wait">
+   645→   645→              <motion.div
+   646→   646→                key={`${user.role}-${route}`}
+   647→   647→                initial={{ opacity: 0, y: 16, rotate: 0.2 }}
+   648→   648→                animate={{ opacity: 1, y: 0, rotate: 0 }}
+   649→   649→                exit={{ opacity: 0, y: -10 }}
+   650→   650→                transition={{ duration: 0.26, ease: [0.21, 0.47, 0.32, 0.98] }}
+   651→   651→              >
+   652→   652→                {/* Lật trang: class re-key theo route, không đụng transform
+   653→   653→                    của motion.div cha (chuyển trang vẫn fade mượt). */}
+   654→   654→                <div className="page-curl-enter">{PageFor(user.role, route)}</div>
+   655→   655→              </motion.div>
+   656→   656→            </AnimatePresence>
+   657→   657→          </main>
+   658→   658→          <footer className="no-print mt-auto border-t-2 border-dashed border-[color-mix(in_srgb,var(--ink)_22%,transparent)] px-6 py-3 text-center text-[0.7rem] text-[var(--ink-soft)]">
+   659→   659→            V-Intern · Sổ tay hành trình — bản demo với dữ liệu mẫu · <span className="font-hand">mọi con dấu đều đóng bằng cả trái tim ✎</span>
+   660→   660→          </footer>
+   661→   661→        </div>
+   662→   662→
+   663→   663→        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+   664→   664→      </div>
+   665→   665→    </ShellNotifContext.Provider>
+   666→   666→  );
+   667→   667→}
+   668→   668→

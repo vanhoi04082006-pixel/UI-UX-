@@ -1,0 +1,720 @@
+     1→     1→"use client";
+     2→     2→import { SessionSection as Panel } from "./session-section";
+     3→     3→import {
+     4→     4→  InstructorHeading,
+     5→     5→  InstructorSectionNav,
+     6→     6→  instructorDate,
+     7→     7→  instructorSessionStatus,
+     8→     8→  instructorPlanStatus,
+     9→     9→} from "@/components/instructor/instructor-ui";
+    10→    10→import { sprintStatusLabel } from "@/lib/api/sprint-status";
+    11→    11→import { SessionRepositoryCard } from "@/components/product/github-connection";
+    12→    12→import { getSessionUser } from "@/lib/auth/session";
+    13→    13→import Link from "next/link";
+    14→    14→import { useCallback, useEffect, useRef, useState } from "react";
+    15→    15→import { ErrorState, LoadingState } from "@/components/shared/data-state";
+    16→    16→import {
+    17→    17→  Badge,
+    18→    18→  Empty,
+    19→    19→  PageTitle,
+    20→    20→  Pager,
+    21→    21→  inputClass,
+    22→    22→} from "@/components/product/primitives";
+    23→    23→import { useResource } from "@/lib/api/use-resource";
+    24→    24→import { getSessionDetail } from "@/lib/api/sessions";
+    25→    25→import { listSprints } from "@/lib/api/delivery";
+    26→    26→import { listSessionWork } from "@/lib/api/session-work";
+    27→    27→import { listPlans } from "@/lib/api/planning";
+    28→    28→import {
+    29→    29→  statusLabels,
+    30→    30→  taskStatuses,
+    31→    31→  priorities,
+    32→    32→  priorityLabels,
+    33→    33→} from "@/lib/api/work";
+    34→    34→import { AiPlanPanel } from "./ai-plan";
+    35→    35→import { Can } from "@/components/auth/can";
+    36→    36→import { roleLabel } from "@/lib/api/workspace";
+    37→    37→import { SessionTaskDelivery } from "./session-task-delivery";
+    38→    38→import { SessionTimeline } from "./session-timeline";
+    39→    39→import { SessionLifecycleActions } from "./session-lifecycle-actions";
+    40→    40→import { MemberPerformance } from "@/components/product/member-performance";
+    41→    41→import { ReportsWorkspace } from "./reports-workspace";
+    42→    42→import { InkCountUp } from "@/components/v-intern/motion";
+    43→    43→
+    44→    44→function snapshotItems(value: unknown): string[] {
+    45→    45→  if (Array.isArray(value))
+    46→    46→    return value.filter((v): v is string => typeof v === "string");
+    47→    47→  if (typeof value === "string") return [value];
+    48→    48→  if (value && typeof value === "object")
+    49→    49→    return Object.values(value).flatMap((v) =>
+    50→    50→      typeof v === "string"
+    51→    51→        ? [v]
+    52→    52→        : Array.isArray(v)
+    53→    53→          ? v.filter((s): s is string => typeof s === "string")
+    54→    54→          : [],
+    55→    55→    );
+    56→    56→  return [];
+    57→    57→}
+    58→    58→
+    59→    59→export interface DetailDeps {
+    60→    60→  getSession: typeof getSessionDetail;
+    61→    61→  listSprints: typeof listSprints;
+    62→    62→  listTasks: typeof listSessionWork;
+    63→    63→  listPlans: typeof listPlans;
+    64→    64→}
+    65→    65→
+    66→    66→/**
+    67→    67→ * Session detail (M6): real overview — sprints, tasks, AI plan status and
+    68→    68→ * progress, all from live endpoints. No mock numbers anywhere.
+    69→    69→ */
+    70→    70→export function SessionOverview({
+    71→    71→  sessionId,
+    72→    72→  deps,
+    73→    73→  basePath = "/instructor",
+    74→    74→  initialTaskStatus = "",
+    75→    75→}: {
+    76→    76→  sessionId: string;
+    77→    77→  deps?: Partial<DetailDeps>;
+    78→    78→  basePath?: "/instructor" | "/admin";
+    79→    79→  initialTaskStatus?: string;
+    80→    80→}) {
+    81→    81→  const {
+    82→    82→    getSession = getSessionDetail,
+    83→    83→    listSprints: loadSprints = listSprints,
+    84→    84→    listTasks: loadTasks = listSessionWork,
+    85→    85→    listPlans: loadPlans = listPlans,
+    86→    86→  } = deps ?? {};
+    87→    87→
+    88→    88→  const [sprintPage, setSprintPage] = useState(1);
+    89→    89→  const [taskPage, setTaskPage] = useState(1);
+    90→    90→  const [filters, setFilters] = useState({
+    91→    91→    status: taskStatuses.includes(
+    92→    92→      initialTaskStatus as (typeof taskStatuses)[number],
+    93→    93→    )
+    94→    94→      ? initialTaskStatus
+    95→    95→      : "",
+    96→    96→    priority: "",
+    97→    97→    assigneeId: "",
+    98→    98→    sprintId: "",
+    99→    99→  });
+   100→   100→  const [showPerformance, setShowPerformance] = useState(false),
+   101→   101→    [showReports, setShowReports] = useState(false);
+   102→   102→  function filter(key: keyof typeof filters, value: string) {
+   103→   103→    setFilters((old) => ({ ...old, [key]: value }));
+   104→   104→    setTaskPage(1);
+   105→   105→  }
+   106→   106→  const data = useResource(
+   107→   107→    useCallback(
+   108→   108→      (signal: AbortSignal) => getSession(sessionId, signal),
+   109→   109→      [getSession, sessionId],
+   110→   110→    ),
+   111→   111→  );
+   112→   112→  const delivery = useResource(
+   113→   113→    useCallback(
+   114→   114→      async (signal: AbortSignal) => {
+   115→   115→        const [sprintsPage, tasksPage] = await Promise.all([
+   116→   116→          loadSprints({ sessionId, page: sprintPage, pageSize: 10 }, signal),
+   117→   117→          loadTasks(
+   118→   118→            {
+   119→   119→              sessionId,
+   120→   120→              page: taskPage,
+   121→   121→              pageSize: 20,
+   122→   122→              ...Object.fromEntries(
+   123→   123→                Object.entries(filters).filter(([, v]) => v),
+   124→   124→              ),
+   125→   125→            },
+   126→   126→            signal,
+   127→   127→          ),
+   128→   128→        ]);
+   129→   129→        return { sprintsPage, tasksPage };
+   130→   130→      },
+   131→   131→      [sessionId, sprintPage, taskPage, loadSprints, loadTasks, filters],
+   132→   132→    ),
+   133→   133→  );
+   134→   134→
+   135→   135→  const plans = useResource(
+   136→   136→    useCallback(
+   137→   137→      (signal: AbortSignal) => loadPlans(sessionId, signal),
+   138→   138→      [sessionId, loadPlans],
+   139→   139→    ),
+   140→   140→  );
+   141→   141→
+   142→   142→  const handledSectionLink = useRef(false);
+   143→   143→  useEffect(() => {
+   144→   144→    // A user who scrolls before the requests finish has taken over navigation.
+   145→   145→    const cancelAutomaticScroll = () => {
+   146→   146→      handledSectionLink.current = true;
+   147→   147→    };
+   148→   148→    window.addEventListener("wheel", cancelAutomaticScroll, { passive: true });
+   149→   149→    window.addEventListener("touchstart", cancelAutomaticScroll, {
+   150→   150→      passive: true,
+   151→   151→    });
+   152→   152→    return () => {
+   153→   153→      window.removeEventListener("wheel", cancelAutomaticScroll);
+   154→   154→      window.removeEventListener("touchstart", cancelAutomaticScroll);
+   155→   155→    };
+   156→   156→  }, []);
+   157→   157→  useEffect(() => {
+   158→   158→    if (
+   159→   159→      basePath !== "/instructor" ||
+   160→   160→      handledSectionLink.current ||
+   161→   161→      !data.data ||
+   162→   162→      delivery.loading ||
+   163→   163→      plans.loading
+   164→   164→    )
+   165→   165→      return;
+   166→   166→    const id = window.location.hash.slice(1);
+   167→   167→    if (
+   168→   168→      ![
+   169→   169→        "session-team",
+   170→   170→        "session-project",
+   171→   171→        "session-plan",
+   172→   172→        "session-sprints",
+   173→   173→        "session-work",
+   174→   174→        "session-activity",
+   175→   175→      ].includes(id)
+   176→   176→    )
+   177→   177→      return;
+   178→   178→    const target = document.getElementById(id);
+   179→   179→    if (!target) return;
+   180→   180→    const disclosure = target.querySelector("details");
+   181→   181→    if (disclosure) disclosure.open = true;
+   182→   182→    target.scrollIntoView({ block: "start", behavior: "auto" });
+   183→   183→    handledSectionLink.current = true;
+   184→   184→  }, [basePath, data.data, delivery.loading, plans.loading]);
+   185→   185→
+   186→   186→  if (data.loading) return <LoadingState label="Đang tải phiên…" />;
+   187→   187→  if (data.error || !data.data)
+   188→   188→    return <ErrorState error={data.error} onRetry={data.reload} />;
+   189→   189→  const session = data.data;
+   190→   190→  const sprints = delivery.data?.sprintsPage.items ?? [];
+   191→   191→  const tasks = delivery.data?.tasksPage.items ?? [];
+   192→   192→  const totalTasks = session.overview.taskTotal;
+   193→   193→  const progress = {
+   194→   194→    done: session.overview.taskDone,
+   195→   195→    percent: session.overview.taskPercent,
+   196→   196→  };
+   197→   197→  const projectId = session.overview.project?.id;
+   198→   198→
+   199→   199→  return (
+   200→   200→    <div className="space-y-4">
+   201→   201→      {basePath === "/instructor" ? (
+   202→   202→        <InstructorHeading
+   203→   203→          title={session.name}
+   204→   204→          description={`${session.code} · ${instructorSessionStatus(session.status)} · ${instructorDate(session.startDate)} — ${instructorDate(session.endDate)}`}
+   205→   205→          back={{ href: "/instructor/sessions", label: "Phiên thực tập" }}
+   206→   206→          action={
+   207→   207→            projectId ? (
+   208→   208→              <Link
+   209→   209→                className="ins-queue-action"
+   210→   210→                href={`/instructor/sessions/${sessionId}/setup?project=${projectId}`}
+   211→   211→              >
+   212→   212→                Đội hình & thiết lập
+   213→   213→              </Link>
+   214→   214→            ) : undefined
+   215→   215→          }
+   216→   216→        />
+   217→   217→      ) : (
+   218→   218→        <PageTitle
+   219→   219→          title={session.name}
+   220→   220→          subtitle={`${session.code} · ${session.status}${session.startDate ? ` · ${session.startDate.slice(0, 10)} → ${session.endDate?.slice(0, 10) ?? ""}` : ""}`}
+   221→   221→          action={
+   222→   222→            <Link
+   223→   223→              className="text-caption font-semibold text-primary hover:underline"
+   224→   224→              href={`${basePath}/sessions`}
+   225→   225→            >
+   226→   226→              ← Danh sách phiên
+   227→   227→            </Link>
+   228→   228→          }
+   229→   229→        />
+   230→   230→      )}
+   231→   231→      <Can perm="sessions.manage">
+   232→   232→        <SessionLifecycleActions id={sessionId} status={session.status} onChanged={data.reload} />
+   233→   233→      </Can>
+   234→   234→      {basePath === "/instructor" && (
+   235→   235→        <InstructorSectionNav
+   236→   236→          items={[
+   237→   237→            {
+   238→   238→              id: "session-work",
+   239→   239→              label: "Công việc",
+   240→   240→              count: session.overview.taskTotal,
+   241→   241→            },
+   242→   242→            {
+   243→   243→              id: "session-sprints",
+   244→   244→              label: "Sprint",
+   245→   245→              count: session.overview.sprintCount,
+   246→   246→            },
+   247→   247→            {
+   248→   248→              id: "session-team",
+   249→   249→              label: "Đội hình",
+   250→   250→              count: session.members.length,
+   251→   251→            },
+   252→   252→            ...(session.projectSnapshot
+   253→   253→              ? [{ id: "session-project", label: "Dự án" }]
+   254→   254→              : []),
+   255→   255→            ...(projectId
+   256→   256→              ? [{ id: "session-plan", label: "Kế hoạch AI" }]
+   257→   257→              : []),
+   258→   258→            { id: "session-activity", label: "Hoạt động" },
+   259→   259→          ]}
+   260→   260→        />
+   261→   261→      )}
+   262→   262→
+   263→   263→      <dl className="ins-session-stat-strip">
+   264→   264→        <div>
+   265→   265→          <dt>Sprint</dt>
+   266→   266→          <dd>
+   267→   267→            <InkCountUp value={session.overview.sprintCount} />
+   268→   268→            <span className="ins-stat-hint">
+   269→   269→              {session.sprintProgress.filter((s) => s.status === "active").length} đang chạy
+   270→   270→            </span>
+   271→   271→          </dd>
+   272→   272→        </div>
+   273→   273→        <div>
+   274→   274→          <dt>Nhiệm vụ</dt>
+   275→   275→          <dd>
+   276→   276→            <InkCountUp value={totalTasks} />
+   277→   277→            <span className="ins-stat-hint">
+   278→   278→              {progress.done} hoàn thành ({progress.percent}%)
+   279→   279→            </span>
+   280→   280→          </dd>
+   281→   281→        </div>
+   282→   282→        <div>
+   283→   283→          <dt>Còn lại</dt>
+   284→   284→          <dd>
+   285→   285→            <InkCountUp value={totalTasks - progress.done} />
+   286→   286→            <span className="ins-stat-hint">
+   287→   287→              {session.sprintProgress.reduce((sum, s) => sum + s.taskReview, 0)}{" "}
+   288→   288→              chờ duyệt
+   289→   289→            </span>
+   290→   290→          </dd>
+   291→   291→        </div>
+   292→   292→        <div>
+   293→   293→          <dt>Kế hoạch AI</dt>
+   294→   294→          <dd className="ins-stat-text">
+   295→   295→            {plans.loading
+   296→   296→              ? "Đang tải…"
+   297→   297→              : plans.error
+   298→   298→                ? "không tải được"
+   299→   299→                : basePath === "/instructor"
+   300→   300→                  ? instructorPlanStatus(plans.data?.[0]?.status ?? "chưa có")
+   301→   301→                  : (plans.data?.[0]?.status ?? "chưa có")}
+   302→   302→            <span className="ins-stat-hint">
+   303→   303→              {plans.data?.length ?? 0} bản kế hoạch
+   304→   304→            </span>
+   305→   305→          </dd>
+   306→   306→        </div>
+   307→   307→      </dl>
+   308→   308→
+   309→   309→      {projectId && (
+   310→   310→        <nav
+   311→   311→          aria-label="Quản lý phiên"
+   312→   312→          className="flex flex-wrap gap-4 text-body font-semibold text-primary"
+   313→   313→        >
+   314→   314→          {basePath === "/instructor" && (
+   315→   315→            <Link
+   316→   316→              href={`/instructor/sessions/${sessionId}/setup?project=${projectId}`}
+   317→   317→            >
+   318→   318→              Đội hình & thiết lập
+   319→   319→            </Link>
+   320→   320→          )}
+   321→   321→          <Link
+   322→   322→            href={`${basePath}/sprints?sessionId=${sessionId}&projectId=${projectId}`}
+   323→   323→          >
+   324→   324→            Sprint & Task
+   325→   325→          </Link>
+   326→   326→          <Link
+   327→   327→            href={`${basePath}/performance?sessionId=${sessionId}&projectId=${projectId}`}
+   328→   328→          >
+   329→   329→            Hiệu suất
+   330→   330→          </Link>
+   331→   331→          <Link
+   332→   332→            href={`${basePath}/reports?sessionId=${sessionId}&projectId=${projectId}`}
+   333→   333→          >
+   334→   334→            Báo cáo
+   335→   335→          </Link>
+   336→   336→        </nav>
+   337→   337→      )}
+   338→   338→      {delivery.error ? (
+   339→   339→        <ErrorState error={delivery.error} onRetry={delivery.reload} />
+   340→   340→      ) : null}
+   341→   341→      {delivery.loading && <LoadingState label="Đang tải Sprint/nhiệm vụ…" />}
+   342→   342→
+   343→   343→      <div id="session-work" className="ins-section">
+   344→   344→        <Panel title={`Nhiệm vụ (${totalTasks})`}>
+   345→   345→          <div className="ins-task-filters mb-4 grid gap-3 md:grid-cols-3">
+   346→   346→            <select
+   347→   347→              className={inputClass}
+   348→   348→              aria-label="Trạng thái task trong phiên"
+   349→   349→              value={filters.status}
+   350→   350→              onChange={(e) => filter("status", e.target.value)}
+   351→   351→            >
+   352→   352→              <option value="">Mọi trạng thái task</option>
+   353→   353→              {taskStatuses.map((s) => (
+   354→   354→                <option key={s} value={s}>
+   355→   355→                  {statusLabels[s]}
+   356→   356→                </option>
+   357→   357→              ))}
+   358→   358→            </select>
+   359→   359→            <select
+   360→   360→              className={inputClass}
+   361→   361→              aria-label="Ưu tiên task trong phiên"
+   362→   362→              value={filters.priority}
+   363→   363→              onChange={(e) => filter("priority", e.target.value)}
+   364→   364→            >
+   365→   365→              <option value="">Mọi mức ưu tiên</option>
+   366→   366→              {priorities.map((p) => (
+   367→   367→                <option key={p} value={p}>
+   368→   368→                  {priorityLabels[p]}
+   369→   369→                </option>
+   370→   370→              ))}
+   371→   371→            </select>
+   372→   372→            <select
+   373→   373→              className={inputClass}
+   374→   374→              aria-label="Người nhận task trong phiên"
+   375→   375→              value={filters.assigneeId}
+   376→   376→              onChange={(e) => filter("assigneeId", e.target.value)}
+   377→   377→            >
+   378→   378→              <option value="">Mọi thành viên</option>
+   379→   379→              {session.members.map((m) => (
+   380→   380→                <option key={m.userId} value={m.userId}>
+   381→   381→                  {m.displayName}
+   382→   382→                </option>
+   383→   383→              ))}
+   384→   384→            </select>
+   385→   385→            {filters.sprintId && (
+   386→   386→              <button
+   387→   387→                className="rounded-control px-1 text-caption font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+   388→   388→                onClick={() => filter("sprintId", "")}
+   389→   389→              >
+   390→   390→                Bỏ lọc Sprint
+   391→   391→              </button>
+   392→   392→            )}
+   393→   393→          </div>
+   394→   394→          {delivery.loading ? (
+   395→   395→            <LoadingState label="Đang tải danh sách nhiệm vụ..." />
+   396→   396→          ) : delivery.error ? null : tasks.length === 0 ? (
+   397→   397→            <Empty>
+   398→   398→              {Object.values(filters).some(Boolean) ? (
+   399→   399→                <>
+   400→   400→                  <p>Không có nhiệm vụ khớp bộ lọc trong phiên này.</p>
+   401→   401→                  <button
+   402→   402→                    type="button"
+   403→   403→                    className="mt-3 rounded-control px-1 font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+   404→   404→                    onClick={() => {
+   405→   405→                      setFilters({
+   406→   406→                        status: "",
+   407→   407→                        priority: "",
+   408→   408→                        assigneeId: "",
+   409→   409→                        sprintId: "",
+   410→   410→                      });
+   411→   411→                      setTaskPage(1);
+   412→   412→                    }}
+   413→   413→                  >
+   414→   414→                    Xem tất cả nhiệm vụ
+   415→   415→                  </button>
+   416→   416→                </>
+   417→   417→              ) : (
+   418→   418→                "Chưa có nhiệm vụ nào."
+   419→   419→              )}
+   420→   420→            </Empty>
+   421→   421→          ) : (
+   422→   422→            <ul
+   423→   423→              aria-label="Nhiệm vụ và bài nộp trong phiên"
+   424→   424→              className="ins-task-list"
+   425→   425→            >
+   426→   426→              {tasks.map((t) => (
+   427→   427→                <li
+   428→   428→                  key={t.id}
+   429→   429→                  className="ins-task-row break-words"
+   430→   430→                >
+   431→   431→                  <div className="flex flex-wrap items-start justify-between gap-2">
+   432→   432→                    <Link
+   433→   433→                      className="min-w-0 text-body font-semibold text-primary hover:underline"
+   434→   434→                      href={`${basePath}/tasks/${t.id}`}
+   435→   435→                    >
+   436→   436→                      {t.title}
+   437→   437→                    </Link>
+   438→   438→                    <Badge>{statusLabels[t.status]}</Badge>
+   439→   439→                  </div>
+   440→   440→                  <p className="mt-1 break-all font-mono text-caption text-muted-foreground">
+   441→   441→                    {t.code}
+   442→   442→                  </p>
+   443→   443→                  <p className="mt-2 text-caption text-muted-foreground">
+   444→   444→                    {t.sprint?.name ?? "Chưa gắn Sprint"} · {t.progress}% ·{" "}
+   445→   445→                    {priorityLabels[t.priority]}
+   446→   446→                  </p>
+   447→   447→                  <p className="mt-1 text-caption text-muted-foreground">
+   448→   448→                    {t.assigneeId
+   449→   449→                      ? (session.members.find(
+   450→   450→                          (m) =>
+   451→   451→                            m.userId.toLowerCase() ===
+   452→   452→                            t.assigneeId?.toLowerCase(),
+   453→   453→                        )?.displayName ?? "Đã phân công")
+   454→   454→                      : "Chưa phân công"}{" "}
+   455→   455→                    · Hạn{" "}
+   456→   456→                    {basePath === "/instructor"
+   457→   457→                      ? instructorDate(t.dueDate)
+   458→   458→                      : (t.dueDate?.slice(0, 10) ?? "Chưa có hạn")}
+   459→   459→                  </p>
+   460→   460→                  <SessionTaskDelivery data={t.delivery} />
+   461→   461→                </li>
+   462→   462→              ))}
+   463→   463→            </ul>
+   464→   464→          )}
+   465→   465→          {delivery.data && (
+   466→   466→            <Pager {...delivery.data.tasksPage} onChange={setTaskPage} />
+   467→   467→          )}
+   468→   468→        </Panel>
+   469→   469→      </div>
+   470→   470→      <div id="session-sprints" className="ins-section">
+   471→   471→        <Panel title="Sprint">
+   472→   472→          {delivery.loading ? (
+   473→   473→            <LoadingState label="Đang tải danh sách Sprint..." />
+   474→   474→          ) : delivery.error ? null : sprints.length === 0 ? (
+   475→   475→            <Empty>
+   476→   476→              Chưa có Sprint. Xác nhận kế hoạch AI để tạo Sprint và nhiệm vụ.
+   477→   477→            </Empty>
+   478→   478→          ) : (
+   479→   479→            <ul className="ins-sprint-list">
+   480→   480→              {sprints.map((s) => {
+   481→   481→                const p = session.sprintProgress.find(
+   482→   482→                  (p) => p.id.toLowerCase() === s.id.toLowerCase(),
+   483→   483→                );
+   484→   484→                return (
+   485→   485→                  <li
+   486→   486→                    key={s.id}
+   487→   487→                    className="ins-sprint-row"
+   488→   488→                  >
+   489→   489→                    <div>
+   490→   490→                      <Link
+   491→   491→                        className="text-body font-semibold text-primary hover:underline"
+   492→   492→                        href={`${basePath}/sprints/${s.id}`}
+   493→   493→                      >
+   494→   494→                        {s.name}
+   495→   495→                      </Link>
+   496→   496→                      <p className="text-caption text-muted-foreground">
+   497→   497→                        {s.code} · {s.goal ?? "—"}
+   498→   498→                      </p>
+   499→   499→                    </div>
+   500→   500→                    <button
+   501→   501→                      className="rounded-control px-1 text-caption font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+   502→   502→                      onClick={() => filter("sprintId", s.id)}
+   503→   503→                    >
+   504→   504→                      Lọc task Sprint này
+   505→   505→                    </button>
+   506→   506→                    <div className="flex items-center gap-2 text-caption text-muted-foreground">
+   507→   507→                      <span>
+   508→   508→                        {basePath === "/instructor"
+   509→   509→                          ? instructorDate(s.startDate)
+   510→   510→                          : s.startDate?.slice(0, 10)}{" "}
+   511→   511→                        →{" "}
+   512→   512→                        {basePath === "/instructor"
+   513→   513→                          ? instructorDate(s.endDate)
+   514→   514→                          : s.endDate?.slice(0, 10)}
+   515→   515→                      </span>
+   516→   516→                      <Badge>
+   517→   517→                        {basePath === "/instructor"
+   518→   518→                          ? sprintStatusLabel(s.status).label
+   519→   519→                          : s.status}
+   520→   520→                      </Badge>
+   521→   521→                      <span>
+   522→   522→                        {p?.taskDone ?? 0}/{p?.taskTotal ?? 0}
+   523→   523→                      </span>
+   524→   524→                    </div>
+   525→   525→                  </li>
+   526→   526→                );
+   527→   527→              })}
+   528→   528→            </ul>
+   529→   529→          )}
+   530→   530→          {delivery.data && (
+   531→   531→            <Pager {...delivery.data.sprintsPage} onChange={setSprintPage} />
+   532→   532→          )}
+   533→   533→        </Panel>
+   534→   534→      </div>
+   535→   535→
+   536→   536→      <div id="session-repository" className="ins-section">
+   537→   537→        <SessionRepositoryCard
+   538→   538→          sessionId={sessionId}
+   539→   539→          manage={
+   540→   540→            session.leadInstructorId?.toLowerCase() ===
+   541→   541→            getSessionUser()?.id.toLowerCase()
+   542→   542→          }
+   543→   543→        />
+   544→   544→      </div>
+   545→   545→      <div id="session-team" className="ins-section">
+   546→   546→        <Panel title={`Thành viên (${session.members.length})`}>
+   547→   547→          {session.members.length ? (
+   548→   548→            <ul className="workspace-session-roster text-body">
+   549→   549→              {session.members.map((m) => (
+   550→   550→                <li className="break-words" key={m.userId}>
+   551→   551→                  {m.displayName} · {m.email}
+   552→   552→                  <p className="mt-1 text-caption text-muted-foreground">
+   553→   553→                    {m.role ? roleLabel(m.role) : "Chưa có vai trò dự án"}
+   554→   554→                    {m.assignmentStatus === "completed"
+   555→   555→                      ? " · Đã hoàn tất phân công"
+   556→   556→                      : m.assignmentStatus === "active"
+   557→   557→                        ? " · Đang tham gia"
+   558→   558→                        : ""}
+   559→   559→                  </p>
+   560→   560→                </li>
+   561→   561→              ))}
+   562→   562→            </ul>
+   563→   563→          ) : (
+   564→   564→            <Empty>Chưa có thành viên.</Empty>
+   565→   565→          )}
+   566→   566→        </Panel>
+   567→   567→      </div>
+   568→   568→      {session.projectSnapshot && (
+   569→   569→        <div id="session-project" className="ins-section">
+   570→   570→          <details className="ins-reference" open>
+   571→   571→            <summary>Yêu cầu dự án và tiêu chí bàn giao</summary>
+   572→   572→          <Panel
+   573→   573→            title={`Dự án · ${session.overview.project?.name ?? "Snapshot"}`}
+   574→   574→          >
+   575→   575→            <p className="mb-3 text-body">
+   576→   576→              {typeof session.projectSnapshot.description === "string"
+   577→   577→                ? session.projectSnapshot.description
+   578→   578→                : ""}
+   579→   579→            </p>
+   580→   580→            {(
+   581→   581→              [
+   582→   582→                "techStack",
+   583→   583→                "objectives",
+   584→   584→                "functionalRequirements",
+   585→   585→                "expectedOutputs",
+   586→   586→                "dod",
+   587→   587→              ] as const
+   588→   588→            ).map((key) => {
+   589→   589→              const values = snapshotItems(session.projectSnapshot?.[key]);
+   590→   590→              const label = {
+   591→   591→                techStack: "Công nghệ",
+   592→   592→                objectives: "Mục tiêu",
+   593→   593→                functionalRequirements: "Yêu cầu",
+   594→   594→                expectedOutputs: "Sản phẩm bàn giao",
+   595→   595→                dod: "Tiêu chí hoàn thành",
+   596→   596→              }[key];
+   597→   597→              return values.length ? (
+   598→   598→                <div key={key} className="mb-3 text-body">
+   599→   599→                  <h3 className="font-semibold">{label}</h3>
+   600→   600→                  <ul className="list-inside list-disc">
+   601→   601→                    {values.map((v, i) => (
+   602→   602→                      <li key={i}>{v}</li>
+   603→   603→                    ))}
+   604→   604→                  </ul>
+   605→   605→                </div>
+   606→   606→              ) : null;
+   607→   607→            })}
+   608→   608→          </Panel>
+   609→   609→          </details>
+   610→   610→        </div>
+   611→   611→      )}
+   612→   612→      <Panel title="Mốc thời gian">
+   613→   613→        {session.milestones.length ? (
+   614→   614→          <ul className="ins-timeline text-body">
+   615→   615→            {session.milestones.map((m, index) => (
+   616→   616→              <li
+   617→   617→                key={m.id}
+   618→   618→                data-current={index === 0 ? "true" : undefined}
+   619→   619→                className="ins-timeline-item"
+   620→   620→              >
+   621→   621→                {m.title} ·{" "}
+   622→   622→                {basePath === "/instructor"
+   623→   623→                  ? instructorDate(m.dueDate)
+   624→   624→                  : (m.dueDate?.slice(0, 10) ?? "Chưa có hạn")}{" "}
+   625→   625→                ·{" "}
+   626→   626→                {basePath === "/instructor"
+   627→   627→                  ? ((
+   628→   628→                      {
+   629→   629→                        pending: "Chưa hoàn thành",
+   630→   630→                        completed: "Đã hoàn thành",
+   631→   631→                        missed: "Trễ hạn",
+   632→   632→                        cancelled: "Đã hủy",
+   633→   633→                      } as Record<string, string>
+   634→   634→                    )[m.status] ?? m.status)
+   635→   635→                  : m.status}
+   636→   636→              </li>
+   637→   637→            ))}
+   638→   638→          </ul>
+   639→   639→        ) : (
+   640→   640→          <Empty>Chưa có mốc thời gian.</Empty>
+   641→   641→        )}
+   642→   642→      </Panel>
+   643→   643→      {projectId && basePath === "/instructor" && (
+   644→   644→        <div id="session-plan" className="ins-section">
+   645→   645→          <details className="ins-reference">
+   646→   646→            <summary>Kế hoạch AI của phiên</summary>
+   647→   647→          <Can perm="sprints.manage">
+   648→   648→            <AiPlanPanel
+   649→   649→              autoPlanning={session.status === "active"}
+   650→   650→              sessionId={sessionId}
+   651→   651→              projectId={projectId}
+   652→   652→              onPublished={() => {
+   653→   653→                data.reload();
+   654→   654→                delivery.reload();
+   655→   655→                plans.reload();
+   656→   656→              }}
+   657→   657→            />
+   658→   658→          </Can>
+   659→   659→          </details>
+   660→   660→        </div>
+   661→   661→      )}
+   662→   662→      <div id="session-activity" className="ins-section">
+   663→   663→          <details className="ins-reference">
+   664→   664→            <summary>Lịch sử hoạt động của phiên</summary>
+   665→   665→        <Can perm={["sessions.view", "tasks.view"]}>
+   666→   666→          <SessionTimeline key={sessionId} sessionId={sessionId} />
+   667→   667→        </Can>
+   668→   668→          </details>
+   669→   669→      </div>
+   670→   670→      <Can perm="performance.view">
+   671→   671→        <Panel title="Hiệu suất sinh viên trong phiên">
+   672→   672→          <button
+   673→   673→            className="rounded-control px-1 text-body font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+   674→   674→            aria-expanded={showPerformance}
+   675→   675→            onClick={() => setShowPerformance((v) => !v)}
+   676→   676→          >
+   677→   677→            {showPerformance ? "Thu gọn hiệu suất" : "Xem hiệu suất sinh viên"}
+   678→   678→          </button>
+   679→   679→          {showPerformance && (
+   680→   680→            <div className="mt-4">
+   681→   681→              <MemberPerformance
+   682→   682→                key={sessionId}
+   683→   683→                initialProjectId={projectId}
+   684→   684→                initialSessionId={sessionId}
+   685→   685→                basePath={basePath}
+   686→   686→                lockedScope
+   687→   687→                embedded
+   688→   688→              />
+   689→   689→            </div>
+   690→   690→          )}
+   691→   691→        </Panel>
+   692→   692→      </Can>
+   693→   693→      {projectId && (
+   694→   694→        <Can perm="performance.view">
+   695→   695→          <Panel title="Báo cáo của phiên">
+   696→   696→            <button
+   697→   697→              className="rounded-control px-1 text-body font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+   698→   698→              aria-expanded={showReports}
+   699→   699→              onClick={() => setShowReports((v) => !v)}
+   700→   700→            >
+   701→   701→              {showReports ? "Thu gọn báo cáo" : "Mở báo cáo trong phiên"}
+   702→   702→            </button>
+   703→   703→            {showReports && (
+   704→   704→              <div className="mt-4">
+   705→   705→                <ReportsWorkspace
+   706→   706→                  key={sessionId}
+   707→   707→                  initialProjectId={projectId}
+   708→   708→                  initialSessionId={sessionId}
+   709→   709→                  lockedScope
+   710→   710→                  embedded
+   711→   711→                />
+   712→   712→              </div>
+   713→   713→            )}
+   714→   714→          </Panel>
+   715→   715→        </Can>
+   716→   716→      )}
+   717→   717→    </div>
+   718→   718→  );
+   719→   719→}
+   720→   720→

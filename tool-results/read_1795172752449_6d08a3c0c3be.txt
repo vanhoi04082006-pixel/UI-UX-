@@ -1,0 +1,1170 @@
+     1→@import "tailwindcss";
+     2→@import "tw-animate-css";
+     3→@import "../styles/tokens.css";
+     4→@import "../styles/motion.css";
+     5→
+     6→@custom-variant dark (&:is(.dark *));
+     7→
+     8→@theme {
+     9→  --color-navy: #17171c;
+    10→  --color-brand: #2060f0;
+    11→  --color-brand-600: #1743c4;
+    12→  --font-handwriting: var(--font-patrick-hand), cursive;
+    13→  --font-hand: var(--font-patrick-hand), cursive;
+    14→  --color-canvas: #fbfaf4;
+    15→
+    16→  /* Bậc bóng mực CTA (ink shadow ladder) — một nhịp duy nhất cho mọi nút
+    17→     bối cảnh landing: nghỉ 4px / hover 6px / nhấn 2px, màu mực theo bối cảnh.
+    18→     Bóng trang trí (badge, bong bóng, polaroid) vẫn viết tay theo ngữ cảnh. */
+    19→  --shadow-ink-2: 2px 2px 0 0 var(--ink);
+    20→  --shadow-ink-4: 4px 4px 0 0 var(--ink);
+    21→  --shadow-ink-6: 6px 6px 0 0 var(--ink);
+    22→  --shadow-hard-2: 2px 2px 0 0 var(--hard-shadow);
+    23→  --shadow-hard-4: 4px 4px 0 0 var(--hard-shadow);
+    24→  --shadow-hard-6: 6px 6px 0 0 var(--hard-shadow);
+    25→  --shadow-coal-2: 2px 2px 0 0 var(--coal);
+    26→  --shadow-coal-4: 4px 4px 0 0 var(--coal);
+    27→  --shadow-coal-6: 6px 6px 0 0 var(--coal);
+    28→  --shadow-marker-4: 4px 4px 0 0 rgba(32, 96, 240, 0.9);
+    29→  --shadow-marker-6: 6px 6px 0 0 rgba(32, 96, 240, 0.9);
+    30→}
+    31→
+    32→html {
+    33→  scroll-behavior: smooth;
+    34→}
+    35→
+    36→/* Navy is dual-purpose: ink for text-navy headings, deep surface for the few
+    37→   bg-navy mocks (footer, hero sidebar, avatars — always paired with text-white).
+    38→   In dark the token flips to light ink (see tokens.css); these overrides keep
+    39→   the navy SURFACES deep near-black so their white text stays readable. */
+    40→.dark .bg-navy { background-color: #131318; }
+    41→.dark .ring-offset-navy { --tw-ring-offset-color: #131318; }
+    42→
+    43→@theme inline {
+    44→  --color-background: var(--background);
+    45→  --color-foreground: var(--foreground);
+    46→  --font-sans: var(--font-be-vietnam);
+    47→  --font-mono: var(--font-geist-mono);
+    48→  --color-sidebar-ring: var(--sidebar-ring);
+    49→  --color-sidebar-border: var(--sidebar-border);
+    50→  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    51→  --color-sidebar-accent: var(--sidebar-accent);
+    52→  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    53→  --color-sidebar-primary: var(--sidebar-primary);
+    54→  --color-sidebar-foreground: var(--sidebar-foreground);
+    55→  --color-sidebar: var(--sidebar);
+    56→  --color-chart-5: var(--chart-5);
+    57→  --color-chart-4: var(--chart-4);
+    58→  --color-chart-3: var(--chart-3);
+    59→  --color-chart-2: var(--chart-2);
+    60→  --color-chart-1: var(--chart-1);
+    61→  --color-ring: var(--ring);
+    62→  --color-input: var(--input);
+    63→  --color-border: var(--border);
+    64→  --color-destructive: var(--destructive);
+    65→  --color-accent-foreground: var(--accent-foreground);
+    66→  --color-accent: var(--accent);
+    67→  --color-muted-foreground: var(--muted-foreground);
+    68→  --color-muted: var(--muted);
+    69→  --color-secondary-foreground: var(--secondary-foreground);
+    70→  --color-secondary: var(--secondary);
+    71→  --color-primary-foreground: var(--primary-foreground);
+    72→  --color-primary: var(--primary);
+    73→  --color-popover-foreground: var(--popover-foreground);
+    74→  --color-popover: var(--popover);
+    75→  --color-card-foreground: var(--card-foreground);
+    76→  --color-card: var(--card);
+    77→
+    78→  /* Notebook palette ("Sổ tay hành trình") — adaptive, flips with the theme. */
+    79→  --color-paper: var(--paper);
+    80→  --color-raised: var(--paper-raised);
+    81→  --color-ink: var(--ink);
+    82→  --color-ink-soft: var(--ink-soft);
+    83→  --color-ink-faint: var(--ink-faint);
+    84→  --color-blue: var(--blue);
+    85→  --color-blue-deep: var(--blue-deep);
+    86→  --color-blue-mist: var(--blue-mist);
+    87→
+    88→  /* Fixed colors — never flip with the theme:
+    89→     royal = deep-blue surface with white text; coal = black surface; chalk = text on black. */
+    90→  --color-royal: #2060f0;
+    91→  --color-royal-deep: #1743c4;
+    92→  --color-coal: #141419;
+    93→  --color-coal-soft: #1f1f28;
+    94→  --color-chalk: #f2f1e9;
+    95→  --color-chalk-soft: #a8a8b2;
+    96→
+    97→  --radius-sm: calc(var(--radius) - 4px);
+    98→  --radius-md: calc(var(--radius) - 2px);
+    99→  --radius-lg: var(--radius);
+   100→  --radius-xl: calc(var(--radius) + 4px);
+   101→}
+   102→
+   103→@layer base {
+   104→  * {
+   105→    @apply border-border outline-ring/50;
+   106→  }
+   107→  body {
+   108→    @apply bg-background text-foreground;
+   109→  }
+   110→}
+   111→
+   112→/* ---------- Intern Waiting Workspace — desktop density tokens ----------
+   113→ * Round 2 (one-viewport desktop): toàn bộ density của Waiting State điều
+   114→ * khiển qua CSS custom properties để KHÔNG dùng zoom/scale/font hack.
+   115→ * - Base (<xl): giá trị mobile/tablet — trang scroll bình thường.
+   116→ * - ≥1280px: desktop dashboard, các card khít viewport.
+   117→ * - ≥1280px + max-height 860px: "compact" cho browser viewport thật
+   118→ *   (1366×680, 1440×720, 1600×760, 1680×800, 1728×800 — user có browser
+   119→ *   chrome + taskbar nên CSS viewport thấp hơn màn hình vật lý).
+   120→ * Chỉ áp dụng cho Waiting shell (.intern-waiting) — Active Workspace và
+   121→ * các route khác không bị ảnh hưởng.
+   122→ * ---------------------------------------------------------------------- */
+   123→.intern-waiting {
+   124→  --iw-gap: 1.25rem; /* gap giữa các card (mobile/tablet) */
+   125→}
+   126→
+   127→@media (min-width: 1280px) {
+   128→  .intern-waiting {
+   129→    --iw-gap: 0.875rem; /* 14px */
+   130→    --iw-welcome-h: 9.75rem; /* 156px chiều cao welcome card */
+   131→    --iw-mascot-h: 8.75rem; /* 140px mascot */
+   132→    --iw-illu-h: 8rem; /* 128px khối minh hoạ hero */
+   133→    --iw-win-w: 15rem; /* 240px cửa sổ trình duyệt trong minh hoạ */
+   134→    --iw-h1: 1.625rem; /* 26px tiêu đề trang */
+   135→    --iw-h2: 1.5rem; /* 24px tiêu đề hero */
+   136→    --iw-greet: 1.25rem; /* 20px greeting welcome */
+   137→    --iw-row-py: 0.5rem; /* 8px padding dọc mỗi dòng info */
+   138→    --iw-step-gap: 1rem; /* 16px gap các bước quy trình */
+   139→    --iw-lead: 1.5; /* line-height mô tả */
+   140→    --iw-act-pb: 0.625rem; /* 10px spacing timeline hoạt động */
+   141→  }
+   142→}
+   143→
+   144→@media (min-width: 1280px) and (max-height: 860px) {
+   145→  .intern-waiting {
+   146→    --iw-gap: 0.5rem; /* 8px */
+   147→    --iw-welcome-h: 7.5rem; /* 120px */
+   148→    --iw-mascot-h: 6rem; /* 96px */
+   149→    --iw-illu-h: 4.5rem; /* 72px */
+   150→    --iw-win-w: 12rem; /* 192px */
+   151→    --iw-h1: 1.625rem; /* 26px — Round 3: khớp cỡ h1 Instructor (text-[26px]) */
+   152→    --iw-h2: 1.25rem; /* 20px */
+   153→    --iw-greet: 1.0625rem; /* 17px */
+   154→    --iw-row-py: 0.375rem; /* 6px */
+   155→    --iw-step-gap: 0.625rem; /* 10px */
+   156→    --iw-lead: 1.35;
+   157→    --iw-act-pb: 0.375rem; /* 6px */
+   158→  }
+   159→}
+   160→
+   161→/* ---------- V-Intern float animations ---------- */
+   162→@keyframes v-float {
+   163→  0%,
+   164→  100% {
+   165→    transform: translateY(0) rotate(var(--float-rotate, 0deg));
+   166→  }
+   167→  50% {
+   168→    transform: translateY(-10px) rotate(var(--float-rotate, 0deg));
+   169→  }
+   170→}
+   171→
+   172→@keyframes v-float-soft {
+   173→  0%,
+   174→  100% {
+   175→    transform: translateY(0) rotate(-1.5deg);
+   176→  }
+   177→  50% {
+   178→    transform: translateY(-8px) rotate(1.5deg);
+   179→  }
+   180→}
+   181→
+   182→.animate-float {
+   183→  animation: v-float 5s ease-in-out infinite;
+   184→}
+   185→
+   186→.animate-float-delayed {
+   187→  animation: v-float 6.5s ease-in-out 1.5s infinite;
+   188→}
+   189→
+   190→.animate-float-soft {
+   191→  animation: v-float-soft 7s ease-in-out 0.8s infinite;
+   192→}
+   193→
+   194→@keyframes v-wiggle {
+   195→  0%,
+   196→  100% {
+   197→    transform: rotate(-2.5deg);
+   198→  }
+   199→  50% {
+   200→    transform: rotate(2.5deg);
+   201→  }
+   202→}
+   203→
+   204→@keyframes v-blink-dot {
+   205→  0%,
+   206→  100% {
+   207→    opacity: 0.25;
+   208→    transform: translateY(0);
+   209→  }
+   210→  40% {
+   211→    opacity: 1;
+   212→    transform: translateY(-2px);
+   213→  }
+   214→}
+   215→
+   216→.animate-wiggle {
+   217→  animation: v-wiggle 3.2s ease-in-out infinite;
+   218→}
+   219→
+   220→.animate-blink-dot {
+   221→  animation: v-blink-dot 1.3s ease-in-out infinite;
+   222→}
+   223→
+   224→/* ---------- Notebook utilities ("Sổ tay hành trình") ---------- */
+   225→@layer utilities {
+   226→  /* Nền giấy ô ly */
+   227→  .bg-grid-paper {
+   228→    background-image: linear-gradient(var(--line) 1px, transparent 1px),
+   229→      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+   230→    background-size: 30px 30px;
+   231→  }
+   232→
+   233→  /* Nền giấy chấm bi */
+   234→  .bg-dots-paper {
+   235→    background-image: radial-gradient(var(--line) 1.4px, transparent 1.4px);
+   236→    background-size: 24px 24px;
+   237→  }
+   238→
+   239→  /* Nền chấm phấn — dùng trên các section đen cố định */
+   240→  .bg-dots-chalk {
+   241→    background-image: radial-gradient(rgba(242, 241, 233, 0.09) 1.4px, transparent 1.4px);
+   242→    background-size: 24px 24px;
+   243→  }
+   244→
+   245→  /* Làm mờ dần lưới ở mép */
+   246→  .mask-fade-edges {
+   247→    -webkit-mask-image: radial-gradient(
+   248→      ellipse 90% 85% at 50% 40%,
+   249→      black 55%,
+   250→      transparent 100%
+   251→    );
+   252→    mask-image: radial-gradient(
+   253→      ellipse 90% 85% at 50% 40%,
+   254→      black 55%,
+   255→      transparent 100%
+   256→    );
+   257→  }
+   258→
+   259→  /* Dòng chữ được tô bút dạ quang xanh */
+   260→  .marker {
+   261→    -webkit-box-decoration-break: clone;
+   262→    box-decoration-break: clone;
+   263→    background-image: linear-gradient(
+   264→      100deg,
+   265→      transparent 0.5%,
+   266→      var(--blue-mist) 2.5%,
+   267→      var(--blue-mist) 97%,
+   268→      transparent 99%
+   269→    );
+   270→    background-repeat: no-repeat;
+   271→    background-size: 100% 88%;
+   272→    background-position: 0 58%;
+   273→    padding-inline: 0.12em;
+   274→  }
+   275→
+   276→  /* Thẻ giấy viền mực + bóng đổ in */
+   277→  .sketch-card {
+   278→    background: var(--paper-raised);
+   279→    border: 2px solid var(--ink);
+   280→    border-radius: 1rem;
+   281→    box-shadow: 5px 5px 0 0 var(--hard-shadow);
+   282→  }
+   283→
+   284→  .sketch-card-sm {
+   285→    background: var(--paper-raised);
+   286→    border: 2px solid var(--ink);
+   287→    border-radius: 0.75rem;
+   288→    box-shadow: 3px 3px 0 0 var(--hard-shadow);
+   289→  }
+   290→
+   291→  /* Nét đứt như đường cắt giấy */
+   292→  .dashed-cut {
+   293→    border: 2px dashed color-mix(in srgb, var(--ink) 38%, transparent);
+   294→  }
+   295→
+   296→  /* Bản chalk của dashed-cut — cho nền tối cố định (footer, thẻ đen) */
+   297→  .dashed-cut-chalk {
+   298→    border: 2px dashed color-mix(in srgb, var(--chalk) 42%, transparent);
+   299→  }
+   300→
+   301→  /* Mẩu băng dính washi */
+   302→  .tape {
+   303→    position: absolute;
+   304→    width: 96px;
+   305→    height: 28px;
+   306→    background: color-mix(in srgb, var(--blue) 26%, #ffffff 64%);
+   307→    box-shadow: 0 1px 3px rgba(15, 15, 25, 0.18);
+   308→    clip-path: polygon(
+   309→      2% 8%,
+   310→      98% 0%,
+   311→      100% 82%,
+   312→      97% 100%,
+   313→      3% 94%,
+   314→      0% 14%
+   315→    );
+   316→    opacity: 0.9;
+   317→  }
+   318→
+   319→  .dark .tape {
+   320→    background: color-mix(in srgb, var(--blue) 30%, #26262e 60%);
+   321→  }
+   322→
+   323→  /* Gạch chân lượn sóng vẽ tay (dùng cho link) */
+   324→  .underline-squiggle {
+   325→    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 6' preserveAspectRatio='none'%3E%3Cpath d='M0 4 Q 5 1, 10 4 T 20 4 T 30 4 T 40 4' fill='none' stroke='%232060F0' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+   326→    background-repeat: repeat-x;
+   327→    background-position: 0 100%;
+   328→    background-size: 40px 6px;
+   329→    padding-bottom: 7px;
+   330→  }
+   331→
+   332→  /* Sticky note — mẩu giấy note vàng dán lệch, dùng cho ghi chú/gợi ý/empty state.
+   333→     Xoay điều chỉnh bằng --note-rotate; bóng giấy nhẹ bên dưới. */
+   334→  .sticky-note {
+   335→    position: relative;
+   336→    background: var(--note-yellow);
+   337→    color: var(--note-yellow-ink);
+   338→    border-radius: 2px 3px 2px 3px;
+   339→    box-shadow: 0 1px 0 var(--note-yellow-shadow), 0 8px 18px var(--note-yellow-shadow);
+   340→    transform: rotate(var(--note-rotate, -0.8deg));
+   341→  }
+   342→  .sticky-note::before {
+   343→    /* Gáy giấy note — dải đậm hơn phía trên như tờ giấy rách khỏi tập */
+   344→    content: "";
+   345→    position: absolute;
+   346→    inset-inline: 0;
+   347→    top: 0;
+   348→    height: 3px;
+   349→    border-radius: 2px 2px 0 0;
+   350→    background: color-mix(in srgb, var(--note-yellow-ink) 14%, transparent);
+   351→  }
+   352→
+   353→  /* Con dấu mộc tròn — viền tròn nét không đều, chữ nghiêng đậm.
+   354→     Dùng cho ĐÃ DUYỆT / ĐÃ HOÀN THÀNH / PASS; đổi màu mực bằng color. */
+   355→  .stamp-moc {
+   356→    display: inline-flex;
+   357→    align-items: center;
+   358→    justify-content: center;
+   359→    gap: 0.35em;
+   360→    padding: 0.4em 0.95em;
+   361→    border: 2.5px solid currentColor;
+   362→    border-radius: 47% 53% 50% 50% / 52% 48% 53% 47%;
+   363→    font-weight: 800;
+   364→    font-style: italic;
+   365→    text-transform: uppercase;
+   366→    letter-spacing: 0.07em;
+   367→    line-height: 1.15;
+   368→    transform: rotate(var(--stamp-rotate, -3deg));
+   369→    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='2' seed='7'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.28' intercept='0.82'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23s)'/%3E%3C/svg%3E");
+   370→    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='2' seed='7'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.28' intercept='0.82'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23s)'/%3E%3C/svg%3E");
+   371→  }
+   372→  .stamp-moc::after {
+   373→    /* Vòng trong mảnh của con dấu thật */
+   374→    content: "";
+   375→    position: absolute;
+   376→    inset: 3px;
+   377→    border: 1px solid currentColor;
+   378→    border-radius: 49% 51% 48% 52% / 51% 49% 52% 48%;
+   379→    opacity: 0.5;
+   380→    pointer-events: none;
+   381→  }
+   382→  .stamp-moc-sm {
+   383→    padding: 0.25em 0.7em;
+   384→    font-size: 0.6875rem;
+   385→    border-width: 2px;
+   386→    letter-spacing: 0.05em;
+   387→  }
+   388→
+   389→  /* Đường xé giấy — divider giữa các section thay border liền */
+   390→  .divider-torn {
+   391→    border: 0;
+   392→    height: 8px;
+   393→    background: color-mix(in srgb, var(--ink) 14%, transparent);
+   394→    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 8' preserveAspectRatio='none'%3E%3Cpath d='M0 4.5 L 14 2 L 27 5 L 41 3 L 56 6 L 73 3 L 88 5.5 L 104 2 L 119 6 L 135 3 L 150 5 L 166 2 L 181 6 L 198 3 L 214 5 L 228 2 L 240 4.5 L 240 8 L 0 8 Z' fill='%23000'/%3E%3C/svg%3E");
+   395→    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 8' preserveAspectRatio='none'%3E%3Cpath d='M0 4.5 L 14 2 L 27 5 L 41 3 L 56 6 L 73 3 L 88 5.5 L 104 2 L 119 6 L 135 3 L 150 5 L 166 2 L 181 6 L 198 3 L 214 5 L 228 2 L 240 4.5 L 240 8 L 0 8 Z' fill='%23000'/%3E%3C/svg%3E");
+   396→    -webkit-mask-size: 100% 100%;
+   397→    mask-size: 100% 100%;
+   398→    -webkit-mask-repeat: no-repeat;
+   399→    mask-repeat: no-repeat;
+   400→    opacity: 0.75;
+   401→  }
+   402→
+   403→  /* Skeleton nét chì — gạch chéo nhạt thay khối xám pulse */
+   404→  .skeleton-pencil {
+   405→    background-color: color-mix(in srgb, var(--ink) 4%, transparent);
+   406→    background-image: repeating-linear-gradient(
+   407→      135deg,
+   408→      color-mix(in srgb, var(--ink) 7%, transparent) 0 5px,
+   409→      transparent 5px 11px
+   410→    );
+   411→    border-radius: 3px;
+   412→  }
+   413→
+   414→  /* Spinner vẽ tay — vòng tròn khép hở quay như nét bút phác
+   415→     (kích thước do className hoặc mặc định của component quyết định) */
+   416→  .spinner-hand {
+   417→    display: inline-block;
+   418→    border: 2px solid currentColor;
+   419→    border-top-color: transparent;
+   420→    border-bottom-color: color-mix(in srgb, currentColor 55%, transparent);
+   421→    border-right-color: color-mix(in srgb, currentColor 80%, transparent);
+   422→    border-radius: 46% 54% 52% 48% / 53% 47% 55% 45%;
+   423→    animation: v-spin-hand 0.9s linear infinite;
+   424→  }
+   425→}
+   426→
+   427→@keyframes v-spin-hand {
+   428→  to {
+   429→    transform: rotate(360deg);
+   430→  }
+   431→}
+   432→
+   433→/* ---------- Notebook motion (120–240ms, đều tôn trọng reduced-motion) ---------- */
+   434→/* Mộc đóng vào trang: scale 1.4→1 + xoay -8deg→-3deg như đóng dấu thật */
+   435→@keyframes stamp-thump {
+   436→  0% {
+   437→    opacity: 0;
+   438→    transform: rotate(calc(var(--stamp-rotate, -3deg) - 5deg)) scale(1.4);
+   439→  }
+   440→  60% {
+   441→    opacity: 1;
+   442→    transform: rotate(var(--stamp-rotate, -3deg)) scale(0.96);
+   443→  }
+   444→  100% {
+   445→    opacity: 1;
+   446→    transform: rotate(var(--stamp-rotate, -3deg)) scale(1);
+   447→  }
+   448→}
+   449→.animate-stamp-thump {
+   450→  animation: stamp-thump 220ms var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+   451→}
+   452→
+   453→/* Highlight quét qua chữ khi vào viewport (dùng kèm .marker) */
+   454→@keyframes marker-sweep {
+   455→  from {
+   456→    background-size: 0% 88%;
+   457→  }
+   458→  to {
+   459→    background-size: 100% 88%;
+   460→  }
+   461→}
+   462→.animate-marker-sweep {
+   463→  animation: marker-sweep 240ms var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+   464→}
+   465→@supports (animation-timeline: view()) {
+   466→  .animate-marker-sweep {
+   467→    animation-timeline: view();
+   468→    animation-range: entry 5% cover 30%;
+   469→  }
+   470→}
+   471→
+   472→/* Card giấy rơi nhẹ 4px + xoay về 0 khi mount */
+   473→@keyframes paper-settle {
+   474→  0% {
+   475→    opacity: 0;
+   476→    transform: translateY(-4px) rotate(calc(var(--paper-tilt, 0deg) + 1deg)) scale(0.995);
+   477→  }
+   478→  100% {
+   479→    opacity: 1;
+   480→    transform: translateY(0) rotate(var(--paper-tilt, 0deg)) scale(1);
+   481→  }
+   482→}
+   483→.animate-paper-settle {
+   484→  animation: paper-settle 200ms var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+   485→}
+   486→
+   487→/* Drawer mở như lật góc trang sổ */
+   488→@keyframes page-curl {
+   489→  from {
+   490→    transform: perspective(1200px) rotateY(-14deg) translateX(-24px);
+   491→    opacity: 0.4;
+   492→  }
+   493→  to {
+   494→    transform: perspective(1200px) rotateY(0deg) translateX(0);
+   495→    opacity: 1;
+   496→  }
+   497→}
+   498→.animate-page-curl {
+   499→  animation: page-curl 240ms var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+   500→  transform-origin: left center;
+   501→}
+   502→
+   503→/* Băng dính cong nhẹ khi hover phần tử cha .group */
+   504→.tape,
+   505→.tape-peel {
+   506→  transform: rotate(var(--tape-rotate, -6deg));
+   507→  transition: transform var(--motion-normal, 200ms) var(--motion-ease, ease);
+   508→}
+   509→.group:hover .tape-peel,
+   510→.tape-peel:hover {
+   511→  transform: rotate(calc(var(--tape-rotate, -6deg) - 2deg)) translateY(-1.5px) scale(1.03);
+   512→}
+   513→
+   514→/* Gạch chân lượn vẽ dần theo scroll (pathLength chuẩn hoá = 120) */
+   515→.squiggle-draw path {
+   516→  stroke-dasharray: 120;
+   517→}
+   518→@supports (animation-timeline: view()) {
+   519→  .squiggle-draw path {
+   520→    animation: squiggle-draw 240ms linear both;
+   521→    animation-timeline: view();
+   522→    animation-range: entry 20% cover 40%;
+   523→  }
+   524→}
+   525→@keyframes squiggle-draw {
+   526→  from {
+   527→    stroke-dashoffset: 120;
+   528→  }
+   529→  to {
+   530→    stroke-dashoffset: 0;
+   531→  }
+   532→}
+   533→
+   534→/* ══════════════════════════════════════════════════════════════════ */
+   535→/* JOURNEY NOTEBOOK v2 — nâng chất liệu lên "đẳng cấp mới":            */
+   536→/* hạt giấy thật, washi nhiều màu, polaroid, sticker, index card,      */
+   537→/* lề sổ, gáy xoắn, mép giấy xé và chuyển động nét mực mềm hơn.        */
+   538→/* ══════════════════════════════════════════════════════════════════ */
+   539→
+   540→/* --- A. Hạt giấy (paper grain) — lớp nhiễu mịn cố định, phủ toàn trang.
+   541→   Speck đen 5% cho theme sáng; speck trắng 6% cho bảng đen. ---------- */
+   542→body::after {
+   543→  content: "";
+   544→  position: fixed;
+   545→  inset: 0;
+   546→  z-index: 9999;
+   547→  pointer-events: none;
+   548→  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
+   549→  background-repeat: repeat;
+   550→}
+   551→html.dark body::after {
+   552→  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E");
+   553→}
+   554→@media print {
+   555→  body::after {
+   556→    content: none;
+   557→  }
+   558→}
+   559→
+   560→@layer utilities {
+   561→  /* --- B. Giấy kẻ ngang (ruled) + lề đỏ như vở học sinh ------------ */
+   562→  .bg-ruled-paper {
+   563→    background-image: repeating-linear-gradient(
+   564→      to bottom,
+   565→      transparent 0 27px,
+   566→      var(--line) 27px 28px
+   567→    );
+   568→  }
+   569→
+   570→  /* Ô ly + lề đỏ dọc bên trái (dùng cho khối hero/panel trang trí) */
+   571→  .bg-grid-paper-margin {
+   572→    background-image: linear-gradient(var(--line) 1px, transparent 1px),
+   573→      linear-gradient(90deg, var(--line) 1px, transparent 1px),
+   574→      linear-gradient(
+   575→        90deg,
+   576→        transparent 0 44px,
+   577→        color-mix(in srgb, var(--stamp-red, #c0272d) 26%, transparent) 44px 46px,
+   578→        transparent 46px
+   579→      );
+   580→    background-size: 30px 30px, 30px 30px, 100% 100%;
+   581→  }
+   582→
+   583→  /* Lề đỏ đơn — dải mảnh đặt cạnh block chữ (note màu mực truyền thống) */
+   584→  .notebook-margin-line {
+   585→    border-left: 2px solid color-mix(in srgb, var(--stamp-red, #c0272d) 38%, transparent);
+   586→  }
+   587→
+   588→  /* --- C. Washi tape bộ sưu tập — 3 màu mới cạnh tape xanh gốc ------- */
+   589→  .tape-warm {
+   590→    background: color-mix(in srgb, #e2a53c 44%, #ffffff 50%);
+   591→  }
+   592→  html.dark .tape-warm,
+   593→  .dark .tape-warm {
+   594→    background: color-mix(in srgb, #e2a53c 34%, #26262e 58%);
+   595→  }
+   596→  .tape-candy {
+   597→    background: repeating-linear-gradient(
+   598→      -45deg,
+   599→      color-mix(in srgb, #d9304a 34%, #ffffff 26%) 0 7px,
+   600→      color-mix(in srgb, #ffffff 86%, #d9304a 6%) 7px 14px
+   601→    );
+   602→  }
+   603→  html.dark .tape-candy,
+   604→  .dark .tape-candy {
+   605→    background: repeating-linear-gradient(
+   606→      -45deg,
+   607→      color-mix(in srgb, #d9304a 38%, #26262e 40%) 0 7px,
+   608→      color-mix(in srgb, #26262e 82%, #d9304a 10%) 7px 14px
+   609→    );
+   610→  }
+   611→  .tape-mint {
+   612→    background: color-mix(in srgb, #2f9e7c 32%, #ffffff 58%);
+   613→  }
+   614→  html.dark .tape-mint,
+   615→  .dark .tape-mint {
+   616→    background: color-mix(in srgb, #2f9e7c 30%, #26262e 58%);
+   617→  }
+   618→  .tape-slate {
+   619→    background: color-mix(in srgb, #6b7280 30%, #ffffff 60%);
+   620→  }
+   621→  html.dark .tape-slate,
+   622→  .dark .tape-slate {
+   623→    background: color-mix(in srgb, #9ca3af 26%, #26262e 60%);
+   624→  }
+   625→
+   626→  /* --- D. Polaroid — khung ảnh trắng, đế dày, caption viết tay -------- */
+   627→  .polaroid {
+   628→    position: relative;
+   629→    background: var(--paper-raised, #fff);
+   630→    border: 1px solid color-mix(in srgb, var(--ink, #17171c) 16%, transparent);
+   631→    padding: 10px 10px 0;
+   632→    box-shadow: 0 2px 4px rgba(15, 15, 25, 0.1), 0 14px 30px -12px rgba(15, 15, 25, 0.28);
+   633→    border-radius: 3px;
+   634→  }
+   635→  .polaroid-caption {
+   636→    font-family: var(--font-hand, var(--font-patrick-hand, cursive));
+   637→    text-align: center;
+   638→    padding: 9px 6px 12px;
+   639→    line-height: 1.25;
+   640→    color: color-mix(in srgb, var(--ink, #17171c) 72%, transparent);
+   641→  }
+   642→
+   643→  /* --- E. Index card — thẻ ghi chú kẻ dòng, tiêu đề 2 nét đỏ ---------- */
+   644→  .index-card {
+   645→    position: relative;
+   646→    background: var(--paper-raised);
+   647→    border: 2px solid var(--ink);
+   648→    border-radius: 8px 10px 9px 8px;
+   649→    box-shadow: var(--nb-shadow, 4px 4px 0 0 color-mix(in srgb, var(--ink) 12%, transparent));
+   650→    background-image: repeating-linear-gradient(
+   651→      to bottom,
+   652→      transparent 0 25px,
+   653→      color-mix(in srgb, var(--blue, #2060f0) 9%, transparent) 25px 26px
+   654→    );
+   655→  }
+   656→  .index-card::before {
+   657→    content: "";
+   658→    position: absolute;
+   659→    inset-inline: 10px;
+   660→    top: 34px;
+   661→    height: 2px;
+   662→    border-top: 2px solid color-mix(in srgb, var(--stamp-red, #c0272d) 34%, transparent);
+   663→    border-bottom: 1px solid color-mix(in srgb, var(--stamp-red, #c0272d) 20%, transparent);
+   664→    pointer-events: none;
+   665→  }
+   666→  .dark .index-card {
+   667→    background-color: var(--paper-raised);
+   668→  }
+   669→
+   670→  /* --- F. Sticker — tem dán viền trắng, đổ bóng nhẹ, wiggle khi hover -- */
+   671→  .sticker {
+   672→    display: inline-flex;
+   673→    align-items: center;
+   674→    justify-content: center;
+   675→    background: var(--paper-raised);
+   676→    border: 3px solid var(--paper-raised);
+   677→    outline: 2px solid var(--ink);
+   678→    border-radius: 9999px;
+   679→    box-shadow: 2px 3px 0 0 var(--hard-shadow);
+   680→    transition: transform var(--motion-normal, 200ms) var(--motion-ease, ease);
+   681→  }
+   682→  .group:hover .sticker-wiggle,
+   683→  .sticker-wiggle:hover {
+   684→    animation: v-wiggle 560ms ease-in-out;
+   685→  }
+   686→
+   687→  /* --- G. Gáy xoắn lò xo — dải lỗ tròn dọc, đặt cạnh mép trái sidebar -- */
+   688→  .spiral-binding {
+   689→    position: relative;
+   690→  }
+   691→  .spiral-binding::before {
+   692→    content: "";
+   693→    position: absolute;
+   694→    left: 5px;
+   695→    top: 14px;
+   696→    bottom: 14px;
+   697→    width: 9px;
+   698→    background-image: radial-gradient(
+   699→      circle at 50% 50%,
+   700→      color-mix(in srgb, var(--ink) 34%, transparent) 0 3.4px,
+   701→      transparent 3.6px
+   702→    );
+   703→    background-size: 9px 26px;
+   704→    background-repeat: repeat-y;
+   705→    pointer-events: none;
+   706→    opacity: 0.55;
+   707→  }
+   708→
+   709→  /* --- H. Mép giấy xé (deckle) — mask răng cưa cho block nền đậm ------ */
+   710→  .paper-deckle-top {
+   711→    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12px),
+   712→      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 14' preserveAspectRatio='none'%3E%3Cpath d='M0 8 L 12 3 L 25 10 L 38 4 L 52 9 L 66 3 L 80 11 L 94 5 L 108 9 L 122 3 L 136 10 L 150 4 L 164 9 L 178 3 L 192 11 L 206 5 L 220 9 L 232 4 L 240 8 L 240 14 L 0 14 Z' fill='%23000'/%3E%3C/svg%3E");
+   713→    mask-image: linear-gradient(to bottom, transparent 0, #000 12px),
+   714→      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 14' preserveAspectRatio='none'%3E%3Cpath d='M0 8 L 12 3 L 25 10 L 38 4 L 52 9 L 66 3 L 80 11 L 94 5 L 108 9 L 122 3 L 136 10 L 150 4 L 164 9 L 178 3 L 192 11 L 206 5 L 220 9 L 232 4 L 240 8 L 240 14 L 0 14 Z' fill='%23000'/%3E%3C/svg%3E");
+   715→    -webkit-mask-size: 100% 100%, 240px 14px;
+   716→    mask-size: 100% 100%, 240px 14px;
+   717→    -webkit-mask-repeat: no-repeat, repeat-x;
+   718→    mask-repeat: no-repeat, repeat-x;
+   719→    -webkit-mask-composite: add;
+   720→    mask-composite: add;
+   721→  }
+   722→  .paper-deckle-bottom {
+   723→    -webkit-mask-image: linear-gradient(to top, transparent 0, #000 12px),
+   724→      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 14' preserveAspectRatio='none'%3E%3Cpath d='M0 8 L 12 3 L 25 10 L 38 4 L 52 9 L 66 3 L 80 11 L 94 5 L 108 9 L 122 3 L 136 10 L 150 4 L 164 9 L 178 3 L 192 11 L 206 5 L 220 9 L 232 4 L 240 8 L 240 14 L 0 14 Z' fill='%23000'/%3E%3C/svg%3E");
+   725→    mask-image: linear-gradient(to top, transparent 0, #000 12px),
+   726→      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 14' preserveAspectRatio='none'%3E%3Cpath d='M0 8 L 12 3 L 25 10 L 38 4 L 52 9 L 66 3 L 80 11 L 94 5 L 108 9 L 122 3 L 136 10 L 150 4 L 164 9 L 178 3 L 192 11 L 206 5 L 220 9 L 232 4 L 240 8 L 240 14 L 0 14 Z' fill='%23000'/%3E%3C/svg%3E");
+   727→    -webkit-mask-size: 100% 100%, 240px 14px;
+   728→    mask-size: 100% 100%, 240px 14px;
+   729→    -webkit-mask-repeat: no-repeat, repeat-x;
+   730→    mask-repeat: no-repeat, repeat-x;
+   731→    -webkit-mask-composite: add;
+   732→    mask-composite: add;
+   733→    -webkit-mask-position: bottom;
+   734→    mask-position: bottom;
+   735→  }
+   736→
+   737→  /* --- I. Nét bút chì quét ngang — gạch chân tiêu đề section ---------- */
+   738→  .brush-underline {
+   739→    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12' preserveAspectRatio='none'%3E%3Cpath d='M3 8 C 30 3.5, 65 9.5, 96 6 C 128 3, 160 9, 197 5.5' fill='none' stroke='%232060f0' stroke-width='5' stroke-linecap='round' opacity='0.9'/%3E%3Cpath d='M10 10.5 C 45 7.5, 90 11, 150 8.5' fill='none' stroke='%232060f0' stroke-width='2.4' stroke-linecap='round' opacity='0.45'/%3E%3C/svg%3E");
+   740→    background-repeat: no-repeat;
+   741→    background-position: 0 100%;
+   742→    background-size: 100% 12px;
+   743→    padding-bottom: 13px;
+   744→  }
+   745→  .brush-underline-ink {
+   746→    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12' preserveAspectRatio='none'%3E%3Cpath d='M3 8 C 30 3.5, 65 9.5, 96 6 C 128 3, 160 9, 197 5.5' fill='none' stroke='%2317171c' stroke-width='5' stroke-linecap='round' opacity='0.82'/%3E%3Cpath d='M10 10.5 C 45 7.5, 90 11, 150 8.5' fill='none' stroke='%2317171c' stroke-width='2.4' stroke-linecap='round' opacity='0.4'/%3E%3C/svg%3E");
+   747→  }
+   748→
+   749→  /* --- J. Giấy nghiêng nhẹ + nhấc bổng khi hover ---------------------- */
+   750→  .paper-tilt-hover {
+   751→    transform: rotate(var(--paper-tilt, -0.6deg));
+   752→    transition: transform 260ms var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1)),
+   753→      box-shadow 260ms var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+   754→  }
+   755→  .paper-tilt-hover:hover {
+   756→    transform: rotate(0deg) translateY(-3px);
+   757→  }
+   758→}
+   759→
+   760→/* --- K. Chuyển động v2 ------------------------------------------------ */
+   761→/* Nét mực vẽ dần khi mount (dùng cho SVG doodle -- đặt --ink-len = pathLength) */
+   762→@keyframes ink-draw {
+   763→  from {
+   764→    stroke-dashoffset: var(--ink-len, 320);
+   765→  }
+   766→  to {
+   767→    stroke-dashoffset: 0;
+   768→  }
+   769→}
+   770→.ink-draw :where(path, circle, line) {
+   771→  stroke-dasharray: var(--ink-len, 320);
+   772→  animation: ink-draw 520ms cubic-bezier(0.3, 0.7, 0.3, 1) both;
+   773→}
+   774→
+   775→/* Nhún nhẹ 2px — cho sticker/badge trang trí */
+   776→@keyframes v-bob {
+   777→  0%,
+   778→  100% {
+   779→    transform: translateY(0);
+   780→  }
+   781→  50% {
+   782→    transform: translateY(-2.5px);
+   783→  }
+   784→}
+   785→.animate-bob {
+   786→  animation: v-bob 3.4s ease-in-out infinite;
+   787→}
+   788→
+   789→/* Card giấy "flap" mở ra từ mép trái như lật trang — dùng cho panel lớn */
+   790→@keyframes paper-flap-in {
+   791→  from {
+   792→    opacity: 0;
+   793→    transform: perspective(1100px) rotateY(-7deg) translateX(-14px);
+   794→  }
+   795→  to {
+   796→    opacity: 1;
+   797→    transform: perspective(1100px) rotateY(0deg) translateX(0);
+   798→  }
+   799→}
+   800→.animate-paper-flap-in {
+   801→  animation: paper-flap-in 320ms var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+   802→  transform-origin: left center;
+   803→}
+   804→
+   805→/* Marker dạ quang loang nhẹ (dùng kèm .marker cho heading quan trọng) */
+   806→@keyframes marker-blot {
+   807→  0% {
+   808→    filter: saturate(1) brightness(1);
+   809→  }
+   810→  30% {
+   811→    filter: saturate(1.35) brightness(1.04);
+   812→  }
+   813→  100% {
+   814→    filter: saturate(1) brightness(1);
+   815→  }
+   816→}
+   817→.animate-marker-blot {
+   818→  animation: marker-blot 640ms var(--motion-ease, ease-out) 1 both;
+   819→}
+   820→
+   821→
+   822→/* ══════════════════════════════════════════════════════════════════ */
+   823→/* JOURNEY NOTEBOOK v3 — ATMOSPHERE: bóng mực ấm, gấp giấy, vệt gáy,   */
+   824→/* đèn bàn rọi giấy và bộ sticky note nhiều màu. Mọi màu qua token.    */
+   825→/* ══════════════════════════════════════════════════════════════════ */
+   826→
+   827→@layer utilities {
+   828→  /* Sticky note hồng — lời nhắn "cần chú ý" khác sắc với note vàng. */
+   829→  .sticky-note-pink {
+   830→    position: relative;
+   831→    background: var(--note-pink);
+   832→    color: var(--note-pink-ink);
+   833→    border-radius: 2px 3px 2px 3px;
+   834→    box-shadow: 0 1px 0 var(--note-yellow-shadow), 0 8px 18px var(--note-yellow-shadow);
+   835→    transform: rotate(var(--note-rotate, 0.9deg));
+   836→  }
+   837→  .sticky-note-pink::before {
+   838→    content: "";
+   839→    position: absolute;
+   840→    inset-inline: 0;
+   841→    top: 0;
+   842→    height: 3px;
+   843→    border-radius: 2px 2px 0 0;
+   844→    background: color-mix(in srgb, var(--note-pink-ink) 14%, transparent);
+   845→  }
+   846→
+   847→  /* Sticky note menthol — ghi chú "đã ổn/xong". */
+   848→  .sticky-note-mint {
+   849→    position: relative;
+   850→    background: var(--note-mint);
+   851→    color: var(--note-mint-ink);
+   852→    border-radius: 2px 3px 2px 3px;
+   853→    box-shadow: 0 1px 0 var(--note-yellow-shadow), 0 8px 18px var(--note-yellow-shadow);
+   854→    transform: rotate(var(--note-rotate, -1.1deg));
+   855→  }
+   856→  .sticky-note-mint::before {
+   857→    content: "";
+   858→    position: absolute;
+   859→    inset-inline: 0;
+   860→    top: 0;
+   861→    height: 3px;
+   862→    border-radius: 2px 2px 0 0;
+   863→    background: color-mix(in srgb, var(--note-mint-ink) 14%, transparent);
+   864→  }
+   865→
+   866→  /* Marker đỏ bút chì chấm — cho từ khoá cảnh báo/quan trọng kiểu sửa bài. */
+   867→  .marker-red {
+   868→    -webkit-box-decoration-break: clone;
+   869→    box-decoration-break: clone;
+   870→    background-image: linear-gradient(
+   871→      100deg,
+   872→      transparent 0.5%,
+   873→      rgba(192, 39, 45, 0.3) 2.5%,
+   874→      rgba(192, 39, 45, 0.3) 97%,
+   875→      transparent 99%
+   876→    );
+   877→    background-repeat: no-repeat;
+   878→    background-size: 100% 88%;
+   879→    background-position: 0 58%;
+   880→    padding-inline: 0.12em;
+   881→  }
+   882→  .dark .marker-red {
+   883→    background-image: linear-gradient(
+   884→      100deg,
+   885→      transparent 0.5%,
+   886→      rgba(255, 125, 125, 0.32) 2.5%,
+   887→      rgba(255, 125, 125, 0.32) 97%,
+   888→      transparent 99%
+   889→    );
+   890→  }
+   891→
+   892→  /* Marker vàng dạ quang — nhấn "điểm cần nhớ" như gạch bút vàng. */
+   893→  .marker-yellow {
+   894→    -webkit-box-decoration-break: clone;
+   895→    box-decoration-break: clone;
+   896→    background-image: linear-gradient(
+   897→      100deg,
+   898→      transparent 0.5%,
+   899→      rgba(244, 204, 90, 0.55) 2.5%,
+   900→      rgba(244, 204, 90, 0.55) 97%,
+   901→      transparent 99%
+   902→    );
+   903→    background-repeat: no-repeat;
+   904→    background-size: 100% 88%;
+   905→    background-position: 0 58%;
+   906→    padding-inline: 0.12em;
+   907→  }
+   908→  .dark .marker-yellow {
+   909→    background-image: linear-gradient(
+   910→      100deg,
+   911→      transparent 0.5%,
+   912→      rgba(247, 240, 201, 0.35) 2.5%,
+   913→      rgba(247, 240, 201, 0.35) 97%,
+   914→      transparent 99%
+   915→    );
+   916→  }
+   917→
+   918→  /* Gấp corners giấy — thẻ được gấp góc dưới-phải như trang sổ đọc dở. */
+   919→  .dog-ear {
+   920→    position: relative;
+   921→  }
+   922→  .dog-ear::after {
+   923→    content: "";
+   924→    position: absolute;
+   925→    right: 0;
+   926→    bottom: 0;
+   927→    width: var(--dog-ear, 22px);
+   928→    height: var(--dog-ear, 22px);
+   929→    pointer-events: none;
+   930→    background: linear-gradient(
+   931→      135deg,
+   932→      color-mix(in srgb, var(--ink) 8%, transparent) 42%,
+   933→      color-mix(in srgb, var(--paper-raised) 92%, white) 46%,
+   934→      color-mix(in srgb, var(--ink) 16%, transparent) 58%,
+   935→      transparent 72%
+   936→    );
+   937→    clip-path: polygon(0 100%, 100% 0, 100% 100%);
+   938→    border-bottom-right-radius: inherit;
+   939→  }
+   940→  .dark .dog-ear::after {
+   941→    background: linear-gradient(
+   942→      135deg,
+   943→      color-mix(in srgb, var(--chalk) 10%, transparent) 42%,
+   944→      color-mix(in srgb, var(--paper-raised) 88%, white) 46%,
+   945→      color-mix(in srgb, var(--chalk) 18%, transparent) 58%,
+   946→      transparent 72%
+   947→    );
+   948→  }
+   949→
+   950→  /* Vết gấp giấy chéo — dùng cho polaroid/ảnh: một nếp gạch sáng + bóng mực. */
+   951→  .paper-crease {
+   952→    position: relative;
+   953→  }
+   954→  .paper-crease::before {
+   955→    content: "";
+   956→    position: absolute;
+   957→    inset: 0;
+   958→    border-radius: inherit;
+   959→    pointer-events: none;
+   960→    background: linear-gradient(
+   961→      115deg,
+   962→      transparent 40%,
+   963→      color-mix(in srgb, white 55%, transparent) 47%,
+   964→      color-mix(in srgb, var(--ink-warm) 7%, transparent) 53%,
+   965→      transparent 62%
+   966→    );
+   967→    opacity: 0.8;
+   968→  }
+   969→  .dark .paper-crease::before {
+   970→    background: linear-gradient(
+   971→      115deg,
+   972→      transparent 40%,
+   973→      color-mix(in srgb, white 8%, transparent) 47%,
+   974→      color-mix(in srgb, black 30%, transparent) 53%,
+   975→      transparent 62%
+   976→    );
+   977→  }
+   978→
+   979→  /* Đèn bàn rọi giấy — lớp sáng ấm phía trên section, mép dưới tối dần. */
+   980→  .vignette-paper {
+   981→    position: relative;
+   982→  }
+   983→  .vignette-paper::before {
+   984→    content: "";
+   985→    position: absolute;
+   986→    inset: 0;
+   987→    pointer-events: none;
+   988→    background: radial-gradient(
+   989→      110% 72% at 50% -8%,
+   990→      rgba(255, 253, 242, 0.6),
+   991→      transparent 58%
+   992→    );
+   993→  }
+   994→  .dark .vignette-paper::before {
+   995→    background: radial-gradient(
+   996→      110% 72% at 50% -8%,
+   997→      rgba(242, 241, 233, 0.07),
+   998→      transparent 58%
+   999→    );
+  1000→  }
+  1001→
+  1002→  /* Gáy vở học sinh — đường kẻ đôi đỏ trên đỉnh panel như trang vở Việt Nam. */
+  1003→  .ruling-red-top {
+  1004→    border-top: 4px double
+  1005→      color-mix(in srgb, var(--stamp-red) 45%, transparent);
+  1006→  }
+  1007→  .dark .ruling-red-top {
+  1008→    border-top: 4px double color-mix(in srgb, var(--stamp-red) 70%, transparent);
+  1009→  }
+  1010→
+  1011→  /* Lưới ô ly dày hơn — cho panel nhỏ cần mật độ dòng kẻ cao hơn 30px. */
+  1012→  .bg-grid-paper-fine {
+  1013→    background-image: linear-gradient(var(--line) 1px, transparent 1px),
+  1014→      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  1015→    background-size: 18px 18px;
+  1016→  }
+  1017→
+  1018→  /* Bóng mềm ấm — độ sâu "đặt trên bàn" cho polaroid/thẻ ảnh, thay vì bóng in cứng. */
+  1019→  .shadow-warm {
+  1020→    box-shadow: 0 10px 30px var(--soft-shadow-warm);
+  1021→  }
+  1022→  .shadow-warm-lg {
+  1023→    box-shadow: 0 18px 44px var(--soft-shadow-warm-lg);
+  1024→  }
+  1025→
+  1026→  /* Mép rách dưới cùng của một mảnh giấy (dùng kèm mask divider-torn phía trên). */
+  1027→  .torn-bottom {
+  1028→    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 8' preserveAspectRatio='none'%3E%3Cpath d='M0 4.5 L 14 2 L 27 5 L 41 3 L 56 6 L 73 3 L 88 5.5 L 104 2 L 119 6 L 135 3 L 150 5 L 166 2 L 181 6 L 198 3 L 214 5 L 228 2 L 240 4.5 L 240 8 L 0 8 Z' fill='%23000'/%3E%3C/svg%3E");
+  1029→    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 8' preserveAspectRatio='none'%3E%3Cpath d='M0 4.5 L 14 2 L 27 5 L 41 3 L 56 6 L 73 3 L 88 5.5 L 104 2 L 119 6 L 135 3 L 150 5 L 166 2 L 181 6 L 198 3 L 214 5 L 228 2 L 240 4.5 L 240 8 L 0 8 Z' fill='%23000'/%3E%3C/svg%3E");
+  1030→    -webkit-mask-size: 100% 100%;
+  1031→    mask-size: 100% 100%;
+  1032→    -webkit-mask-repeat: no-repeat;
+  1033→    mask-repeat: no-repeat;
+  1034→  }
+  1035→}
+  1036→
+  1037→/* Bóng in mặc định chuyển sang mực ấm (token tokens.css --hard-shadow) —
+  1038→   mọi sketch-card/tape hiện có tự nhận màu ấm mới, không cần sửa từng nơi. */
+  1039→
+  1040→@media print {
+  1041→  .vignette-paper::before,
+  1042→  .paper-crease::before,
+  1043→  .dog-ear::after {
+  1044→    content: none;
+  1045→  }
+  1046→}
+  1047→
+  1048→/* ---------- Notebook micro-details (phủ toàn hệ thống) ---------- */
+  1049→/* Chuột quét chữ = marker xanh nhạt */
+  1050→::selection {
+  1051→  background: rgba(32, 96, 240, 0.18);
+  1052→}
+  1053→.dark ::selection {
+  1054→  background: rgba(125, 151, 255, 0.3);
+  1055→}
+  1056→
+  1057→/* Placeholder = chữ chì nghiêng nhẹ, đủ tương phản AA */
+  1058→:where(input, textarea, select)::placeholder {
+  1059→  color: var(--pencil, #70707b);
+  1060→  font-style: italic;
+  1061→  opacity: 1;
+  1062→}
+  1063→
+  1064→/* Bullet danh sách = chấm mực xanh */
+  1065→:where(ul, ol) > li::marker {
+  1066→  color: var(--blue, #2060f0);
+  1067→}
+  1068→
+  1069→/* Focus ring = nét mực 2px offset 2px cho mọi element focus được */
+  1070→:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  1071→  outline: 2px solid var(--ring, rgba(32, 96, 240, 0.45));
+  1072→  outline-offset: 2px;
+  1073→}
+  1074→
+  1075→/* Scrollbar = bút chì mảnh trên rãnh giấy (webkit + firefox) */
+  1076→html {
+  1077→  scrollbar-width: thin;
+  1078→  scrollbar-color: color-mix(in srgb, var(--ink, #17171c) 42%, transparent) transparent;
+  1079→}
+  1080→::-webkit-scrollbar {
+  1081→  width: 9px;
+  1082→  height: 9px;
+  1083→}
+  1084→::-webkit-scrollbar-track {
+  1085→  background: color-mix(in srgb, var(--ink, #17171c) 5%, transparent);
+  1086→  border-radius: 9px;
+  1087→}
+  1088→::-webkit-scrollbar-thumb {
+  1089→  background: color-mix(in srgb, var(--ink, #17171c) 46%, transparent);
+  1090→  border-radius: 9px;
+  1091→  border: 2.5px solid transparent;
+  1092→  background-clip: padding-box;
+  1093→}
+  1094→::-webkit-scrollbar-thumb:hover {
+  1095→  background: color-mix(in srgb, var(--ink, #17171c) 66%, transparent);
+  1096→  border: 2.5px solid transparent;
+  1097→  background-clip: padding-box;
+  1098→}
+  1099→/* Vùng cuộn bên trong (bảng, danh sách dài) — cùng ngôn ngữ, mảnh hơn */
+  1100→.notebook-scroll {
+  1101→  scrollbar-width: thin;
+  1102→  scrollbar-color: color-mix(in srgb, var(--ink, #17171c) 38%, transparent) transparent;
+  1103→}
+  1104→.notebook-scroll::-webkit-scrollbar {
+  1105→  width: 7px;
+  1106→  height: 7px;
+  1107→}
+  1108→.notebook-scroll::-webkit-scrollbar-track {
+  1109→  background: color-mix(in srgb, var(--ink, #17171c) 4%, transparent);
+  1110→  border-radius: 7px;
+  1111→}
+  1112→.notebook-scroll::-webkit-scrollbar-thumb {
+  1113→  background: color-mix(in srgb, var(--ink, #17171c) 42%, transparent);
+  1114→  border-radius: 7px;
+  1115→  border: 2px solid transparent;
+  1116→  background-clip: padding-box;
+  1117→}
+  1118→
+  1119→/* Bảng zebra giấy ấm — áp qua selector .aurora-workspace :is(.product-table,
+  1120→   .workspace-table, .student-table) trong notebook.css (không class riêng). */
+  1121→
+  1122→@keyframes vintern-result-enter {
+  1123→  from { opacity: 0; transform: translateY(12px); }
+  1124→  to { opacity: 1; transform: translateY(0); }
+  1125→}
+  1126→@media (prefers-reduced-motion: no-preference) {
+  1127→  .recruitment-result-reveal { animation: vintern-result-enter 360ms ease-out both; }
+  1128→}
+  1129→
+  1130→@media (prefers-reduced-motion: reduce) {
+  1131→  html {
+  1132→    scroll-behavior: auto;
+  1133→  }
+  1134→  .animate-float,
+  1135→  .animate-float-delayed,
+  1136→  .animate-float-soft,
+  1137→  .animate-wiggle,
+  1138→  .animate-blink-dot {
+  1139→    animation: none;
+  1140→  }
+  1141→  /* Notebook motion — mọi hiệu ứng sổ tay dừng ngay ở trạng thái cuối. */
+  1142→  .spinner-hand,
+  1143→  .animate-stamp-thump,
+  1144→  .animate-marker-sweep,
+  1145→  .animate-paper-settle,
+  1146→  .animate-page-curl,
+  1147→  .tape,
+  1148→  .tape-peel {
+  1149→    animation: none;
+  1150→    transition-duration: 0ms;
+  1151→  }
+  1152→  .squiggle-draw path {
+  1153→    animation: none;
+  1154→  }
+  1155→  /* Notebook v2 — grain là chất liệu tĩnh nên giữ nguyên; mọi animation dừng. */
+  1156→  .ink-draw :where(path, circle, line),
+  1157→  .animate-bob,
+  1158→  .animate-paper-flap-in,
+  1159→  .animate-marker-blot,
+  1160→  .group:hover .sticker-wiggle,
+  1161→  .sticker-wiggle:hover {
+  1162→    animation: none;
+  1163→  }
+  1164→  .paper-tilt-hover,
+  1165→  .paper-tilt-hover:hover {
+  1166→    transform: none;
+  1167→    transition-duration: 0ms;
+  1168→  }
+  1169→}
+  1170→

@@ -1,0 +1,816 @@
+     1→"use client";
+     2→import {
+     3→  StudentBadge,
+     4→  StudentHeading,
+     5→  StudentPanel,
+     6→  StudentProgress,
+     7→  StudentLink,
+     8→  studentPriority,
+     9→  studentToneForPriority,
+    10→} from "@/components/intern/student-ui";
+    11→import {
+    12→  IconCalendarDays,
+    13→  IconClock,
+    14→  IconCompass,
+    15→  IconFolderKanban,
+    16→  IconGitBranch,
+    17→  IconInfo,
+    18→  IconListChecks,
+    19→  IconSquareKanban,
+    20→} from "@/components/v-intern/icons";
+    21→import { BellRing } from "@/components/animate-ui/icons/bell-ring";
+    22→import { useCallback, useState, type ReactNode } from "react";
+    23→import Link from "next/link";
+    24→import { usePathname } from "next/navigation";
+    25→import {
+    26→  InternWorkspaceContext,
+    27→  useInternWorkspaceContext,
+    28→} from "@/components/intern/intern-workspace-context";
+    29→import {
+    30→  getWorkspace,
+    31→  lifecyclePath,
+    32→  type InternWorkspace,
+    33→} from "@/lib/api/workspace";
+    34→import { useResource } from "@/lib/api/use-resource";
+    35→import {
+    36→  getBoard,
+    37→  getProject,
+    38→  getOwnSprintBoard,
+    39→  getOwnSprints,
+    40→  getOwnProject,
+    41→  statusLabels,
+    42→} from "@/lib/api/work";
+    43→import { sprintStatusLabel } from "@/lib/api/sprint-status";
+    44→import { WorkspaceGuard } from "@/components/auth/workspace-guard";
+    45→import { ErrorState, LoadingState } from "@/components/shared/data-state";
+    46→import { InternShell } from "@/components/intern/intern-shell";
+    47→import { Badge, Empty, Field, InlineAlert, Pager, Panel, selectClass, StatusDot } from "./primitives";
+    48→import { DropColumn, canOwnDrop, draggableTask } from "./kanban-dnd";
+    49→import { useOwnTaskDrop } from "./use-own-task-drop";
+    50→import { useRouter } from "next/navigation";
+    51→import { TaskDeadline } from "@/components/workspace/task-deadline";
+    52→import { Tape } from "@/components/v-intern/doodles";
+    53→import { NoteCard, StampMoc } from "@/components/workspace/notebook";
+    54→
+    55→const INTERN_ROLES = ["intern"] as const;
+    56→
+    57→export function InternEntry({
+    58→  children,
+    59→  requireAssignment = false,
+    60→}: {
+    61→  children: ReactNode | ((workspace: InternWorkspace) => ReactNode);
+    62→  requireAssignment?: boolean;
+    63→}) {
+    64→  const embedded = useInternWorkspaceContext();
+    65→  // The persistent `/intern` layout already owns the guard and shell. A page
+    66→  // rendered inside it must only render its content; remounting the shell on
+    67→  // every navigation causes the sidebar/topbar to flash and loses scroll state.
+    68→  if (embedded) {
+    69→    return typeof children === "function"
+    70→      ? children(embedded.workspace)
+    71→      : children;
+    72→  }
+    73→  return (
+    74→    <WorkspaceGuard allowedRoles={INTERN_ROLES}>
+    75→      <InternGate requireAssignment={requireAssignment}>{children}</InternGate>
+    76→    </WorkspaceGuard>
+    77→  );
+    78→}
+    79→function InternGate({
+    80→  children,
+    81→  requireAssignment,
+    82→}: {
+    83→  children: ReactNode | ((workspace: InternWorkspace) => ReactNode);
+    84→  requireAssignment: boolean;
+    85→}) {
+    86→  const pathname = usePathname();
+    87→  const historyRoute = [
+    88→    "evaluations",
+    89→    "performance",
+    90→    "recommendations",
+    91→    "kpi",
+    92→    "virtual-salary",
+    93→    "certificates",
+    94→  ].some(
+    95→    (route) =>
+    96→      pathname === `/intern/${route}` ||
+    97→      pathname.startsWith(`/intern/${route}/`),
+    98→  );
+    99→  const workspace = useResource(
+   100→    useCallback((signal: AbortSignal) => getWorkspace(signal), []),
+   101→    pathname,
+   102→  );
+   103→  // Revalidate on navigation without tearing down the persistent shell or a
+   104→  // student's draft while the same workspace payload is being refreshed.
+   105→  if (workspace.loading && !workspace.data) return <LoadingState />;
+   106→  if (workspace.error)
+   107→    return <ErrorState error={workspace.error} onRetry={workspace.reload} />;
+   108→  if (!workspace.data) return null;
+   109→  const data = workspace.data,
+   110→    target = lifecyclePath(data);
+   111→  const outcomesAvailable =
+   112→    data.status === "active" || Boolean(data.hasAssignmentHistory);
+   113→  const assignmentRequired =
+   114→    requireAssignment ||
+   115→    (!(historyRoute && outcomesAvailable) &&
+   116→      ![
+   117→        "/intern",
+   118→        "/intern/notifications",
+   119→        "/intern/profile",
+   120→        "/intern/github",
+   121→        "/intern/participation",
+   122→      ].includes(pathname));
+   123→  const renderContent = () =>
+   124→    typeof children === "function" ? children(data) : children;
+   125→  const isHome = pathname === "/intern";
+   126→  return (
+   127→    <InternWorkspaceContext.Provider
+   128→      value={{ workspace: data, reload: workspace.reload, refreshing: workspace.loading }}
+   129→    >
+   130→      <InternShell
+   131→        active={data.status === "active"}
+   132→        outcomesAvailable={outcomesAvailable}
+   133→      >
+   134→        {isHome ? (
+   135→          renderContent()
+   136→        ) : target !== "/intern" ? (
+   137→          <>
+   138→            <StudentHeading
+   139→              title="Hoàn tất tuyển dụng"
+   140→              description="Bạn cần hoàn thành bước tuyển dụng trước khi mở khóa không gian thực tập."
+   141→            />
+   142→            <div className="student-dashboard-grid">
+   143→              <div className="student-panel student-chat-welcome">
+   144→                <IconCompass
+   145→                  size={42}
+   146→                  className="text-primary"
+   147→                  aria-hidden="true"
+   148→                />
+   149→                <h2>Bước tuyển dụng đang chờ bạn</h2>
+   150→                <p>
+   151→                  Hoàn thành phỏng vấn để giảng viên xem xét phân công dự án.
+   152→                  Kết quả và phản hồi sẽ được lưu lại trong hành trình của bạn.
+   153→                </p>
+   154→                <div className="student-empty-actions">
+   155→                  <StudentLink href={target}>Tiếp tục tuyển dụng</StudentLink>
+   156→                  <StudentLink secondary href="/intern">
+   157→                    Về trang tổng quan
+   158→                  </StudentLink>
+   159→                </div>
+   160→              </div>
+   161→              <StudentPanel title="Bạn sẽ trải qua" icon={IconListChecks}>
+   162→                <ol className="student-step-list">
+   163→                  <li>
+   164→                    <div>
+   165→                      <strong>Chọn vai trò</strong>
+   166→                      <p>Xác nhận vị trí phù hợp với định hướng của bạn.</p>
+   167→                    </div>
+   168→                  </li>
+   169→                  <li>
+   170→                    <div>
+   171→                      <strong>Phỏng vấn cùng AI Recruiter</strong>
+   172→                      <p>
+   173→                        Trả lời từng câu hỏi, có thể lưu nháp và quay lại sau.
+   174→                      </p>
+   175→                    </div>
+   176→                  </li>
+   177→                  <li>
+   178→                    <div>
+   179→                      <strong>Nhận kết quả</strong>
+   180→                      <p>
+   181→                        Xem điểm, nhận xét và bước tiếp theo trong hành trình.
+   182→                      </p>
+   183→                    </div>
+   184→                  </li>
+   185→                </ol>
+   186→              </StudentPanel>
+   187→            </div>
+   188→          </>
+   189→        ) : assignmentRequired && data.status !== "active" ? (
+   190→          <>
+   191→            <StudentHeading
+   192→              title="Đang chờ phân công"
+   193→              description="Bạn đã vượt qua vòng tuyển dụng. Giảng viên sẽ phân công dự án và Sprint tiếp theo cho bạn."
+   194→              action={
+   195→                <StudentLink secondary href="/intern/notifications">
+   196→                  <BellRing size={15} animateOnHover aria-hidden="true" />
+   197→                  Xem thông báo
+   198→                </StudentLink>
+   199→              }
+   200→            />
+   201→            <div className="student-dashboard-grid">
+   202→              <div className="student-panel student-chat-welcome">
+   203→                <IconClock
+   204→                  size={42}
+   205→                  className="text-primary"
+   206→                  aria-hidden="true"
+   207→                />
+   208→                <h2>Bạn chưa có dự án, Sprint hoặc nhiệm vụ được giao.</h2>
+   209→                <p>
+   210→                  Khi giảng viên phân công, trang này sẽ mở khóa công việc,
+   211→                  Sprint Board và AI Mentor. Bạn sẽ nhận thông báo ngay khi có
+   212→                  dự án mới.
+   213→                </p>
+   214→                <div className="student-empty-actions">
+   215→                  <StudentLink href="/intern">Về Tổng quan</StudentLink>
+   216→                  <StudentLink secondary href="/intern/profile">
+   217→                    Cập nhật hồ sơ
+   218→                  </StudentLink>
+   219→                </div>
+   220→              </div>
+   221→              <StudentPanel title="Trong lúc chờ" icon={IconListChecks}>
+   222→                <ol className="student-step-list">
+   223→                  <li>
+   224→                    <div>
+   225→                      <strong>Theo dõi thông báo</strong>
+   226→                      <p>
+   227→                        Cập nhật phân công dự án và phản hồi từ giảng viên tại
+   228→                        trang Thông báo.
+   229→                      </p>
+   230→                    </div>
+   231→                  </li>
+   232→                  <li>
+   233→                    <div>
+   234→                      <strong>Hoàn thiện hồ sơ</strong>
+   235→                      <p>
+   236→                        Bổ sung thông tin cá nhân và liên kết GitHub để sẵn sàng
+   237→                        nhận nhiệm vụ.
+   238→                      </p>
+   239→                    </div>
+   240→                  </li>
+   241→                  <li>
+   242→                    <div>
+   243→                      <strong>Xem lại kết quả tuyển dụng</strong>
+   244→                      <p>
+   245→                        Đọc nhận xét và điểm mạnh để chuẩn bị cho dự án sắp tới.
+   246→                      </p>
+   247→                    </div>
+   248→                  </li>
+   249→                </ol>
+   250→              </StudentPanel>
+   251→            </div>
+   252→          </>
+   253→        ) : (
+   254→          renderContent()
+   255→        )}
+   256→      </InternShell>
+   257→    </InternWorkspaceContext.Provider>
+   258→  );
+   259→}
+   260→export function InternSprint({ workspace }: { workspace: InternWorkspace }) {
+   261→  const [page, setPage] = useState(1), [selected, setSelected] = useState('');
+   262→  const sprints = useResource(useCallback((signal: AbortSignal) => getOwnSprints(page, signal), [page]));
+   263→  const rows = sprints.data?.items ?? [];
+   264→  const initial = page === 1 ? rows.find(s => s.id.toLowerCase() === workspace.currentSprint?.id.toLowerCase()) : undefined;
+   265→  const sprint = rows.find(s => s.id === selected) ?? initial ?? rows[0];
+   266→  const id = sprint?.id;
+   267→  return (
+   268→    <>
+   269→      <StudentHeading
+   270→        title="Sprint Board"
+   271→        description={
+   272→          "Xem Sprint đã lên kế hoạch, đang chạy và lịch sử trong phiên được phân công."
+   273→        }
+   274→        action={
+   275→          <StudentLink secondary href="/intern/work">
+   276→            Công việc của tôi
+   277→          </StudentLink>
+   278→        }
+   279→      />
+   280→      {sprints.loading && <LoadingState />}
+   281→      {Boolean(sprints.error) && <ErrorState error={sprints.error} onRetry={sprints.reload} />}
+   282→      {sprints.data && rows.length > 0 && <div className="my-5 max-w-2xl"><Field htmlFor="student-sprint" label="Sprint đang xem"><select id="student-sprint" className={selectClass} value={id ?? ''} onChange={event => setSelected(event.target.value)}>{rows.map(row => <option key={row.id} value={row.id}>{row.code} · {row.name} · {sprintStatusLabel(row.status).label}</option>)}</select></Field>{sprints.data.total > 50 && <Pager page={page} total={sprints.data.total} totalPages={sprints.data.totalPages} unit="Sprint" onChange={value => {setSelected('');setPage(value);}} />}</div>}
+   283→      {sprint?.status === 'planned' && <InlineAlert tone="info">Sprint đã được lên kế hoạch. Bạn có thể xem nhiệm vụ và chuẩn bị ngay; giảng viên quyết định thời điểm kích hoạt Sprint.</InlineAlert>}
+   284→      {id && <SprintBoard key={id} id={id} own />}
+   285→      {sprints.data && !rows.length && (
+   286→        <div className="student-dashboard-grid student-sprint-empty-grid">
+   287→          <StudentPanel
+   288→            title="Sprint Board"
+   289→            icon={IconSquareKanban}
+   290→            className="student-sprint-empty"
+   291→          >
+   292→            <div className="student-chat-welcome">
+   293→              <span className="student-metric-icon size-14">
+   294→                <IconSquareKanban size={26} aria-hidden="true" />
+   295→              </span>
+   296→              <h2>Chưa có Sprint trong phiên</h2>
+   297→              <p>
+   298→                Giảng viên chưa tạo Sprint cho phiên được phân công. Sprint sẽ
+   299→                hiển thị ở đây ngay khi có kế hoạch, cùng tiến độ và thời hạn
+   300→                của những nhiệm vụ được giao cho bạn.
+   301→              </p>
+   302→              <div className="mt-5 flex flex-wrap justify-center gap-3">
+   303→                <StudentLink href="/intern/work">Xem nhiệm vụ</StudentLink>
+   304→                <StudentLink secondary href="/intern/project">
+   305→                  Dự án của tôi
+   306→                </StudentLink>
+   307→              </div>
+   308→            </div>
+   309→          </StudentPanel>
+   310→          <div className="student-stack">
+   311→            <StudentPanel
+   312→              title="Chuẩn bị trước khi Sprint bắt đầu"
+   313→              icon={IconCalendarDays}
+   314→            >
+   315→              <ol className="student-step-list">
+   316→                <li>
+   317→                  <div>
+   318→                    <strong>Đọc yêu cầu dự án</strong>
+   319→                    <p>
+   320→                      Nắm mục tiêu, công nghệ và phạm vi để sẵn sàng nhận việc.
+   321→                    </p>
+   322→                  </div>
+   323→                </li>
+   324→                <li>
+   325→                  <div>
+   326→                    <strong>Kiểm tra GitHub</strong>
+   327→                    <p>
+   328→                      Xác nhận tài khoản đã liên kết và có quyền vào repository
+   329→                      của phiên.
+   330→                    </p>
+   331→                  </div>
+   332→                </li>
+   333→                <li>
+   334→                  <div>
+   335→                    <strong>Hỏi Mentor nếu cần</strong>
+   336→                    <p>
+   337→                      Chuẩn bị câu hỏi về công cụ hoặc quy trình trước khi bắt
+   338→                      tay.
+   339→                    </p>
+   340→                  </div>
+   341→                </li>
+   342→              </ol>
+   343→            </StudentPanel>
+   344→            <StudentPanel title="Bạn vẫn có thể làm việc" icon={IconInfo}>
+   345→              <p className="text-small leading-7 text-muted-foreground">
+   346→                Nhiệm vụ đã được giao vẫn hiển thị trong Công việc của tôi. Bạn
+   347→                có thể đọc yêu cầu, cập nhật tiến độ và trao đổi với giảng viên
+   348→                ngay cả khi Sprint chưa kích hoạt.
+   349→              </p>
+   350→              <div className="mt-4">
+   351→                <StudentLink secondary href="/intern/mentor">
+   352→                  Mở AI Mentor
+   353→                </StudentLink>
+   354→              </div>
+   355→            </StudentPanel>
+   356→          </div>
+   357→        </div>
+   358→      )}
+   359→    </>
+   360→  );
+   361→}
+   362→export function SprintBoard({
+   363→  id,
+   364→  own = false,
+   365→}: {
+   366→  id: string;
+   367→  own?: boolean;
+   368→}) {
+   369→  const router = useRouter();
+   370→  const workspace = useInternWorkspaceContext();
+   371→  const board = useResource(
+   372→    useCallback(
+   373→      (signal: AbortSignal) =>
+   374→        own ? getOwnSprintBoard(id, signal) : getBoard(id, signal),
+   375→      [id, own],
+   376→    ),
+   377→  );
+   378→  const drop = useOwnTaskDrop(
+   379→    () => {
+   380→      board.reload();
+   381→      if (own) workspace?.reload();
+   382→    },
+   383→    (taskId, intent) =>
+   384→      router.push(
+   385→        `/intern/work/${encodeURIComponent(taskId)}${
+   386→          intent === "submit" ? "?submit=1" : ""
+   387→        }`,
+   388→      ),
+   389→  );
+   390→  if (board.loading) return <LoadingState />;
+   391→  if (board.error)
+   392→    return <ErrorState error={board.error} onRetry={board.reload} />;
+   393→  if (!board.data) return null;
+   394→  const data = board.data,
+   395→    done = data.columns.find((c) => c.status === "done")?.count ?? 0;
+   396→  const percent = data.total ? Math.round((done / data.total) * 100) : 0;
+   397→  const start = new Date(data.sprint.startDate).toLocaleDateString("vi-VN");
+   398→  const end = new Date(data.sprint.endDate).toLocaleDateString("vi-VN");
+   399→  return (
+   400→    <div className="space-y-4">
+   401→      {own && (
+   402→        <div className="student-notice">
+   403→          <IconInfo size={16} className="shrink-0" aria-hidden="true" />
+   404→          <p>
+   405→            Kéo thả thẻ để bắt đầu công việc. Thả sang{" "}
+   406→            <strong>Chờ duyệt</strong> để mở chi tiết và nộp bài; giảng viên
+   407→            duyệt <strong>Hoàn thành</strong>. Bấm thẻ để cập nhật bằng bàn phím
+   408→            hoặc trên điện thoại.
+   409→          </p>
+   410→        </div>
+   411→      )}
+   412→      {own && (
+   413→        <NoteCard tape title="Gợi ý của AI mentor" className="max-w-md">
+   414→          Chưa xong thì để ở Đang làm — kéo sang Chờ duyệt khi sẵn sàng nộp
+   415→          bài.
+   416→        </NoteCard>
+   417→      )}
+   418→      {drop.error && <InlineAlert tone="danger">{drop.error}</InlineAlert>}
+   419→      {drop.busy && (
+   420→        <p role="status" className="text-body text-muted-foreground">
+   421→          Đang cập nhật nhiệm vụ…
+   422→        </p>
+   423→      )}
+   424→
+   425→      {own ? (
+   426→        <StudentPanel
+   427→          title={
+   428→            <>
+   429→              <span className="student-code-inline">{data.sprint.code}</span>{" "}
+   430→              <span aria-hidden="true">·</span> {data.sprint.name}
+   431→            </>
+   432→          }
+   433→          className="student-sprint-summary relative group"
+   434→          icon={IconSquareKanban}
+   435→          action={
+   436→            <StudentBadge
+   437→              tone={
+   438→                sprintStatusLabel(data.sprint.status).tone === "green"
+   439→                  ? "green"
+   440→                  : "blue"
+   441→              }
+   442→            >
+   443→              {sprintStatusLabel(data.sprint.status).label}
+   444→            </StudentBadge>
+   445→          }
+   446→        >
+   447→          <Tape className="-top-3 left-6" rotate={-5} />
+   448→          <div className="grid gap-5 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+   449→            <div>
+   450→              <p className="student-label">Tiến độ Sprint</p>
+   451→              <StudentProgress
+   452→                value={percent}
+   453→                label={`${done}/${data.total} nhiệm vụ hoàn thành`}
+   454→                tone={percent >= 70 ? "green" : "blue"}
+   455→              />
+   456→            </div>
+   457→            <div>
+   458→              <p className="student-label">Thời gian</p>
+   459→              <p className="student-chip mt-1">
+   460→                <IconCalendarDays size={13} aria-hidden="true" />
+   461→                {start} đến {end}
+   462→              </p>
+   463→            </div>
+   464→            <div>
+   465→              <p className="student-label">Tổng nhiệm vụ</p>
+   466→              <p className="mt-1 text-section font-extrabold tracking-tight text-foreground">
+   467→                {data.total}
+   468→                <span className="ml-2 text-caption font-medium text-muted-foreground">
+   469→                  nhiệm vụ
+   470→                </span>
+   471→              </p>
+   472→            </div>
+   473→          </div>
+   474→        </StudentPanel>
+   475→      ) : (
+   476→        <Panel title={data.sprint.name}>
+   477→          <div className="flex flex-wrap items-center gap-4 text-body">
+   478→            <StatusDot tone={sprintStatusLabel(data.sprint.status).tone}>
+   479→              {sprintStatusLabel(data.sprint.status).label}
+   480→            </StatusDot>
+   481→            <span>
+   482→              {done}/{data.total} nhiệm vụ hoàn thành
+   483→            </span>
+   484→            <span>
+   485→              {start} đến {end}
+   486→            </span>
+   487→          </div>
+   488→          <progress
+   489→            aria-label="Tiến độ Sprint"
+   490→            value={done}
+   491→            max={data.total || 1}
+   492→            className="mt-3 h-2 w-full accent-primary"
+   493→          />
+   494→        </Panel>
+   495→      )}
+   496→
+   497→      <div
+   498→        className={
+   499→          own
+   500→            ? "student-board"
+   501→            : "grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-4"
+   502→        }
+   503→      >
+   504→        {data.columns.map((column) => (
+   505→          <DropColumn
+   506→            key={column.status}
+   507→            status={column.status}
+   508→            canDrop={(from) =>
+   509→              own && !drop.busy && canOwnDrop(from, column.status)
+   510→            }
+   511→            onDrop={drop.move}
+   512→            className={
+   513→              own
+   514→                ? `student-board-column student-column-${column.status}`
+   515→                : "min-h-48"
+   516→            }
+   517→          >
+   518→            {own ? (
+   519→              <section aria-label={statusLabels[column.status]}>
+   520→                <header className="student-board-head">
+   521→                  <h2>
+   522→                    {statusLabels[column.status]}
+   523→                    <span className="student-board-count">{column.count}</span>
+   524→                  </h2>
+   525→                  {own && column.status === "done" && (
+   526→                    <StampMoc size="sm" thump rotate={-6}>
+   527→                      XONG
+   528→                    </StampMoc>
+   529→                  )}
+   530→                  <p>{{ todo: "Đọc yêu cầu và chuẩn bị", doing: "Tập trung từng nhiệm vụ", review: "Đã nộp, chờ phản hồi", done: "Được giảng viên xác nhận" }[column.status]}</p>
+   531→                </header>
+   532→                {column.tasks.length ? (
+   533→                  <div className="space-y-3 nb-stagger">
+   534→                    {column.tasks.map((t) => (
+   535→                      <article
+   536→                        key={t.id}
+   537→                        {...(!drop.busy &&
+   538→                        (t.status === "todo" || t.status === "doing")
+   539→                          ? draggableTask(t.id, t.status)
+   540→                          : {})}
+   541→                        className="student-board-card"
+   542→                      >
+   543→                        <div className="student-board-card-head">
+   544→                          <span className="student-work-code">{t.code}</span>
+   545→                          <StudentBadge
+   546→                            tone={studentToneForPriority(t.priority)}
+   547→                          >
+   548→                            {studentPriority(t.priority)}
+   549→                          </StudentBadge>
+   550→                        </div>
+   551→                        <h3>
+   552→                          <Link
+   553→                            href={`/intern/work/${encodeURIComponent(t.id)}`}
+   554→                            draggable={false}
+   555→                            className="hover:text-primary"
+   556→                          >
+   557→                            {t.title}
+   558→                          </Link>
+   559→                        </h3>
+   560→                        <StudentProgress
+   561→                          value={t.progress}
+   562→                          label="Tiến độ"
+   563→                          tone={t.progress >= 100 ? "green" : "blue"}
+   564→                        />
+   565→                        <div className="student-board-card-foot"><TaskDeadline value={t.dueDate} status={t.status} compact /></div>
+   566→                      </article>
+   567→                    ))}
+   568→                  </div>
+   569→                ) : (
+   570→                  <p className="student-board-empty">
+   571→                    {
+   572→                      {
+   573→                        todo: "Chưa có nhiệm vụ cần bắt đầu.",
+   574→                        doing: "Kéo thẻ Cần làm vào đây để bắt đầu.",
+   575→                        review: "Bài đã nộp sẽ chờ phản hồi tại đây.",
+   576→                        done: "Nhiệm vụ được giảng viên duyệt sẽ xuất hiện tại đây.",
+   577→                      }[column.status]
+   578→                    }
+   579→                  </p>
+   580→                )}
+   581→              </section>
+   582→            ) : (
+   583→              <Panel title={`${statusLabels[column.status]} · ${column.count}`}>
+   584→                {column.tasks.length ? (
+   585→                  <div className="space-y-3 nb-stagger">
+   586→                    {column.tasks.map((t) => (
+   587→                      <article
+   588→                        key={t.id}
+   589→                        className="rounded-control border border-border bg-background p-3"
+   590→                      >
+   591→                        <p className="text-caption font-semibold text-primary">
+   592→                          {t.code}
+   593→                        </p>
+   594→                        <p className="my-2 text-body font-semibold text-foreground">
+   595→                          {t.title}
+   596→                        </p>
+   597→                        <Badge>{t.priority}</Badge>
+   598→                        <p className="mt-2 text-caption text-muted-foreground">
+   599→                          {t.progress}% ·{" "}
+   600→                          {t.dueDate
+   601→                            ? new Date(t.dueDate).toLocaleDateString("vi-VN")
+   602→                            : "Chưa có hạn"}
+   603→                        </p>
+   604→                      </article>
+   605→                    ))}
+   606→                  </div>
+   607→                ) : (
+   608→                  <Empty>Không có nhiệm vụ.</Empty>
+   609→                )}
+   610→              </Panel>
+   611→            )}
+   612→          </DropColumn>
+   613→        ))}
+   614→      </div>
+   615→    </div>
+   616→  );
+   617→}
+   618→
+   619→export function InternProject({ workspace }: { workspace: InternWorkspace }) {
+   620→  const assignment = workspace.assignment;
+   621→  return (
+   622→    <>
+   623→      <StudentHeading
+   624→        title="Dự án của tôi"
+   625→        description="Hiểu mục tiêu, công nghệ và thời gian thực hiện trước khi bắt đầu từng nhiệm vụ."
+   626→        action={<StudentLink href="/intern/work">Xem nhiệm vụ</StudentLink>}
+   627→      />
+   628→      {assignment ? (
+   629→        <>
+   630→          <div className="student-project-assignment"><IconCalendarDays size={17} aria-hidden="true" /><div><span>Phiên thực tập</span><strong>{assignment.session.name}</strong></div><p>{assignment.session.code}<small>Phân công {new Date(assignment.assignedAt).toLocaleDateString("vi-VN")}</small></p></div>
+   631→          <div className="mt-5">
+   632→            <ProjectDetail id={assignment.project.id} own />
+   633→          </div>
+   634→        </>
+   635→      ) : (
+   636→        <Empty>Chưa được phân công.</Empty>
+   637→      )}
+   638→    </>
+   639→  );
+   640→}
+   641→export function ProjectDetail({
+   642→  id,
+   643→  own = false,
+   644→}: {
+   645→  id: string;
+   646→  own?: boolean;
+   647→}) {
+   648→  const project = useResource(
+   649→    useCallback(
+   650→      (signal: AbortSignal) =>
+   651→        own ? getOwnProject(signal) : getProject(id, signal),
+   652→      [id, own],
+   653→    ),
+   654→  );
+   655→  if (project.loading) return <LoadingState />;
+   656→  if (project.error)
+   657→    return <ErrorState error={project.error} onRetry={project.reload} />;
+   658→  if (!project.data) return null;
+   659→  const p = project.data;
+   660→  if (own)
+   661→    return (
+   662→      <div className="student-dashboard-grid student-project-layout">
+   663→        <div className="space-y-5">
+   664→          <StudentPanel title={p.name} icon={IconFolderKanban} className="student-project-brief relative group">
+   665→            <Tape className="-top-3 left-6" rotate={-5} />
+   666→            <span className="rounded-control bg-accent px-2 py-1 text-caption font-bold text-primary">
+   667→              {p.code}
+   668→            </span>
+   669→            <h3 className="mb-3 mt-6 text-body font-bold">Mục tiêu & phạm vi</h3>
+   670→            <p className="whitespace-pre-wrap text-body leading-8 text-muted-foreground">
+   671→              {p.description || "Giảng viên chưa bổ sung mô tả dự án."}
+   672→            </p>
+   673→            <h3 className="mb-3 mt-6 flex items-center gap-2 text-body font-semibold"><IconGitBranch size={16} aria-hidden="true" />Bộ công nghệ</h3>
+   674→            <div className="student-project-technologies">
+   675→              {p.technologies.length ? p.technologies.join(" · ") : (
+   676→                <p className="text-body text-muted-foreground">
+   677→                  Chưa có công nghệ khai báo.
+   678→                </p>
+   679→              )}
+   680→            </div>
+   681→          </StudentPanel>
+   682→        </div>
+   683→        <div className="space-y-5">
+   684→          <StudentPanel title="Thông tin dự án">
+   685→            <dl className="space-y-4 text-body">
+   686→              {[
+   687→                [
+   688→                  "Trạng thái",
+   689→                  (
+   690→                    {
+   691→                      draft: "Bản nháp",
+   692→                      active: "Đang thực hiện",
+   693→                      completed: "Đã hoàn thành",
+   694→                      archived: "Đã lưu trữ",
+   695→                    } as Record<string, string>
+   696→                  )[p.status] ?? p.status,
+   697→                ],
+   698→                [
+   699→                  "Độ khó",
+   700→                  (
+   701→                    {
+   702→                      beginner: "Cơ bản",
+   703→                      intermediate: "Trung cấp",
+   704→                      advanced: "Nâng cao",
+   705→                      easy: "Cơ bản",
+   706→                      medium: "Trung bình",
+   707→                      hard: "Nâng cao",
+   708→                    } as Record<string, string>
+   709→                  )[p.difficulty] ?? p.difficulty,
+   710→                ],
+   711→                ["Quy mô", p.capacity ?? "Chưa đặt"],
+   712→                [
+   713→                  "Bắt đầu",
+   714→                  p.startDate
+   715→                    ? new Date(p.startDate).toLocaleDateString("vi-VN")
+   716→                    : "Chưa đặt",
+   717→                ],
+   718→                [
+   719→                  "Kết thúc",
+   720→                  p.endDate
+   721→                    ? new Date(p.endDate).toLocaleDateString("vi-VN")
+   722→                    : "Chưa đặt",
+   723→                ],
+   724→              ].map(([label, value]) => (
+   725→                <div
+   726→                  key={String(label)}
+   727→                  className="flex justify-between gap-4 border-b border-border pb-3"
+   728→                >
+   729→                  <dt className="text-muted-foreground">{label}</dt>
+   730→                  <dd className="text-right font-semibold">{value}</dd>
+   731→                </div>
+   732→              ))}
+   733→            </dl>
+   734→            {p.mentorId && (
+   735→              <details className="mt-4 text-caption text-muted-foreground">
+   736→                <summary className="cursor-pointer">
+   737→                  Thông tin người phụ trách
+   738→                </summary>
+   739→                <p className="mt-2 break-all">
+   740→                  Mã người phụ trách: {p.mentorId}
+   741→                </p>
+   742→              </details>
+   743→            )}
+   744→          </StudentPanel>
+   745→          <details className="student-help-disclosure">
+   746→            <summary>Chuẩn bị cho công việc</summary>
+   747→            <ol className="student-step-list">
+   748→              <li>
+   749→                <div>
+   750→                  <strong>Đọc mục tiêu dự án</strong>
+   751→                  <p>Hiểu sản phẩm cần làm và những công nghệ sẽ sử dụng.</p>
+   752→                </div>
+   753→              </li>
+   754→              <li>
+   755→                <div>
+   756→                  <strong>Kiểm tra repository</strong>
+   757→                  <p>Liên kết GitHub và xác nhận quyền truy cập.</p>
+   758→                </div>
+   759→              </li>
+   760→              <li>
+   761→                <div>
+   762→                  <strong>Xem Sprint hiện tại</strong>
+   763→                  <p>Ưu tiên nhiệm vụ được giao và các điều kiện phụ thuộc.</p>
+   764→                </div>
+   765→              </li>
+   766→            </ol>
+   767→            <div className="mt-5">
+   768→              <StudentLink secondary href="/intern/github">
+   769→                Kiểm tra GitHub
+   770→              </StudentLink>
+   771→            </div>
+   772→          </details>
+   773→        </div>
+   774→      </div>
+   775→    );
+   776→  return (
+   777→    <Panel title={p.name}>
+   778→      <Badge>{p.code}</Badge>
+   779→      <p className="mt-3 whitespace-pre-wrap text-body">{p.description}</p>
+   780→      <dl className="mt-5 grid gap-4 text-body sm:grid-cols-2">
+   781→        {[
+   782→          ["Trạng thái", p.status],
+   783→          ["Độ khó", p.difficulty],
+   784→          ["Mentor", p.mentorId ?? "Chưa phân công"],
+   785→          ["Quy mô", p.capacity ?? "Chưa đặt"],
+   786→          [
+   787→            "Bắt đầu",
+   788→            p.startDate
+   789→              ? new Date(p.startDate).toLocaleDateString("vi-VN")
+   790→              : "Chưa có",
+   791→          ],
+   792→          [
+   793→            "Kết thúc",
+   794→            p.endDate
+   795→              ? new Date(p.endDate).toLocaleDateString("vi-VN")
+   796→              : "Chưa có",
+   797→          ],
+   798→        ].map(([label, value]) => (
+   799→          <div key={String(label)}>
+   800→            <dt className="text-muted-foreground">{label}</dt>
+   801→            <dd className="mt-1 break-words font-medium">{value}</dd>
+   802→          </div>
+   803→        ))}
+   804→      </dl>
+   805→      <h3 className="mt-5 font-semibold">Công nghệ</h3>
+   806→      <div className="mt-2 flex flex-wrap gap-2">
+   807→        {p.technologies.length ? (
+   808→          p.technologies.map((t) => <Badge key={t}>{t}</Badge>)
+   809→        ) : (
+   810→          <p className="text-body text-muted-foreground">Chưa có công nghệ khai báo.</p>
+   811→        )}
+   812→      </div>
+   813→    </Panel>
+   814→  );
+   815→}
+   816→

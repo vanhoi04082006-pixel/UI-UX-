@@ -1,0 +1,284 @@
+     1→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/reports.ts:12:export function listReports(page:number,kind:string,signal?:AbortSignal,scope:{projectId?:string;sessionId?:string}={}){return request(`/reports?${new URLSearchParams({page:String(page),...(kind?{kind}:{}),...(scope.projectId?{projectId:scope.projectId}:{}),...(scope.sessionId?{sessionId:scope.sessionId}:{})})}`,v=>{const r=record(v);return {items:array(r.items,parseMetadata),total:number(r.total),counts:array(r.counts,v=>{const c=record(v);return {kind:oneOf(c.kind,['progress','performance','evaluation','review','risk']),count:number(c.count),recentCount:number(c.recentCount)};})};},{signal});}
+     2→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/reports.ts:13:export const getSavedReport=(id:string,signal?:AbortSignal)=>request(`/reports/${id}`,parseSavedReport,{signal});
+     3→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/reports.ts:14:export const createReport=(input:ReportScope&{title:string;kind:ReportKind;requestId:string})=>request('/reports',parseSavedReport,{method:'POST',body:input});
+     4→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/reports.ts:15:export const getReportPdf=(id:string)=>request(`/reports/${id}/pdf`,v=>{if(!(v instanceof Blob))throw new Error('Invalid PDF');return v;},{responseType:'blob'});
+     5→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/reports.ts:16:export const getReportExcel=(id:string)=>request(`/reports/${id}/xlsx`,v=>{if(!(v instanceof Blob))throw new Error('Invalid workbook');return v;},{responseType:'xlsx'});
+     6→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/project-sessions.ts:37:  request(
+     7→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/project-sessions.ts:49:  request(
+     8→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/planning.ts:153:  request(`/ai-generations/plans?${new URLSearchParams({ sessionId })}`, (v) => array(v, parsePlanSummary), {
+     9→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/planning.ts:158:  request(`/ai-generations/plans/${encodeURIComponent(planId)}`, parsePlanDetail, { signal });
+    10→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/planning.ts:168:  request("/ai-generations/plans/generate", (v) => {
+    11→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/planning.ts:184:  request("/ai-generations/sprint-plan/confirm", (v) => {
+    12→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/planning.ts:202:  request("/ai-generations/sprint-plan/draft", (v) => {
+    13→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/repository-access.ts:51:  request("/github/me/repository-access", parseReport, { signal });
+    14→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/repository-access.ts:53:  request(
+    15→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/repository-access.ts:63:  request(
+    16→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:120:  request(`/tasks?${query}`, (value) => parsePage(value, parseTask), {
+    17→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:124:  request(`/tasks/${encodeURIComponent(id)}`, parseTask, { signal });
+    18→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:126:  request(
+    19→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:132:  request(
+    20→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:138:  request(`/tasks/${encodeURIComponent(id)}/comments`, parseComment, {
+    21→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:151:  request(`/tasks/${encodeURIComponent(id)}/my`, parseTask, {
+    22→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:156:  request(`/sprints/${encodeURIComponent(id)}/board`, parseBoard, { signal });
+    23→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:159:  request(`/sprints/${encodeURIComponent(id)}/completion`, (value) => {
+    24→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:170:  request(`/projects/${encodeURIComponent(id)}`, parseProject, { signal });
+    25→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:172:  request("/intern/me/sprint/board?pageSize=100", parseBoard, { signal });
+    26→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:174:  request(`/intern/me/sprints/${encodeURIComponent(id)}/board?pageSize=100`, parseBoard, { signal });
+    27→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:176:  request(`/intern/me/sprints?page=${page}&pageSize=50`, value => parsePage(value, item => {
+    28→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/work.ts:181:  request("/intern/me/project", parseProject, { signal });
+    29→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/instructor-setup.ts:86:      request(
+    30→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/delivery.ts:54:  request(`/dashboard/sprints/${encodeURIComponent(id)}/burndown`, (value) => {
+    31→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/delivery.ts:73:  return request(`/sprints?${params.toString()}`, (v) => parsePage(v, parseSprint), { signal });
+    32→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/delivery.ts:75:export const getSprint = (id: string, signal?: AbortSignal) => request(`/sprints/${encodeURIComponent(id)}`, parseSprint, { signal });
+    33→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/delivery.ts:102:  return request(`/tasks?${params.toString()}`, (v) => parsePage(v, parseTask), { signal });
+    34→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/delivery.ts:117:  return request(`/sessions/member-options?${params}`, v => parsePage(v, value => {
+    35→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:53:  apiFetch("/applications/rounds", { signal }).then((raw) =>
+    36→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:64:  apiFetch("/applications", { method: "POST", formData });
+    37→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:66:  apiFetch("/applications/leave", { method: "POST", body: {} }).then((raw) =>
+    38→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:70:  apiFetch("/applications/request-access", {
+    39→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:75:  apiFetch("/applications/verify", { method: "POST", body: { token } });
+    40→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:77:  apiFetch("/applications/me").then(parseApplication);
+    41→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:80:  request("/applications/me/cv", (raw) => raw as Blob, {
+    42→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:86:  return apiFetch("/applications/me/cv", {
+    43→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:102:  request(
+    44→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:108:  request(
+    45→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:137:}) => request("/recruitment-rounds", parseRound, { method: "POST", body });
+    46→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:139:  request(`/recruitment-rounds/${encodeURIComponent(id)}/status`, parseRound, {
+    47→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:155:  request(`/recruitment-rounds/${encodeURIComponent(id)}/slots`, parseRound, {
+    48→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:160:  request(
+    49→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:170:  request(
+    50→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:193:  request(
+    51→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:257:  request(
+    52→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:268:  request(
+    53→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:274:  request(
+    54→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.ts:284:  request(
+    55→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge-runs.ts:55:  request("/admin/agents/knowledge-runs", parseKnowledgeRun, {
+    56→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge-runs.ts:66:  request(
+    57→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge-runs.ts:73:  request(
+    58→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge-runs.ts:80:  request(
+    59→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/question-bank.ts:10:export const listQuestionBank = (query: URLSearchParams, signal?: AbortSignal) => request(`/admin/question-bank?${query}`, raw => { const v = record(raw); return { items: array(v.items, parseQuestion), total: number(v.total), page: number(v.page), pageSize: number(v.pageSize), coverage: array(v.coverage, raw => { const c = record(raw); return { roleCode: string(c.roleCode), phase: string(c.phase), count: number(c.count) }; }) }; }, { signal });
+    60→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/question-bank.ts:11:export const saveQuestion = (body: QuestionContent, current?: { id: string; version: number }) => request(`/admin/question-bank${current ? '/' + encodeURIComponent(current.id) : ''}`, parseQuestion, { method: current ? 'PUT' : 'POST', body: { ...body, ...(current ? { version: current.version } : {}) } });
+    61→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/question-bank.ts:12:export const retireQuestion = (question: { id: string; version: number }) => request(`/admin/question-bank/${encodeURIComponent(question.id)}?version=${question.version}`, parseQuestion, { method: 'DELETE' });
+    62→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:113:  request(
+    63→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:135:  request(`/projects/${encodeURIComponent(projectId)}/slots`, (x) => array(record(x).slots, parseSlot), {
+    64→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:141:  request(`/sessions/${encodeURIComponent(id)}`, parseAcademic, {
+    65→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:150:) => request(`/${kind}/${encodeURIComponent(id)}`, parseAcademic, { signal });
+    66→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:156:  request(`/${kind}${id ? `/${encodeURIComponent(id)}` : ""}`, parseAcademic, {
+    67→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:234:  return request(`/recruitment/candidates?${params.toString()}`, (x) => {
+    68→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:247:  request(`/recruitment/candidates/${encodeURIComponent(userId)}`, (x) => record(x), { signal });
+    69→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:250:  request(`/assignments?${new URLSearchParams({ sessionId, status: "active", page: "1", pageSize: internId ? '1' : '100', ...(internId ? { internId } : {}) })}`, (x) => {
+    70→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:260:  request(`/assignments/${encodeURIComponent(id)}/cancel`, (x) => string(record(x).id), {
+    71→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:266:  request(`/assignments/${encodeURIComponent(id)}/complete`, (x) => string(record(x).id), {
+    72→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:271:  request(
+    73→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:291:  request(
+    74→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:301:  request(
+    75→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:307:  request(
+    76→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:317:  request(`/${kind}/${encodeURIComponent(id)}/members`, () => null, {
+    77→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:322:  request(
+    78→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:328:  request(`/sessions/${encodeURIComponent(id)}/instructors`, () => null, {
+    79→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:333:  request(
+    80→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:348:  request(
+    81→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:358:  request(
+    82→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:364:  request(
+    83→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:376:  request("/assignments", (x) => string(record(x).id), {
+    84→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:380:export const getAcademicSummaries = (kind: AcademicKind, ids: string, signal?: AbortSignal) => request(`/dashboard/academic?kind=${kind}&ids=${encodeURIComponent(ids)}`, value => array(record(value).items, x => {
+    85→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic.ts:385:export const getProjectFilterOptions = (signal?:AbortSignal) => request('/projects/filter-options',value=>{const v=record(value);return {domains:array(v.domains,string),technologies:array(v.technologies,string)};},{signal});
+    86→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/participation.ts:65:  request(`/participation/me?page=${page}&pageSize=20`, parseReport, {
+    87→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/participation.ts:73:  request(
+    88→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/participation.ts:88:  request(
+    89→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/participation.ts:102:  request(
+    90→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/participation.ts:112:  request(
+    91→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/participation.ts:118:  request(
+    92→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:101:  request(
+    93→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:107:  request(`/users/${encodeURIComponent(id)}`, parseUser, { signal });
+    94→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:118:  request(`/users${id ? `/${encodeURIComponent(id)}` : ""}`, parseUser, {
+    95→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:123:  request(`/users/${encodeURIComponent(id)}/status`, parseUser, {
+    96→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:128:  request(`/roles?${query(page)}`, (x) => parsePage(x, parseNamed), { signal });
+    97→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:134:  request(
+    98→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:140:  request(`/groups?${query(page, { q })}`, (x) => parsePage(x, parseNamed), {
+    99→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:147:  request(`/groups${id ? `/${encodeURIComponent(id)}` : ""}`, parseNamed, {
+   100→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:152:  request(
+   101→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:162:  request(
+   102→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:168:  request(
+   103→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:174:  request(`/groups/${encodeURIComponent(id)}/members`, () => null, {
+   104→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:179:  request(
+   105→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:185:  request(`/catalogs/types?${query(page)}`, (x) => parsePage(x, parseNamed), {
+   106→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:193:  request(
+   107→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:202:}) => request("/catalogs/types", parseNamed, { method: "POST", body });
+   108→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:214:  request(
+   109→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:220:  request("/settings", parseSettings, { signal });
+   110→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:225:}) => request("/settings", parseSettings, { method: "PATCH", body });
+   111→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:231:  request(
+   112→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:241:  request(
+   113→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/admin.ts:247:  request(
+   114→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/__tests__/client.test.ts:35:    const result = await apiFetch("/intern/me/certificates/id/pdf", {
+   115→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/__tests__/client.test.ts:53:      apiFetch("/intern/me/certificates/id/pdf", { responseType: "blob" }),
+   116→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/__tests__/client.test.ts:59:    await apiFetch("/auth/login", {
+   117→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/__tests__/client.test.ts:72:    await expect(apiFetch("/intern/me/workspace")).rejects.toMatchObject({
+   118→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/__tests__/client.test.ts:90:      await expect(apiFetch("/test")).rejects.toMatchObject({
+   119→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/__tests__/client.test.ts:100:    await expect(apiFetch("/test")).rejects.toBeInstanceOf(ApiError);
+   120→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/__tests__/client.test.ts:108:      apiFetch("/test", { signal: new AbortController().signal }),
+   121→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/__tests__/client.test.ts:127:    await Promise.all([request("/one", (x) => x), request("/two", (x) => x)]);
+   122→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/__tests__/client.test.ts:137:    await expect(request("/test", (x) => x)).rejects.toMatchObject({
+   123→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/__tests__/client.test.ts:147:    await expect(request("/test", (x) => x)).rejects.toMatchObject({
+   124→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge.ts:73:export const listKnowledge = (query: URLSearchParams, signal?: AbortSignal) => request(`${base}?${query}`, raw => page(raw, parseKnowledgeMetadata), { signal });
+   125→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge.ts:74:export const getKnowledge = (code: string, signal?: AbortSignal) => request(path(code), parseKnowledgeDocument, { signal });
+   126→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge.ts:75:export const checkKnowledgePublication = (code: string, signal?: AbortSignal) => request(`${path(code)}/publication-check`, raw => {
+   127→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge.ts:80:export const createKnowledge = (code: string, draft: KnowledgeDraft) => request(base, parseKnowledgeDocument, { method: 'POST', body: { code, draft } });
+   128→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge.ts:81:export const updateKnowledge = (code: string, version: number, draft: KnowledgeDraft) => request(path(code), parseKnowledgeDocument, { method: 'PUT', body: { version, draft } });
+   129→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge.ts:82:export const publishKnowledge = (code: string, version: number) => request(`${path(code)}/publish`, parseKnowledgeDocument, { method: 'POST', body: { version } });
+   130→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge.ts:83:export const archiveKnowledge = (code: string, version: number) => request(`${path(code)}/archive`, parseKnowledgeDocument, { method: 'POST', body: { version } });
+   131→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge.ts:84:export const restoreKnowledge = (code: string, version: number, sourceVersion: number) => request(`${path(code)}/restore`, parseKnowledgeDocument, { method: 'POST', body: { version, sourceVersion } });
+   132→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge.ts:85:export const listKnowledgeHistory = (code: string, currentPage: number, signal?: AbortSignal) => request(`${path(code)}/revisions?page=${currentPage}`, raw => page(raw, raw => {
+   133→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/knowledge.ts:90:export const knowledgeDryRun = (entries: unknown[], signal?: AbortSignal) => request(`${base}/import/dry-run`, raw => {
+   134→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/sessions.ts:78:  return request(`/sessions/overview?${params.toString()}`, (v) => parsePage(v, parseSessionOverview), {
+   135→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/sessions.ts:102:  request(`/sessions/${encodeURIComponent(id)}`, parseSessionDetail, { signal });
+   136→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/mentor.ts:49:  request(
+   137→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/mentor.ts:55:  request(base, parseConversation, {
+   138→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/mentor.ts:60:  request(`${base}/${encodeURIComponent(id)}`, parseMentorDetail, { signal });
+   139→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/mentor.ts:62:  request(`${base}/${encodeURIComponent(id)}/archive`, parseConversation, {
+   140→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/mentor.ts:66:  request(
+   141→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:235:    request("/recruitment/me", parseProfile, { signal }),
+   142→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:237:    request(
+   143→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:243:    request("/recruitment/me/role", parseProfile, {
+   144→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:248:    request("/recruitment/me/interviews", parseInterview, { method: "POST" }),
+   145→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:251:    request(sessionPath(id), parseInterviewSession, { signal }),
+   146→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:253:    request(`${sessionPath(id)}/questions`, parseInterview, { signal }),
+   147→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:255:    request(
+   148→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:268:    request(
+   149→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:277:    request(`${sessionPath(id)}/submit`, parseEvaluation, { method: "POST" }),
+   150→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:279:    request(`${sessionPath(id)}/retry-evaluation`, parseEvaluation, {
+   151→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:283:    request("/recruitment/me/result", parseResult, { signal }),
+   152→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:331:  request(`${sessionPath(id)}/conversation`, parseConversation, { signal });
+   153→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:333:  request(`${sessionPath(id)}/conversation/next`, parseConversation, {
+   154→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/recruitment.ts:338:  request(`${sessionPath(id)}/conversation/clarify`, parseConversation, {
+   155→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/github.ts:4:  request(
+   156→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/github.ts:19:  request(
+   157→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/github.ts:36:  request("/github/me", p.record, { method: "DELETE" });
+   158→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/github.ts:41:export const repositoryAccountStatus = (signal?: AbortSignal) => request('/github/repository-account', parseRepositoryAccount, { signal });
+   159→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/github.ts:42:export const selectRepositoryAccount = () => request('/github/repository-account', parseRepositoryAccount, { method: 'POST' });
+   160→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/github.ts:71:  request(`/sessions/${id}/github`, parseRepository, { signal });
+   161→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/github.ts:73:  request(`/sessions/${id}/github/provision`, parseRepository, {
+   162→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/github.ts:77:  request(`/sessions/${id}/github/invite`, p.record, { method: "POST" });
+   163→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/github.ts:79:export const inviteRepositoryMember = (id: string, userId: string) => request(`/sessions/${encodeURIComponent(id)}/github/members/${encodeURIComponent(userId)}/invite`, p.record, { method: 'POST' });
+   164→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/github.ts:80:export const reconcileRepositoryAccess = (id: string) => request(`/sessions/${encodeURIComponent(id)}/github/reconcile`, parseRepository, { method: 'POST' });
+   165→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/github.ts:81:export const configureGithubWebhook = (id: string) => request(`/sessions/${encodeURIComponent(id)}/github/webhook`, parseRepository, { method: 'POST' });
+   166→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/github.ts:82:export const githubRepositoryActivity = (id: string, page: number, signal?: AbortSignal) => request(`/sessions/${encodeURIComponent(id)}/github/activity?page=${page}&pageSize=5`, value => {
+   167→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/session-work.ts:29:  return request(`/sessions/${encodeURIComponent(q.sessionId ?? '')}/work?${params}`, v => parsePage(v, parseSessionWorkTask), { signal });
+   168→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/session-work.ts:36:  request(`/sessions/${encodeURIComponent(sessionId)}/timeline?page=${page}&pageSize=10`, v => parsePage(v, parseSessionEvent), { signal });
+   169→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/student-detail.ts:21:  return request(`/performance/interns/${encodeURIComponent(id)}/detail?${params}`, parseStudentDetail, { signal });
+   170→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/templates.ts:128:  return request(`/project-templates?${params.toString()}`, (v) => parsePage(v, parseTemplateSummary), { signal });
+   171→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/templates.ts:132:  request(`/project-templates/${encodeURIComponent(id)}`, parseTemplateDetail, { signal });
+   172→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/templates.ts:133:export const saveTemplateDefinition = (definition: Record<string, unknown>, current?: { id: string; version: number }, assessment?: TemplateAssessment | null) => request(`/project-templates${current ? '/' + encodeURIComponent(current.id) : ''}`, raw => { const v = record(raw); return { id: string(v.id), version: number(v.version) }; }, { method: current ? 'PATCH' : 'POST', body: { ...(current ? { definition, expectedVersion: current.version } : definition), ...(assessment === undefined ? {} : { assessment }) } });
+   173→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/templates.ts:134:export const setTemplateStatus = (template: { id: string; version: number }, status: 'active' | 'archived') => request(`/project-templates/${encodeURIComponent(template.id)}`, parseTemplateSummary, { method: 'PATCH', body: { status, expectedVersion: template.version } });
+   174→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/templates.ts:137:  request(`/projects/${encodeURIComponent(projectId)}/template-context`, (v) => {
+   175→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/templates.ts:146:  request(`/project-templates/${encodeURIComponent(id)}/start`, (v) => {
+   176→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/templates.ts:157:export const listChanges = (id: string,signal?: AbortSignal) => request(`/projects/${id}/changes`,v => array(v,parseChange),{ signal });
+   177→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/templates.ts:158:export const proposeChange = (id: string,body: { title:string;description:string;reason:string }) => request(`/projects/${id}/changes`,record,{ method:'POST',body });
+   178→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/templates.ts:159:export const applyChange = (id: string) => request(`/project-changes/${id}/apply`,record,{ method:'POST' });
+   179→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/templates.ts:160:export const getTaskSpec = (id: string, signal?: AbortSignal) => request(`/tasks/${encodeURIComponent(id)}/spec`, (v) => nullable(v, (raw) => {
+   180→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/templates.ts:178:  request(`/tasks/${encodeURIComponent(id)}/spec/source`, (v) => nullable(v, record), { signal });
+   181→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/credential-recovery.ts:10:  request(
+   182→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/credential-recovery.ts:27:  request(
+   183→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/workspace.ts:143:  request("/intern/me/workspace", parseWorkspace, { signal });
+   184→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/system-admin.ts:16:export const getSystemContracts = (signal?: AbortSignal) => request('/admin/system/contracts', parseSystemContracts, { signal });
+   185→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/system-admin.ts:17:export const validateSystemContractsDraft = (data: string) => request('/admin/system/contracts/validate', raw => {
+   186→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/system-admin.ts:24:export const getAiConfiguration = (signal?: AbortSignal) => request('/admin/ai-configuration', parseAiConfiguration, { signal });
+   187→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/system-admin.ts:25:export const saveAiConfiguration = (policy: ReturnType<typeof parseAiConfiguration>['policy']) => request('/admin/ai-configuration', parseAiConfiguration, { method: 'PUT', body: policy });
+   188→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/system-admin.ts:26:export const getSystemStatus = (signal?: AbortSignal) => request('/admin/system/status', raw => {
+   189→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/system-admin.ts:33:export const listSystemRepositories = (query: URLSearchParams, signal?: AbortSignal) => request(`/admin/system/repositories?${query}`, raw => { const v = record(raw); return { total: number(v.total), pageSize: number(v.pageSize), items: array(v.items, raw => { const r = record(raw); return { sessionId: string(r.sessionId), sessionName: string(r.sessionName), sessionCode: string(r.sessionCode), instructorName: nullable(r.instructorName, string), ownerLogin: nullable(r.ownerLogin, string), repoName: nullable(r.repoName, string), status: string(r.status), webhookStatus: string(r.webhookStatus), error: nullable(r.webhookErrorCode, string), lastEventAt: nullable(r.lastEventAt, string) }; }) }; }, { signal });
+   190→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/replacements.ts:109:  request(
+   191→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/replacements.ts:119:  request(
+   192→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/replacements.ts:129:  request(
+   193→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/replacements.ts:140:  request(
+   194→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/replacements.ts:152:  request(
+   195→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/submissions.ts:36:  request(
+   196→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/submissions.ts:45:  request(`/tasks/${taskId}/submissions`, parseSubmission, {
+   197→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/submissions.ts:50:  request(`/submissions/${id}/withdraw`, parseSubmission, { method: "POST" });
+   198→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/submissions.ts:61:  request(`/submissions/${id}/review`, parseSubmission, {
+   199→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/submissions.ts:126:  request(`/submissions/${id}/code-reviews`, parseCodeReviews, { signal });
+   200→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/submissions.ts:128:  request(`/submissions/${id}/code-reviews`, parseCodeReviews, {
+   201→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/career-roles.ts:24:export const listCareerRoles = (q: URLSearchParams, signal?: AbortSignal) => request(`${base}?${q}`, raw => parsePage(raw, parseCareerRole), { signal });
+   202→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/career-roles.ts:25:export const createCareerRole = (body: CareerContent & { code: string }) => request(base, parseCareerRole, { method: 'POST', body });
+   203→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/career-roles.ts:26:export const updateCareerRole = (code: string, body: CareerUpdate) => request(`${base}/${encodeURIComponent(code)}`, parseCareerRole, { method: 'PUT', body });
+   204→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/career-roles.ts:27:export const archiveCareerRole = (code: string, version: number) => request(`${base}/${encodeURIComponent(code)}/archive`, parseCareerRole, { method: 'POST', body: { version } });
+   205→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/career-roles.ts:28:export const listCareerRoleRevisions = (code: string, page = 1, signal?: AbortSignal) => request(`${base}/${encodeURIComponent(code)}/revisions?page=${page}`, raw => parsePage(raw, raw => {
+   206→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/career-roles.ts:33:export const listRecruitingCareers = (signal?: AbortSignal) => request('/career-roles', raw => {
+   207→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/career-roles.ts:37:export const listCareerReferences = (signal?: AbortSignal) => request('/career-roles/reference', raw => p.array(p.record(raw).items, raw => { const role = p.record(raw); return { code: p.string(role.code), label: p.string(role.label) }; }), { signal });
+   208→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/business-agents.ts:55:  request(
+   209→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/communications.ts:8:export const listMail = (page: number, signal?: AbortSignal) => request(`/admin/communications?page=${page}`, raw => {
+   210→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/communications.ts:11:export const previewMail = (id: string) => request(`/admin/communications/${encodeURIComponent(id)}/preview`, raw => {
+   211→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/communications.ts:14:export const resendMail = (id: string, acknowledgeUncertain: boolean) => request(`/admin/communications/${encodeURIComponent(id)}/resend`, raw => p.boolean(p.record(raw).queued), { method: 'POST', body: { acknowledgeUncertain } });
+   212→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/template-materials.ts:205:  request(
+   213→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/template-materials.ts:214:  request(
+   214→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/template-materials.ts:220:  request(
+   215→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/template-materials.ts:243:  request(
+   216→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/template-materials.ts:256:  request(
+   217→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:38:  request(`/kpi-periods?${new URLSearchParams({ page: String(page), pageSize: '20', ...(status ? { status } : {}) })}`, raw => parseItems(raw, parseKpiPeriod), { signal });
+   218→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:41:  request('/kpi-periods', parseKpiPeriod, { method: 'POST', body });
+   219→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:44:  request(`/kpi-periods/${encodeURIComponent(id)}`, parseKpiPeriod, { method: 'PATCH', body });
+   220→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:47:  request(`/kpi-periods/${encodeURIComponent(id)}/status`, parseKpiPeriod, { method: 'POST', body: { status } });
+   221→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:50:  request(`/kpi-periods/${encodeURIComponent(id)}/calculate`, raw => {
+   222→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:56:  request(`/kpi-periods/${encodeURIComponent(id)}/finalize`, parseKpiPeriod, { method: 'POST' });
+   223→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:75:  request(`/kpi-periods/${encodeURIComponent(periodId)}/results?${new URLSearchParams({ page: String(page), pageSize: '20' })}`, raw => parseItems(raw, parseKpiResultRow), { signal });
+   224→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:78:  request(`/kpi-results/${encodeURIComponent(id)}`, raw => {
+   225→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:117:  request(`/virtual-salary?${new URLSearchParams({ page: String(params.page), pageSize: '20', ...(params.userId ? { userId: params.userId } : {}), ...(params.type ? { type: params.type } : {}), ...(params.kpiPeriodId ? { kpiPeriodId: params.kpiPeriodId } : {}) })}`, raw => parseItems(raw, parseSalaryLedgerRow), { signal });
+   226→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:120:  request(`/virtual-salary/generate/${encodeURIComponent(kpiPeriodId)}`, raw => {
+   227→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:126:  request('/virtual-salary/adjustments', parseSalaryLedgerRow, { method: 'POST', body });
+   228→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:129:  request(`/virtual-salary/users/${encodeURIComponent(userId)}/balance${kpiPeriodId ? `?kpiPeriodId=${encodeURIComponent(kpiPeriodId)}` : ''}`, raw => {
+   229→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:166:  request(`/certificates?${new URLSearchParams({ page: String(params.page), pageSize: '20', ...(params.userId ? { userId: params.userId } : {}), ...(params.status ? { status: params.status } : {}) })}`, raw => parseItems(raw, parseAdminCertificate), { signal });
+   230→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:169:  request('/certificates/issue', parseAdminCertificate, { method: 'POST', body: { userId } });
+   231→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:172:  request(`/certificates/${encodeURIComponent(id)}/revoke`, parseAdminCertificate, { method: 'POST', body: { reason } });
+   232→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/finance.ts:176:  request(`/certificates/${encodeURIComponent(id)}/pdf`, (value) => (value instanceof Blob ? value : p.invalid()), { responseType: 'blob' });
+   233→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/imported-reviews.ts:8:export const listImportedReviews = (signal?: AbortSignal) => request('/imported-reviews',v=>array(record(v).items,parseReview),{signal});
+   234→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/imported-reviews.ts:9:export const updateImportedReview = (row: ImportedReview, body: {score:number;status:string;feedback:string}) => request('/imported-reviews/'+encodeURIComponent(row.id),v=>number(record(v).version),{method:'PATCH',body:{...body,version:row.version}});
+   235→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/client.ts:17:    return parse(await apiFetch(path, { ...options, token }));
+   236→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/client.ts:26:        await apiFetch(path, { ...options, token: getAccessToken() }),
+   237→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/academic-overview.ts:4:export const getAcademicOverview = (kind:AcademicKind, signal?:AbortSignal) => request(`/dashboard/academic-overview?kind=${kind}`,value=>{
+   238→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:282:  request("/intern/me/evaluations", (x) => items(x, parseEvaluation), {
+   239→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:286:  request(`/intern/me/evaluations/${encodeURIComponent(id)}`, parseEvaluation, {
+   240→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:290:  request("/intern/me/performance", parsePerformance, { signal });
+   241→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:292:  request("/intern/me/kpi", (x) => items(x, parseKpi), { signal });
+   242→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:294:  request(`/intern/me/kpi/${encodeURIComponent(id)}`, parseKpiDetail, {
+   243→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:298:  request("/intern/me/virtual-salary", parseSalary, { signal });
+   244→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:300:  request(
+   245→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:316:  request("/intern/me/certificates", (x) => items(x, parseCertificate), {
+   246→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:320:  request(
+   247→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:326:  request(
+   248→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:333:    await apiFetch(`/certificates/verify/${encodeURIComponent(code)}`),
+   249→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:340:  request(
+   250→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:347:  request("/notifications/unread-count", (x) => number(record(x).count), {
+   251→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:351:  request(`/notifications/${encodeURIComponent(id)}/read`, () => null, {
+   252→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:355:  request("/notifications/read-all", (x) => number(record(x).updated), {
+   253→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:380:  request("/notifications/preferences", parsePreferences, { signal });
+   254→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:385:  request("/notifications/preferences", parsePreferences, {
+   255→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:390:  request("/intern/me/ai-recommendations", parseRecommendations, { signal });
+   256→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/outcomes.ts:392:  request("/intern/me/ai-recommendations/refresh", parseRecommendations, {
+   257→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/dashboard.ts:4:export const getAdminDashboard = (signal?: AbortSignal) => request('/dashboard/admin',value => {
+   258→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/dashboard.ts:13:export const getInstructorDashboard = (signal?: AbortSignal) => request("/dashboard/instructor", (value) => {
+   259→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:85:  request(
+   260→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:98:}) => request("/evaluation-cycles", parseCycle, { method: "POST", body });
+   261→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:103:  request(`/evaluation-cycles/${encodeURIComponent(id)}`, parseCycle, {
+   262→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:108:  request(`/evaluation-cycles/${encodeURIComponent(id)}/status`, parseCycle, {
+   263→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:113:  request(
+   264→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:123:  request(
+   265→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:132:  request(
+   266→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:138:  request(
+   267→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:150:  request(
+   268→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:156:  request("/evaluations", parseManagedEvaluation, {
+   269→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:161:  request(
+   270→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:186:  request(
+   271→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:192:  request(
+   272→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:198:  request(
+   273→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:205:  request(
+   274→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:227:  request(
+   275→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:265:  request(`/sprints/${encodeURIComponent(id)}`, parseSprint, { signal });
+   276→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:272:  request(
+   277→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:290:  request(`/sprints${id ? `/${encodeURIComponent(id)}` : ""}`, parseSprint, {
+   278→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:295:  request(`/sprints/${encodeURIComponent(id)}/status`, parseSprint, {
+   279→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:325:  request(`/tasks${id ? `/${encodeURIComponent(id)}` : ""}`, parseTask, {
+   280→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:330:  request(`/tasks/${encodeURIComponent(id)}`, () => null, { method: "DELETE" });
+   281→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:345:  request(
+   282→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:351:  request(`/performance/interns/${encodeURIComponent(id)}${scope ? `?${scope}` : ""}`, parsePerformance, {
+   283→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/management.ts:355:  request(
+   284→/home/z/my-project/download/V-Intern-FE-branch/src/lib/api/applications.test.ts:19:  await apiFetch("/applications", { method: "POST", formData: data });
