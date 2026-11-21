@@ -37,7 +37,27 @@
 ### POST /certificates/issue (admin)
 {"code": "VALIDATION_ERROR", "msg": "Validation failed.", "fields": ["userId → = a UUID"]}
 
-### POST /admin/question-bank (admin)
+### POST /admin/question-bank (admin) — BỔ SUNG 2026-11-21 sau probe thật
+Trường bắt buộc ĐẦY ĐỦ (probe mới phát hiện thêm scoringRubric + followUpHints):
+```json
+{
+  "roleCode": "frontend",            // /^[a-z][a-z0-9_]{1,31}$/ (bắt buộc)
+  "phase": "technical",              // technical | introduction | english | communication (bắt buộc)
+  "difficulty": "medium",            // easy | medium | hard (bắt buộc)
+  "language": "vi",                  // vi | en (bắt buộc)
+  "prompt": "...",                   // >= 10 ky tu (bat buoc)
+  "expectedConcepts": ["a","b"],     // 1-20 phan tu unique (bat buoc)
+  "exampleAnswer": "...",            // >= 10 ky tu (bat buoc)
+  "scoringRubric": "0-40 ...; 41-70 ...", // >= 10 ky tu (BAT BUOC - phat hien qua probe)
+  "followUpHints": ["hoi them vi du"],    // 1-8 phan tu, moi phan tu >= 5 ky tu (BAT BUOC - phat hien qua probe)
+  "tags": ["frontend","security"],       // 1-20 phan tu unique (BAT BUOC - phat hien qua probe lan 2)
+  "isActive": true                       // boolean (BAT BUOC - phat hien qua probe lan 2)
+}
+```
+POST thanh cong (201) da kiem chung 2026-11-21 voi day du 11 truong tren.
+Lỗi 400 thiếu trường (đã thử thiếu rubric/hints):
+{"code": "VALIDATION_ERROR", "msg": "Validation failed.", "fields": ["scoringRubric"
+### POST /admin/question-bank (admin) — bản probe cũ (thiếu rubric/hints)
 {"code": "VALIDATION_ERROR", "msg": "Validation failed.", "fields": ["roleCode → must match /^[a-z][a-z0-9_]{1,31}$/ regular expression", "roleCode → = a string", "phase → = one of the following values: technical, introduction, english, communication", "difficulty → = one of the following values: easy, medium, hard", "language → = one of the following values: vi, en", "prompt → = longer than or equal to 10 characters", "prompt → = a string", "each value in expectedConcepts → = longer than or equal to 1 characters", "each value in expectedConcepts → = a string", "All expectedConcepts's elements → = unique", "expectedConcepts → must contain no more than 20 elements", "expectedConcepts → = an array", "exampleAnswer → = longer than or equal to 10 characters", "exampleAnswer → = a string"]}
 
 ### POST /users (admin)
