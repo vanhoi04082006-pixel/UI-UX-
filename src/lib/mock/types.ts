@@ -233,7 +233,8 @@ export interface AdminUserRow {
   id: string;
   name: string;
   email: string;
-  role: Role;
+  /** BE thật không trả role trong danh sách — null khi không xác định. */
+  role: Role | null;
   status: AccountStatus | "pending";
   createdAt: string;
   lastActive: string;
