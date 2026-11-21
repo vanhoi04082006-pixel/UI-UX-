@@ -139,6 +139,81 @@ const PERMISSIONS_BY_ROLE: Record<string, string[]> = {
   ],
 };
 
+/* ------------- Mapping legacy seed → shape BE thật (admin) ------------- */
+
+/** GET /users của BE thật: displayName + username + lastLoginAt, không có role. */
+function beUserFrom(row: (typeof ADMIN_USERS)[number]) {
+  const username =
+    row.email.split("@")[0]?.toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 64) ||
+    "user";
+  return {
+    id: row.id,
+    email: row.email,
+    username,
+    displayName: row.name,
+    status: row.status,
+    lastLoginAt: row.lastActive,
+    createdAt: row.createdAt,
+    updatedAt: row.lastActive,
+  };
+}
+
+const QUESTION_DIFF: Record<string, "easy" | "medium" | "hard"> = {
+  "Dễ": "easy",
+  "Vừa": "medium",
+  "Khó": "hard",
+};
+
+function questionRoleCode(role: string) {
+  const lower = role.toLowerCase();
+  if (lower.includes("front")) return "frontend";
+  if (lower.includes("back")) return "backend";
+  if (lower.includes("full")) return "fullstack";
+  if (lower.includes("data")) return "data";
+  return "backend";
+}
+
+/** GET /admin/question-bank của BE thật: roleCode/phase/difficulty/prompt… */
+function beQuestionFrom(row: (typeof ADMIN_QUESTIONS)[number]) {
+  return {
+    id: row.id,
+    roleCode: questionRoleCode(row.role),
+    phase: "technical",
+    difficulty: QUESTION_DIFF[row.difficulty] ?? "medium",
+    prompt: row.content,
+    language: "vi",
+    expectedConcepts: [] as string[],
+    exampleAnswer: "",
+    isActive: row.status !== "Ngưng",
+    sortOrder: 1,
+    version: 1,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/** Câu hỏi tạo mới trong phiên mock — giữ đúng shape BE. */
+const createdQuestions: {
+  id: string;
+  roleCode: string;
+  phase: string;
+  difficulty: "easy" | "medium" | "hard";
+  language: string;
+  prompt: string;
+  expectedConcepts: string[];
+  exampleAnswer: string;
+  scoringRubric: string;
+  followUpHints: string[];
+  tags: string[];
+  isActive: boolean;
+  sortOrder: number;
+  version: number;
+  updatedAt: string;
+}[] = [];
+
+function allBeQuestions() {
+  return [...createdQuestions.map((q) => ({ ...q })), ...ADMIN_QUESTIONS.map(beQuestionFrom)];
+}
+
 /* ------------------------------ route table ---------------------------- */
 
 type Handler = (
@@ -709,16 +784,124 @@ const ROUTES: Record<string, Handler> = {
     return ok(report, 201);
   },
 
-  /* ============ ADMIN ============ */
+  /* ============ ADMIN (mirror contract BE thật — docs/api-specs) ============ */
   "GET /dashboard/admin": (req) => {
     const { error } = requireRole(req, ["admin"]);
     if (error) return error;
-    return ok(ADMIN_STATS);
+    const countRole = (role: string) => ADMIN_USERS.filter((u) => u.role === role).length;
+    const countStatus = (status: string) => ADMIN_USERS.filter((u) => u.status === status).length;
+    return ok({
+      metrics: {
+        userCount: ADMIN_USERS.length,
+        instructorCount: countRole("instructor"),
+        internCount: countRole("intern"),
+        activeSessions: ADMIN_STATS.activeSessions,
+        aiRunsToday: ADMIN_STATS.aiCallsToday,
+      },
+      users: [...ADMIN_USERS]
+        .sort((a, b) => b.lastActive.localeCompare(a.lastActive))
+        .slice(0, 6)
+        .map(beUserFrom),
+      roles: [
+        { id: "role-admin", code: "admin", name: "Quản trị viên", permissionCount: PERMISSIONS_BY_ROLE.admin.length },
+        { id: "role-instructor", code: "instructor", name: "Giảng viên", permissionCount: PERMISSIONS_BY_ROLE.instructor.length },
+        { id: "role-intern", code: "intern", name: "Thực tập sinh", permissionCount: PERMISSIONS_BY_ROLE.intern.length },
+      ],
+      activity: ADMIN_ACTIVITY.slice(0, 7).map((a) => ({
+        id: a.id,
+        summary: a.label,
+        action: "mock.update",
+        createdAt: a.at,
+        displayName: "Quản trị hệ thống",
+      })),
+      statuses: [
+        { status: "active", count: countStatus("active") },
+        { status: "pending", count: countStatus("pending") },
+        { status: "locked", count: countStatus("locked") },
+      ],
+      generatedAt: new Date().toISOString(),
+    });
+  },
+  "GET /dashboard/access": (req) => {
+    const { error } = requireRole(req, ["admin"]);
+    if (error) return error;
+    const count = (role: string) => ADMIN_USERS.filter((u) => u.role === role).length;
+    return ok({
+      roles: [
+        { id: "role-admin", code: "admin", name: "Quản trị viên", permissionCount: PERMISSIONS_BY_ROLE.admin.length, userCount: count("admin") },
+        { id: "role-instructor", code: "instructor", name: "Giảng viên", permissionCount: PERMISSIONS_BY_ROLE.instructor.length, userCount: count("instructor") },
+        { id: "role-intern", code: "intern", name: "Thực tập sinh", permissionCount: PERMISSIONS_BY_ROLE.intern.length, userCount: count("intern") },
+      ],
+      grants: [],
+      groups: [],
+      activity: [],
+    });
+  },
+  "GET /certificates": (req) => {
+    const { error } = requireRole(req, ["admin"]);
+    if (error) return error;
+    return ok({ items: [], total: ADMIN_STATS.certificatesIssued });
   },
   "GET /users": (req) => {
     const { error } = requireRole(req, ["admin"]);
     if (error) return error;
-    return page(ADMIN_USERS, numberParam(req, "page"), numberParam(req, "pageSize", 20));
+    const url = new URL(req.url);
+    const roleCode = url.searchParams.get("roleCode");
+    const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+    let rows = ADMIN_USERS;
+    if (roleCode) rows = rows.filter((u) => u.role === roleCode);
+    if (q)
+      rows = rows.filter(
+        (u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+      );
+    return page(rows.map(beUserFrom), numberParam(req, "page"), numberParam(req, "pageSize", 20));
+  },
+  "GET /users/*": (req, segments) => {
+    const { error } = requireRole(req, ["admin"]);
+    if (error) return error;
+    const row = ADMIN_USERS.find((u) => u.id === segments[1]);
+    if (!row) return fail(404, "NOT_FOUND", "Không tìm thấy người dùng.");
+    return ok(beUserFrom(row));
+  },
+  "POST /users": async (req) => {
+    const { account, error } = requireRole(req, ["admin"]);
+    if (error) return error;
+    const body = await readBody(req);
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const username = typeof body.username === "string" ? body.username.trim() : "";
+    const displayName = typeof body.displayName === "string" ? body.displayName.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const roleCodes = Array.isArray(body.roleCodes)
+      ? body.roleCodes.filter((r: unknown): r is string => typeof r === "string")
+      : [];
+    if (!/^\S+@\S+\.\S+$/.test(email))
+      return fail(400, "VALIDATION_FAILED", "Email không hợp lệ.");
+    if (!/^[a-z0-9._-]{3,64}$/.test(username))
+      return fail(400, "VALIDATION_FAILED", "Username cần 3–64 ký tự: a–z, 0–9, dấu chấm, gạch dưới, gạch ngang.");
+    if (!displayName || displayName.length > 128)
+      return fail(400, "VALIDATION_FAILED", "DisplayName cần 1–128 ký tự.");
+    if (password.length < 10 || password.length > 72)
+      return fail(400, "VALIDATION_FAILED", "Mật khẩu cần 10–72 ký tự.");
+    if (ADMIN_USERS.some((u) => u.email.toLowerCase() === email.toLowerCase()))
+      return fail(409, "CONFLICT", "Email đã tồn tại trong hệ thống.");
+    const role = (roleCodes[0] as "intern" | "instructor" | "admin" | undefined) ?? "intern";
+    const now = new Date().toISOString();
+    const row = {
+      id: `u-${Date.now()}`,
+      name: displayName,
+      email,
+      role,
+      status: "active" as const,
+      createdAt: now,
+      lastActive: now,
+    };
+    ADMIN_USERS.unshift(row);
+    pushNotification("admin", {
+      category: "Người dùng",
+      title: `Tài khoản mới: ${displayName}`,
+      body: `Quản trị viên ${account!.name} tạo tài khoản ${email}.`,
+    });
+    return ok(beUserFrom(row), 201);
   },
   "PATCH /users/*/status": async (req, segments) => {
     const { account, error } = requireRole(req, ["admin"]);
@@ -735,59 +918,200 @@ const ROUTES: Record<string, Handler> = {
       title: `Tài khoản ${row.name} ${status === "locked" ? "bị khóa" : "được mở khóa"}`,
       body: `Quản trị viên ${account!.name} cập nhật trạng thái tài khoản ${row.email}.`,
     });
-    return ok(row);
+    return ok(beUserFrom(row));
   },
   "GET /admin/question-bank": (req) => {
     const { error } = requireRole(req, ["admin"]);
     if (error) return error;
-    return page(ADMIN_QUESTIONS, numberParam(req, "page"), numberParam(req, "pageSize", 20));
+    const items = allBeQuestions();
+    const page_ = numberParam(req, "page");
+    const pageSize = numberParam(req, "pageSize", 20);
+    const start = (page_ - 1) * pageSize;
+    /* Envelope BE thật: {items, total} (không có meta). */
+    return ok({
+      items: items.slice(start, start + pageSize),
+      total: items.length,
+    });
   },
   "POST /admin/question-bank": async (req) => {
     const { error } = requireRole(req, ["admin"]);
     if (error) return error;
     const body = await readBody(req);
-    if (typeof body.content !== "string" || !body.content.trim())
-      return fail(400, "VALIDATION_FAILED", "Câu hỏi cần nội dung.");
+    const roleCode = typeof body.roleCode === "string" ? body.roleCode : "";
+    const phase = typeof body.phase === "string" ? body.phase : "";
+    const difficulty = typeof body.difficulty === "string" ? body.difficulty : "";
+    const language = typeof body.language === "string" ? body.language : "vi";
+    const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+    const exampleAnswer = typeof body.exampleAnswer === "string" ? body.exampleAnswer.trim() : "";
+    const scoringRubric = typeof body.scoringRubric === "string" ? body.scoringRubric.trim() : "";
+    const followUpHints = Array.isArray(body.followUpHints)
+      ? body.followUpHints.filter(
+          (h: unknown): h is string => typeof h === "string" && h.trim().length >= 5,
+        )
+      : [];
+    const tags = Array.isArray(body.tags)
+      ? body.tags.filter((t: unknown): t is string => typeof t === "string" && t.trim().length > 0)
+      : [];
+    const isActive = body.isActive === true;
+    const expectedConcepts = Array.isArray(body.expectedConcepts)
+      ? body.expectedConcepts.filter(
+          (c: unknown): c is string => typeof c === "string" && c.trim().length > 0,
+        )
+      : [];
+    if (!/^[a-z][a-z0-9_]{1,31}$/.test(roleCode))
+      return fail(400, "VALIDATION_FAILED", "roleCode cần khớp /^[a-z][a-z0-9_]{1,31}$/.");
+    if (!["technical", "introduction", "english", "communication"].includes(phase))
+      return fail(400, "VALIDATION_FAILED", "phase ∈ technical | introduction | english | communication.");
+    if (!["easy", "medium", "hard"].includes(difficulty))
+      return fail(400, "VALIDATION_FAILED", "difficulty ∈ easy | medium | hard.");
+    if (!["vi", "en"].includes(language))
+      return fail(400, "VALIDATION_FAILED", "language ∈ vi | en.");
+    if (prompt.length < 10)
+      return fail(400, "VALIDATION_FAILED", "prompt cần tối thiểu 10 ký tự.");
+    if (exampleAnswer.length < 10)
+      return fail(400, "VALIDATION_FAILED", "exampleAnswer cần tối thiểu 10 ký tự.");
+    if (scoringRubric.length < 10)
+      return fail(400, "VALIDATION_FAILED", "scoringRubric cần tối thiểu 10 ký tự.");
+    if (followUpHints.length < 1 || followUpHints.length > 8)
+      return fail(400, "VALIDATION_FAILED", "followUpHints cần 1–8 phần tử, mỗi phần tử tối thiểu 5 ký tự.");
+    if (tags.length < 1 || tags.length > 20 || new Set(tags).size !== tags.length)
+      return fail(400, "VALIDATION_FAILED", "tags cần 1–20 phần tử, không trùng nhau.");
+    if (typeof body.isActive !== "boolean")
+      return fail(400, "VALIDATION_FAILED", "isActive cần là boolean.");
+    if (
+      expectedConcepts.length === 0 ||
+      expectedConcepts.length > 20 ||
+      new Set(expectedConcepts).size !== expectedConcepts.length
+    )
+      return fail(400, "VALIDATION_FAILED", "expectedConcepts cần 1–20 phần tử, không trùng nhau.");
     const row = {
       id: `q-${Date.now()}`,
-      code: `Q${String(ADMIN_QUESTIONS.length + 1).padStart(3, "0")}`,
-      role: typeof body.role === "string" ? body.role : "backend",
-      content: body.content.trim(),
-      difficulty: (body.difficulty === "Dễ" || body.difficulty === "Khó" ? body.difficulty : "Vừa") as "Dễ" | "Vừa" | "Khó",
-      type: typeof body.type === "string" ? body.type : "Chuyên môn",
-      status: "Bản nháp" as const,
+      roleCode,
+      phase,
+      difficulty: difficulty as "easy" | "medium" | "hard",
+      language,
+      prompt,
+      expectedConcepts,
+      exampleAnswer,
+      scoringRubric,
+      followUpHints,
+      tags,
+      isActive,
+      sortOrder: createdQuestions.length + 1,
+      version: 1,
+      updatedAt: new Date().toISOString(),
     };
-    ADMIN_QUESTIONS.unshift(row);
+    createdQuestions.unshift(row);
     return ok(row, 201);
   },
-  "PATCH /admin/question-bank/*": async (req, segments) => {
+  "PUT /admin/question-bank/*": async (req, segments) => {
     const { error } = requireRole(req, ["admin"]);
     if (error) return error;
-    const row = ADMIN_QUESTIONS.find((q) => q.id === segments[2]);
-    if (!row) return fail(404, "NOT_FOUND", "Không tìm thấy câu hỏi.");
+    const id = segments[2]!;
+    const created = createdQuestions.find((q) => q.id === id);
+    const legacy = ADMIN_QUESTIONS.find((q) => q.id === id);
+    if (!created && !legacy) return fail(404, "NOT_FOUND", "Không tìm thấy câu hỏi.");
     const body = await readBody(req);
-    if (typeof body.status === "string") row.status = body.status as typeof row.status;
-    if (typeof body.content === "string" && body.content.trim()) row.content = body.content.trim();
-    return ok(row);
+    if (created) {
+      if (typeof body.prompt === "string" && body.prompt.trim().length >= 10)
+        created.prompt = body.prompt.trim();
+      if (typeof body.exampleAnswer === "string" && body.exampleAnswer.trim().length >= 10)
+        created.exampleAnswer = body.exampleAnswer.trim();
+      if (typeof body.roleCode === "string" && /^[a-z][a-z0-9_]{1,31}$/.test(body.roleCode))
+        created.roleCode = body.roleCode;
+      if (typeof body.difficulty === "string" && ["easy", "medium", "hard"].includes(body.difficulty))
+        created.difficulty = body.difficulty as "easy" | "medium" | "hard";
+      if (
+        typeof body.phase === "string" &&
+        ["technical", "introduction", "english", "communication"].includes(body.phase)
+      )
+        created.phase = body.phase;
+      if (Array.isArray(body.expectedConcepts))
+        created.expectedConcepts = body.expectedConcepts.filter(
+          (c: unknown): c is string => typeof c === "string",
+        );
+      created.version += 1;
+      created.updatedAt = new Date().toISOString();
+      return ok(created);
+    }
+    /* Seed legacy: phản ánh nội dung mới qua các trường còn dùng được. */
+    if (typeof body.prompt === "string" && body.prompt.trim()) legacy!.content = body.prompt.trim();
+    if (typeof body.difficulty === "string") {
+      const map: Record<string, "Dễ" | "Vừa" | "Khó"> = { easy: "Dễ", medium: "Vừa", hard: "Khó" };
+      legacy!.difficulty = map[body.difficulty] ?? legacy!.difficulty;
+    }
+    return ok(beQuestionFrom(legacy!));
+  },
+  "DELETE /admin/question-bank/*": async (req, segments) => {
+    const { error } = requireRole(req, ["admin"]);
+    if (error) return error;
+    const id = segments[2]!;
+    const version = Number(new URL(req.url).searchParams.get("version") ?? "1");
+    const createdIdx = createdQuestions.findIndex((q) => q.id === id);
+    if (createdIdx >= 0) {
+      const created = createdQuestions[createdIdx]!;
+      if (created.version !== version)
+        return fail(409, "VERSION_CONFLICT", "Phiên bản câu hỏi không khớp — tải lại danh sách.");
+      createdQuestions.splice(createdIdx, 1);
+      return ok({ retired: true, id });
+    }
+    const legacy = ADMIN_QUESTIONS.find((q) => q.id === id);
+    if (!legacy) return fail(404, "NOT_FOUND", "Không tìm thấy câu hỏi.");
+    legacy.status = "Ngưng";
+    return ok({ retired: true, id });
   },
   "GET /project-templates": (req) => {
     const { error } = requireRole(req, ["admin"]);
     if (error) return error;
-    return page(ADMIN_TEMPLATES, numberParam(req, "page"), numberParam(req, "pageSize", 20));
+    const items = ADMIN_TEMPLATES.map((t) => ({
+      id: t.id,
+      code: t.code,
+      name: t.name,
+      category: t.domain.split("·")[0]?.trim() ?? t.domain,
+      difficulty: "beginner",
+      status: t.status === "Công khai" ? "active" : "draft",
+      version: 1,
+      techStack: t.domain
+        .split("·")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      roles: ["backend"],
+      teamSize: 1,
+      sprintCount: t.tasks,
+      createdAt: new Date().toISOString(),
+    }));
+    return page(items, numberParam(req, "page"), numberParam(req, "pageSize", 20));
   },
   "GET /activity-events": (req) => {
     const { error } = requireRole(req, ["admin"]);
     if (error) return error;
-    return page(ADMIN_ACTIVITY, numberParam(req, "page"), numberParam(req, "pageSize", 20));
+    const items = ADMIN_ACTIVITY.map((a) => ({
+      id: a.id,
+      actorId: "u-12",
+      module: a.module,
+      action: `${a.module.toLowerCase().replace(/\s+/g, "_")}.update`,
+      targetType: a.module.toLowerCase().replace(/\s+/g, "_"),
+      targetId: a.id,
+      summary: a.label,
+      createdAt: a.at,
+    }));
+    return page(items, numberParam(req, "page"), numberParam(req, "pageSize", 20));
   },
   "GET /audit-logs": (req) => {
     const { error } = requireRole(req, ["admin"]);
     if (error) return error;
-    return page(
-      ADMIN_ACTIVITY.map((a) => ({ ...a, actor: "hệ thống", action: a.module })),
-      numberParam(req, "page"),
-      numberParam(req, "pageSize", 20),
-    );
+    const items = ADMIN_ACTIVITY.map((a, i) => ({
+      id: `audit-${a.id}`,
+      actorId: i % 3 === 0 ? "u-13" : "u-12",
+      action: `${a.module.toLowerCase().replace(/\s+/g, "_")}.${a.ok ? "update" : "error"}`,
+      targetType: "system",
+      targetId: a.id,
+      detail: a.label,
+      ip: `10.0.0.${(i % 250) + 2}`,
+      userAgent: "Mozilla/5.0 (mock)",
+      createdAt: a.at,
+    }));
+    return page(items, numberParam(req, "page"), numberParam(req, "pageSize", 20));
   },
 };
 
