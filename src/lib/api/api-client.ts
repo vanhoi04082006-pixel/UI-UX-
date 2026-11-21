@@ -61,6 +61,9 @@ export async function apiFetch(
       method,
       cache: "no-store",
       signal,
+      /* Cross-site tới BE thật (tunnel): refresh cookie HttpOnly cần credentials
+       * (BE đã bật SameSite=None + Secure + CORS allow-credentials). */
+      credentials: base ? "include" : "same-origin",
       headers: {
         ...(formData || body === undefined ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
