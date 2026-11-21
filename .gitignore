@@ -60,3 +60,6 @@ server.log
 /agent-ctx
 /.zscripts
 /tool-results
+
+# audit artifact
+scripts/audit-result.json
