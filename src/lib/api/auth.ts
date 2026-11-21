@@ -1,11 +1,13 @@
 "use client";
 /* =====================================================================
- * AUTH ADAPTER — khớp contract production:
- *  POST /auth/login → {accessToken, expiresIn}
- *  GET  /auth/me    → principal {user, permissions}
- *  POST /auth/register · /auth/logout · /auth/change-password
- * Preview-only: GET /auth/demo-accounts (landing demo cards — KHÔNG có ở
- * BE thật, sẽ không gọi khi swap; tài liệu SWAP ghi rõ).
+ * AUTH ADAPTER — khớp contract BE thật (đối chiếu QA tunnel 2026-11-21):
+ *  POST /auth/login   {email, password}
+ *      → {accessToken, user: {id, email, displayName, status, roles[], permissions[]}}
+ *  GET  /auth/me      → principal phẳng {id, email, displayName, status, roles[], permissions[]}
+ *  POST /auth/register {fullName, email, password, acceptedTerms:true} → 201 {message?}
+ *  POST /auth/logout  (Bearer) → 204, revoke refresh cookie
+ *  POST /auth/change-password {currentPassword, newPassword} → 201, clear cookie
+ * Preview-only: GET /auth/demo-accounts (sandbox mock — BE thật không có).
  * ===================================================================== */
 import { apiFetch, ApiError } from "./api-client";
 import { array, record, string, boolean, nullable, number } from "./parse";
@@ -15,35 +17,48 @@ import type { Role, SessionUser } from "@/lib/mock/types";
 /* ------------------------- principal & mapping ------------------------- */
 
 const ROLES: readonly Role[] = ["intern", "instructor", "admin"];
+const ROLE_TITLE: Record<Role, string> = {
+  intern: "Sinh viên thực tập",
+  instructor: "Giảng viên hướng dẫn",
+  admin: "Quản trị hệ thống",
+};
 
+/** Principal BE thật: phẳng, roles là mảng, tên là displayName. */
 export interface Principal {
-  user: {
-    id: string;
-    email: string;
-    fullName: string;
-    role: Role;
-    title: string;
-    internState: string | null;
-    mustChangePassword: boolean;
-  };
+  id: string;
+  email: string;
+  displayName: string;
+  status: string;
+  roles: Role[];
   permissions: string[];
 }
 
+/** Chấp nhận cả flat BE thật và envelope mock cũ {user:{...}} (sandbox). */
 export function parsePrincipal(value: unknown): Principal {
   const v = record(value);
-  const u = record(v.user);
-  const role = ROLES.find((r) => r === string(u.role)) ?? "intern";
+  const inner = v.user !== undefined ? record(v.user) : v;
+  const rawRoles = Array.isArray(inner.roles)
+    ? inner.roles
+    : typeof inner.role === "string"
+      ? [inner.role]
+      : [];
+  const roles = ROLES.filter((r) => rawRoles.includes(r));
   return {
-    user: {
-      id: string(u.id),
-      email: string(u.email),
-      fullName: string(u.fullName),
-      role,
-      title: string(u.title),
-      internState: nullable(u.internState, string),
-      mustChangePassword: boolean(u.mustChangePassword),
-    },
-    permissions: array(v.permissions, string),
+    id: string(inner.id),
+    email: string(inner.email),
+    displayName:
+      typeof inner.displayName === "string"
+        ? inner.displayName
+        : typeof inner.fullName === "string"
+          ? inner.fullName
+          : string(inner.email),
+    status: typeof inner.status === "string" ? inner.status : "active",
+    roles: roles.length > 0 ? roles : ["intern"],
+    permissions: Array.isArray(v.permissions)
+      ? array(v.permissions, string)
+      : Array.isArray(inner.permissions)
+        ? array(inner.permissions, string)
+        : [],
   };
 }
 
@@ -55,19 +70,14 @@ function initialsOf(fullName: string): string {
 }
 
 export function principalToSessionUser(p: Principal): SessionUser {
-  const internState =
-    p.user.internState === "active" || p.user.internState === "waiting" || p.user.internState === "finished"
-      ? (p.user.internState as SessionUser["internState"])
-      : undefined;
+  const role = p.roles[0];
   return {
-    id: p.user.id,
-    email: p.user.email,
-    name: p.user.fullName,
-    role: p.user.role,
-    title: p.user.title,
-    initials: initialsOf(p.user.fullName),
-    internState,
-    mustChangePassword: p.user.mustChangePassword || undefined,
+    id: p.id,
+    email: p.email,
+    name: p.displayName,
+    role,
+    title: ROLE_TITLE[role],
+    initials: initialsOf(p.displayName),
   };
 }
 
@@ -87,45 +97,56 @@ export async function login(email: string, password: string): Promise<LoginResul
   });
   const v = record(body);
   const accessToken = string(v.accessToken);
-  const expiresIn = nullable(v.expiresIn, number) ?? 3600;
+  const expiresIn = nullable(v.expiresIn, number) ?? 900;
   setSessionToken(accessToken);
-  const principal = parsePrincipal(await apiFetch("/auth/me", { token: accessToken }));
-  return { accessToken, expiresIn, user: principalToSessionUser(principal), permissions: principal.permissions };
+  /* Login trả kèm principal mới nhất — không cần gọi thêm /auth/me. */
+  const principal = parsePrincipal(v.user !== undefined ? v.user : await apiFetch("/auth/me", { token: accessToken }));
+  return {
+    accessToken,
+    expiresIn,
+    user: principalToSessionUser(principal),
+    permissions: principal.permissions,
+  };
 }
 
 export async function register(name: string, email: string, password: string): Promise<string> {
   const body = await apiFetch("/auth/register", {
     method: "POST",
-    body: { name, email, password },
+    body: { fullName: name, email, password, acceptedTerms: true },
   });
-  return string(record(body).message);
+  const v = record(body);
+  const message =
+    typeof v.message === "string"
+      ? v.message
+      : `Chào ${name.split(" ").at(-1)}! Tài khoản sinh viên đã được tạo. Đăng nhập để bắt đầu hành trình.`;
+  return message;
 }
 
 export async function logout(): Promise<void> {
   try {
-    await apiFetch("/auth/logout", { method: "POST", token: null });
+    await apiFetch("/auth/logout", { method: "POST", token: getSessionToken() });
   } catch {
     /* mạng đi trước việc dọn local cũng được */
   }
   clearSessionToken();
 }
 
+/** Đổi mật khẩu (min 12 ký tự) — BE xoá refresh cookie → đăng nhập lại. */
 export async function changePassword(
-  email: string,
   currentPassword: string,
   newPassword: string,
-): Promise<SessionUser> {
-  const body = await apiFetch("/auth/change-password", {
+): Promise<void> {
+  await apiFetch("/auth/change-password", {
     method: "POST",
-    body: { email, currentPassword, newPassword },
+    body: { currentPassword, newPassword },
     token: getSessionToken(),
   });
-  return principalToSessionUser(parsePrincipal(record(body)));
+  clearSessionToken();
 }
 
 export async function fetchMe(): Promise<Principal | null> {
   try {
-    return parsePrincipal(await apiFetch("/auth/me"));
+    return parsePrincipal(await apiFetch("/auth/me", { token: getSessionToken() }));
   } catch (error) {
     if (error instanceof ApiError && error.statusCode === 401) return null;
     throw error;
@@ -146,20 +167,25 @@ export interface DemoAccount {
   note: string;
 }
 
+/** Chỉ tồn tại ở sandbox mock; BE thật trả 404 → trả [] để panel tự ẩn. */
 export async function listDemoAccounts(): Promise<DemoAccount[]> {
-  const body = await apiFetch("/auth/demo-accounts");
-  return array(body, (raw) => {
-    const v = record(raw);
-    return {
-      id: string(v.id),
-      email: string(v.email),
-      name: string(v.name),
-      role: ROLES.find((r) => r === string(v.role)) ?? "intern",
-      status: string(v.status),
-      title: string(v.title),
-      internState: nullable(v.internState, string),
-      mustChangePassword: boolean(v.mustChangePassword),
-      note: string(v.note),
-    };
-  });
+  try {
+    const body = await apiFetch("/auth/demo-accounts");
+    return array(body, (raw) => {
+      const v = record(raw);
+      return {
+        id: string(v.id),
+        email: string(v.email),
+        name: string(v.name),
+        role: ROLES.find((r) => r === string(v.role)) ?? "intern",
+        status: string(v.status),
+        title: string(v.title),
+        internState: nullable(v.internState, string),
+        mustChangePassword: boolean(v.mustChangePassword),
+        note: string(v.note),
+      };
+    });
+  } catch {
+    return [];
+  }
 }
