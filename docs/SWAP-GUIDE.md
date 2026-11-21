@@ -1,7 +1,9 @@
-# SWAP GUIDE — Kết nối BE thật & chế độ sandbox mock
+# SWAP GUIDE — Kết nối BE thật (mock đã gỡ hoàn toàn)
 
 > Nâng cấp 2026-11-21: toàn bộ 302 operations của BE (248 paths) đã có màn hình
-> + adapter FE tương ứng. Xem `docs/api-specs/` để đối chiếu contract từng nhóm.
+> + adapter FE tương ứng. Mock server / seed dữ liệu đã bị xóa khỏi repo —
+> app chỉ chạy với BE thật qua NEXT_PUBLIC_API_BASE_URL.
+> Xem `docs/api-specs/` để đối chiếu contract từng nhóm.
 
 ## 1. Kiến trúc
 
@@ -34,24 +36,22 @@ src/lib/api/                  ← LỚP DUY NHẤT màn hình gọi (giữ nguy�
   github.ts                   github cá nhân (me/connect/disconnect/repository-access)
   recruitment-interview.ts    recruitment 16 ops (phỏng vấn AI ứng viên)
   student-extra.ts            performance me + ai-recommendations + participation me
+src/lib/types.ts             domain types dùng chung (Role, Task, SessionStatus...)
+src/lib/status-labels.ts     nhãn tiếng Việt trạng thái phiên / sprint
 src/lib/use-api.ts            hook loading / error / reload
-src/app/api/v1/[...path]/     ← MOCK REST SERVER — mirror contract BE (fallback sandbox)
-src/lib/mock/                 ← seed dữ liệu mock
 ```
 
-## 2. Hai chế độ chạy
+## 2. Cấu hình bắt buộc
 
-**Chế độ BE thật (đang bật mặc định)** — biến trong `.env` (đã cam kết repo):
+BE thật — biến trong `.env` (đã cam kết repo):
 ```ini
 NEXT_PUBLIC_API_BASE_URL=https://trance-bull-changelog-observe.trycloudflare.com/api/v1
 ```
 - CORS + cookie refresh đã được BE bật cho origin preview (SameSite=None, allow-credentials).
 - Access token TTL 15 phút — client tự `POST /auth/refresh` khi gặp 401 rồi retry request gốc.
 - URL tunnel **đổi mỗi lần restart BE** → cập nhật `.env` (xem `upload/FE-HANDOFF.md`).
-
-**Chế độ sandbox mock** — xóa `NEXT_PUBLIC_API_BASE_URL` khỏi `.env`, hoặc tạo `.env.local` (được gitignore) đè giá trị rỗng:
-- Mọi request đi tới `/api/v1/**` nội bộ (mock mirror contract thật cho auth + mentor;
-  các endpoint mới trả 404 → màn hình hiện empty/error state chuẩn).
+- **Bắt buộc** phải có biến này: thiếu → mọi request ném `API_CONFIG_MISSING`
+  (không còn fallback mock nội bộ; lỗi hiển thị trực tiếp trên màn hình).
 
 ## 3. Tài khoản QA (BE thật)
 

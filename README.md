@@ -14,7 +14,7 @@ Mặc định (`.env` đã cam kết repo) chạy **BE QA thật** qua tunnel:
 ```ini
 NEXT_PUBLIC_API_BASE_URL=https://trance-bull-changelog-observe.trycloudflare.com/api/v1
 ```
-URL tunnel đổi mỗi lần restart BE → cập nhật `.env` rồi restart. Muốn chạy **sandbox mock nội bộ** (`/api/v1` — mirror contract BE thật): xóa biến khỏi `.env`, hoặc tạo `.env.local` (được gitignore) đè `NEXT_PUBLIC_API_BASE_URL=` (rỗng).
+URL tunnel đổi mỗi lần restart BE → cập nhật `.env` rồi restart. **Biến này bắt buộc** — thiếu nó mọi request ném `API_CONFIG_MISSING` (mock nội bộ đã gỡ khỏi hệ thống; lỗi thật hiển thị trực tiếp). Override cục bộ bằng `.env.local` (được gitignore).
 
 **Tài khoản QA** (mật khẩu chung `Vq7!mK2pR9#tLx4H`): `qa.admin@vintern.test` · `qa.instructor@vintern.test` · `qa.intern@vintern.test`
 
@@ -46,7 +46,7 @@ URL tunnel đổi mỗi lần restart BE → cập nhật `.env` rồi restart. 
 ```
 Màn hình (useApi) → src/lib/api/* (adapter parser chặt) → client.ts
   → Bearer + tự refresh 401 (mono-flight) → apiFetch (credentials include)
-  → BE thật (NEXT_PUBLIC_API_BASE_URL) hoặc mock /api/v1 (mirror contract)
+  → BE thật (NEXT_PUBLIC_API_BASE_URL — bắt buộc cấu hình)
 ```
 
 Envelope hỗ trợ: `{data, meta}` · `{items, total}` · object phẳng — đúng từng endpoint BE.
