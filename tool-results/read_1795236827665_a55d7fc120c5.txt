@@ -1,0 +1,1580 @@
+     1→[
+     2→  {
+     3→    "file": "academic-overview",
+     4→    "fn": "getAcademicOverview",
+     5→    "method": "GET",
+     6→    "route": "dashboard/academic-overview"
+     7→  },
+     8→  {
+     9→    "file": "academic",
+    10→    "fn": "listAcademic",
+    11→    "method": "GET",
+    12→    "route": ":p"
+    13→  },
+    14→  {
+    15→    "file": "academic",
+    16→    "fn": "getProjectSlots",
+    17→    "method": "GET",
+    18→    "route": "projects/:p/slots"
+    19→  },
+    20→  {
+    21→    "file": "academic",
+    22→    "fn": "transitionSession",
+    23→    "method": "PATCH",
+    24→    "route": "sessions/:p"
+    25→  },
+    26→  {
+    27→    "file": "academic",
+    28→    "fn": "getAcademic",
+    29→    "method": "GET",
+    30→    "route": ":p/:p"
+    31→  },
+    32→  {
+    33→    "file": "academic",
+    34→    "fn": "saveAcademic",
+    35→    "method": "GET",
+    36→    "route": ":p/:p"
+    37→  },
+    38→  {
+    39→    "file": "academic",
+    40→    "fn": "searchCandidates",
+    41→    "method": "GET",
+    42→    "route": "recruitment/candidates"
+    43→  },
+    44→  {
+    45→    "file": "academic",
+    46→    "fn": "getCandidateDetail",
+    47→    "method": "GET",
+    48→    "route": "recruitment/candidates/:p"
+    49→  },
+    50→  {
+    51→    "file": "academic",
+    52→    "fn": "listSessionAssignments",
+    53→    "method": "GET",
+    54→    "route": "assignments"
+    55→  },
+    56→  {
+    57→    "file": "academic",
+    58→    "fn": "cancelAssignment",
+    59→    "method": "POST",
+    60→    "route": "assignments/:p/cancel"
+    61→  },
+    62→  {
+    63→    "file": "academic",
+    64→    "fn": "completeAssignment",
+    65→    "method": "POST",
+    66→    "route": "assignments/:p/complete"
+    67→  },
+    68→  {
+    69→    "file": "academic",
+    70→    "fn": "listCandidates",
+    71→    "method": "GET",
+    72→    "route": "recruitment/candidates"
+    73→  },
+    74→  {
+    75→    "file": "academic",
+    76→    "fn": "instructorOptions",
+    77→    "method": "GET",
+    78→    "route": "sessions/instructor-options"
+    79→  },
+    80→  {
+    81→    "file": "academic",
+    82→    "fn": "getMembers",
+    83→    "method": "GET",
+    84→    "route": ":p/:p/members"
+    85→  },
+    86→  {
+    87→    "file": "academic",
+    88→    "fn": "getInstructors",
+    89→    "method": "GET",
+    90→    "route": "sessions/:p/instructors"
+    91→  },
+    92→  {
+    93→    "file": "academic",
+    94→    "fn": "addMember",
+    95→    "method": "POST",
+    96→    "route": ":p/:p/members"
+    97→  },
+    98→  {
+    99→    "file": "academic",
+   100→    "fn": "removeMember",
+   101→    "method": "DELETE",
+   102→    "route": ":p/:p/members/:p"
+   103→  },
+   104→  {
+   105→    "file": "academic",
+   106→    "fn": "addInstructor",
+   107→    "method": "POST",
+   108→    "route": "sessions/:p/instructors"
+   109→  },
+   110→  {
+   111→    "file": "academic",
+   112→    "fn": "removeInstructor",
+   113→    "method": "DELETE",
+   114→    "route": "sessions/:p/instructors/:p"
+   115→  },
+   116→  {
+   117→    "file": "academic",
+   118→    "fn": "getMilestones",
+   119→    "method": "GET",
+   120→    "route": "sessions/:p/milestones"
+   121→  },
+   122→  {
+   123→    "file": "academic",
+   124→    "fn": "saveMilestone",
+   125→    "method": "GET",
+   126→    "route": "sessions/:p/milestones/:p"
+   127→  },
+   128→  {
+   129→    "file": "academic",
+   130→    "fn": "deleteMilestone",
+   131→    "method": "DELETE",
+   132→    "route": "sessions/:p/milestones/:p"
+   133→  },
+   134→  {
+   135→    "file": "academic",
+   136→    "fn": "assignIntern",
+   137→    "method": "POST",
+   138→    "route": "assignments"
+   139→  },
+   140→  {
+   141→    "file": "academic",
+   142→    "fn": "getAcademicSummaries",
+   143→    "method": "GET",
+   144→    "route": "dashboard/academic"
+   145→  },
+   146→  {
+   147→    "file": "academic",
+   148→    "fn": "getProjectFilterOptions",
+   149→    "method": "GET",
+   150→    "route": "projects/filter-options"
+   151→  },
+   152→  {
+   153→    "file": "admin",
+   154→    "fn": "listUsers",
+   155→    "method": "GET",
+   156→    "route": "users"
+   157→  },
+   158→  {
+   159→    "file": "admin",
+   160→    "fn": "getUser",
+   161→    "method": "GET",
+   162→    "route": "users/:p"
+   163→  },
+   164→  {
+   165→    "file": "admin",
+   166→    "fn": "saveUser",
+   167→    "method": "GET",
+   168→    "route": "users/:p"
+   169→  },
+   170→  {
+   171→    "file": "admin",
+   172→    "fn": "setUserStatus",
+   173→    "method": "PATCH",
+   174→    "route": "users/:p/status"
+   175→  },
+   176→  {
+   177→    "file": "admin",
+   178→    "fn": "listRoles",
+   179→    "method": "GET",
+   180→    "route": "roles"
+   181→  },
+   182→  {
+   183→    "file": "admin",
+   184→    "fn": "listPermissions",
+   185→    "method": "GET",
+   186→    "route": "roles/:p/permissions"
+   187→  },
+   188→  {
+   189→    "file": "admin",
+   190→    "fn": "listGroups",
+   191→    "method": "GET",
+   192→    "route": "groups"
+   193→  },
+   194→  {
+   195→    "file": "admin",
+   196→    "fn": "saveGroup",
+   197→    "method": "GET",
+   198→    "route": "groups/:p"
+   199→  },
+   200→  {
+   201→    "file": "admin",
+   202→    "fn": "getGroupMembers",
+   203→    "method": "GET",
+   204→    "route": "groups/:p/members"
+   205→  },
+   206→  {
+   207→    "file": "admin",
+   208→    "fn": "getGroupRoles",
+   209→    "method": "GET",
+   210→    "route": "groups/:p/roles"
+   211→  },
+   212→  {
+   213→    "file": "admin",
+   214→    "fn": "setGroupRoles",
+   215→    "method": "PUT",
+   216→    "route": "groups/:p/roles"
+   217→  },
+   218→  {
+   219→    "file": "admin",
+   220→    "fn": "addGroupMember",
+   221→    "method": "POST",
+   222→    "route": "groups/:p/members"
+   223→  },
+   224→  {
+   225→    "file": "admin",
+   226→    "fn": "removeGroupMember",
+   227→    "method": "DELETE",
+   228→    "route": "groups/:p/members/:p"
+   229→  },
+   230→  {
+   231→    "file": "admin",
+   232→    "fn": "listCatalogTypes",
+   233→    "method": "GET",
+   234→    "route": "catalogs/types"
+   235→  },
+   236→  {
+   237→    "file": "admin",
+   238→    "fn": "listCatalogItems",
+   239→    "method": "GET",
+   240→    "route": "catalogs/items"
+   241→  },
+   242→  {
+   243→    "file": "admin",
+   244→    "fn": "createCatalogType",
+   245→    "method": "POST",
+   246→    "route": "catalogs/types"
+   247→  },
+   248→  {
+   249→    "file": "admin",
+   250→    "fn": "saveCatalogItem",
+   251→    "method": "GET",
+   252→    "route": "catalogs/items/:p"
+   253→  },
+   254→  {
+   255→    "file": "admin",
+   256→    "fn": "getSettings",
+   257→    "method": "GET",
+   258→    "route": "settings"
+   259→  },
+   260→  {
+   261→    "file": "admin",
+   262→    "fn": "saveSetting",
+   263→    "method": "PATCH",
+   264→    "route": "settings"
+   265→  },
+   266→  {
+   267→    "file": "admin",
+   268→    "fn": "listAudits",
+   269→    "method": "GET",
+   270→    "route": "audit-logs"
+   271→  },
+   272→  {
+   273→    "file": "admin",
+   274→    "fn": "listActivity",
+   275→    "method": "GET",
+   276→    "route": "activity-events"
+   277→  },
+   278→  {
+   279→    "file": "admin",
+   280→    "fn": "getHealth",
+   281→    "method": "GET",
+   282→    "route": "health"
+   283→  },
+   284→  {
+   285→    "file": "applications",
+   286→    "fn": "downloadMyCv",
+   287→    "method": "GET",
+   288→    "route": "applications/me/cv"
+   289→  },
+   290→  {
+   291→    "file": "applications",
+   292→    "fn": "listRecruitmentRounds",
+   293→    "method": "GET",
+   294→    "route": "recruitment-rounds"
+   295→  },
+   296→  {
+   297→    "file": "applications",
+   298→    "fn": "roundDetail",
+   299→    "method": "GET",
+   300→    "route": "recruitment-rounds/:p"
+   301→  },
+   302→  {
+   303→    "file": "applications",
+   304→    "fn": "createRound",
+   305→    "method": "POST",
+   306→    "route": "recruitment-rounds"
+   307→  },
+   308→  {
+   309→    "file": "applications",
+   310→    "fn": "roundStatus",
+   311→    "method": "POST",
+   312→    "route": "recruitment-rounds/:p/status"
+   313→  },
+   314→  {
+   315→    "file": "applications",
+   316→    "fn": "createInterviewSlot",
+   317→    "method": "POST",
+   318→    "route": "recruitment-rounds/:p/slots"
+   319→  },
+   320→  {
+   321→    "file": "applications",
+   322→    "fn": "closeInterviewSlot",
+   323→    "method": "POST",
+   324→    "route": "recruitment-rounds/:p/slots/:p/close"
+   325→  },
+   326→  {
+   327→    "file": "applications",
+   328→    "fn": "roundApplications",
+   329→    "method": "GET",
+   330→    "route": "recruitment-rounds/:p/applications"
+   331→  },
+   332→  {
+   333→    "file": "applications",
+   334→    "fn": "staffApplication",
+   335→    "method": "GET",
+   336→    "route": "recruitment-rounds/:p/applications/:p"
+   337→  },
+   338→  {
+   339→    "file": "applications",
+   340→    "fn": "rebookApplication",
+   341→    "method": "POST",
+   342→    "route": "recruitment-rounds/:p/applications/:p/retake"
+   343→  },
+   344→  {
+   345→    "file": "applications",
+   346→    "fn": "applicationAction",
+   347→    "method": "POST",
+   348→    "route": "recruitment-rounds/:p/applications/:p/:p"
+   349→  },
+   350→  {
+   351→    "file": "applications",
+   352→    "fn": "downloadStaffCv",
+   353→    "method": "GET",
+   354→    "route": "recruitment-rounds/:p/applications/:p/cv"
+   355→  },
+   356→  {
+   357→    "file": "applications",
+   358→    "fn": "resendApplicationCredentials",
+   359→    "method": "POST",
+   360→    "route": "recruitment-rounds/:p/applications/:p/resend-credentials"
+   361→  },
+   362→  {
+   363→    "file": "business-agents",
+   364→    "fn": "getBusinessRuns",
+   365→    "method": "GET",
+   366→    "route": "admin/agents/business-runs"
+   367→  },
+   368→  {
+   369→    "file": "career-roles",
+   370→    "fn": "listCareerRoles",
+   371→    "method": "GET",
+   372→    "route": "admin/career-roles"
+   373→  },
+   374→  {
+   375→    "file": "career-roles",
+   376→    "fn": "createCareerRole",
+   377→    "method": "POST",
+   378→    "route": "admin/career-roles"
+   379→  },
+   380→  {
+   381→    "file": "career-roles",
+   382→    "fn": "updateCareerRole",
+   383→    "method": "PUT",
+   384→    "route": "admin/career-roles/:p"
+   385→  },
+   386→  {
+   387→    "file": "career-roles",
+   388→    "fn": "archiveCareerRole",
+   389→    "method": "POST",
+   390→    "route": "admin/career-roles/:p/archive"
+   391→  },
+   392→  {
+   393→    "file": "career-roles",
+   394→    "fn": "listCareerRoleRevisions",
+   395→    "method": "GET",
+   396→    "route": "admin/career-roles/:p/revisions"
+   397→  },
+   398→  {
+   399→    "file": "career-roles",
+   400→    "fn": "listRecruitingCareers",
+   401→    "method": "GET",
+   402→    "route": "career-roles"
+   403→  },
+   404→  {
+   405→    "file": "career-roles",
+   406→    "fn": "listCareerReferences",
+   407→    "method": "GET",
+   408→    "route": "career-roles/reference"
+   409→  },
+   410→  {
+   411→    "file": "communications",
+   412→    "fn": "listMail",
+   413→    "method": "GET",
+   414→    "route": "admin/communications"
+   415→  },
+   416→  {
+   417→    "file": "communications",
+   418→    "fn": "previewMail",
+   419→    "method": "GET",
+   420→    "route": "admin/communications/:p/preview"
+   421→  },
+   422→  {
+   423→    "file": "communications",
+   424→    "fn": "resendMail",
+   425→    "method": "POST",
+   426→    "route": "admin/communications/:p/resend"
+   427→  },
+   428→  {
+   429→    "file": "credential-recovery",
+   430→    "fn": "previewCredentialRecovery",
+   431→    "method": "GET",
+   432→    "route": "recruitment-rounds/:p/applications/:p/credential-recovery"
+   433→  },
+   434→  {
+   435→    "file": "credential-recovery",
+   436→    "fn": "recoverApplicationCredentials",
+   437→    "method": "POST",
+   438→    "route": "recruitment-rounds/:p/applications/:p/recover-credentials"
+   439→  },
+   440→  {
+   441→    "file": "dashboard",
+   442→    "fn": "getAdminDashboard",
+   443→    "method": "GET",
+   444→    "route": "dashboard/admin"
+   445→  },
+   446→  {
+   447→    "file": "dashboard",
+   448→    "fn": "getInstructorDashboard",
+   449→    "method": "GET",
+   450→    "route": "dashboard/instructor"
+   451→  },
+   452→  {
+   453→    "file": "delivery",
+   454→    "fn": "fetchSprintBurndown",
+   455→    "method": "GET",
+   456→    "route": "dashboard/sprints/:p/burndown"
+   457→  },
+   458→  {
+   459→    "file": "delivery",
+   460→    "fn": "listSprints",
+   461→    "method": "GET",
+   462→    "route": "sprints"
+   463→  },
+   464→  {
+   465→    "file": "delivery",
+   466→    "fn": "getSprint",
+   467→    "method": "GET",
+   468→    "route": "sprints/:p"
+   469→  },
+   470→  {
+   471→    "file": "delivery",
+   472→    "fn": "listTasks",
+   473→    "method": "GET",
+   474→    "route": "tasks"
+   475→  },
+   476→  {
+   477→    "file": "delivery",
+   478→    "fn": "listMemberOptions",
+   479→    "method": "GET",
+   480→    "route": "sessions/member-options"
+   481→  },
+   482→  {
+   483→    "file": "finance",
+   484→    "fn": "listKpiPeriods",
+   485→    "method": "GET",
+   486→    "route": "kpi-periods"
+   487→  },
+   488→  {
+   489→    "file": "finance",
+   490→    "fn": "createKpiPeriod",
+   491→    "method": "POST",
+   492→    "route": "kpi-periods"
+   493→  },
+   494→  {
+   495→    "file": "finance",
+   496→    "fn": "updateKpiPeriod",
+   497→    "method": "PATCH",
+   498→    "route": "kpi-periods/:p"
+   499→  },
+   500→  {
+   501→    "file": "finance",
+   502→    "fn": "transitionKpiPeriod",
+   503→    "method": "POST",
+   504→    "route": "kpi-periods/:p/status"
+   505→  },
+   506→  {
+   507→    "file": "finance",
+   508→    "fn": "calculateKpiPeriod",
+   509→    "method": "POST",
+   510→    "route": "kpi-periods/:p/calculate"
+   511→  },
+   512→  {
+   513→    "file": "finance",
+   514→    "fn": "finalizeKpiPeriod",
+   515→    "method": "POST",
+   516→    "route": "kpi-periods/:p/finalize"
+   517→  },
+   518→  {
+   519→    "file": "finance",
+   520→    "fn": "listKpiResults",
+   521→    "method": "GET",
+   522→    "route": "kpi-periods/:p/results"
+   523→  },
+   524→  {
+   525→    "file": "finance",
+   526→    "fn": "getKpiResult",
+   527→    "method": "GET",
+   528→    "route": "kpi-results/:p"
+   529→  },
+   530→  {
+   531→    "file": "finance",
+   532→    "fn": "listSalaryLedger",
+   533→    "method": "GET",
+   534→    "route": "virtual-salary"
+   535→  },
+   536→  {
+   537→    "file": "finance",
+   538→    "fn": "generateSalaryForPeriod",
+   539→    "method": "POST",
+   540→    "route": "virtual-salary/generate/:p"
+   541→  },
+   542→  {
+   543→    "file": "finance",
+   544→    "fn": "createSalaryAdjustment",
+   545→    "method": "POST",
+   546→    "route": "virtual-salary/adjustments"
+   547→  },
+   548→  {
+   549→    "file": "finance",
+   550→    "fn": "getUserSalaryBalance",
+   551→    "method": "GET",
+   552→    "route": "virtual-salary/users/:p/balance"
+   553→  },
+   554→  {
+   555→    "file": "finance",
+   556→    "fn": "listCertificates",
+   557→    "method": "GET",
+   558→    "route": "certificates"
+   559→  },
+   560→  {
+   561→    "file": "finance",
+   562→    "fn": "issueCertificate",
+   563→    "method": "POST",
+   564→    "route": "certificates/issue"
+   565→  },
+   566→  {
+   567→    "file": "finance",
+   568→    "fn": "revokeCertificate",
+   569→    "method": "POST",
+   570→    "route": "certificates/:p/revoke"
+   571→  },
+   572→  {
+   573→    "file": "finance",
+   574→    "fn": "downloadCertificatePdf",
+   575→    "method": "GET",
+   576→    "route": "certificates/:p/pdf"
+   577→  },
+   578→  {
+   579→    "file": "github",
+   580→    "fn": "githubStatus",
+   581→    "method": "GET",
+   582→    "route": "github/me"
+   583→  },
+   584→  {
+   585→    "file": "github",
+   586→    "fn": "connectGithub",
+   587→    "method": "POST",
+   588→    "route": "github/connect"
+   589→  },
+   590→  {
+   591→    "file": "github",
+   592→    "fn": "disconnectGithub",
+   593→    "method": "DELETE",
+   594→    "route": "github/me"
+   595→  },
+   596→  {
+   597→    "file": "github",
+   598→    "fn": "repositoryAccountStatus",
+   599→    "method": "GET",
+   600→    "route": "github/repository-account"
+   601→  },
+   602→  {
+   603→    "file": "github",
+   604→    "fn": "selectRepositoryAccount",
+   605→    "method": "POST",
+   606→    "route": "github/repository-account"
+   607→  },
+   608→  {
+   609→    "file": "github",
+   610→    "fn": "sessionRepository",
+   611→    "method": "GET",
+   612→    "route": "sessions/:p/github"
+   613→  },
+   614→  {
+   615→    "file": "github",
+   616→    "fn": "provisionRepository",
+   617→    "method": "POST",
+   618→    "route": "sessions/:p/github/provision"
+   619→  },
+   620→  {
+   621→    "file": "github",
+   622→    "fn": "inviteRepositoryMembers",
+   623→    "method": "POST",
+   624→    "route": "sessions/:p/github/invite"
+   625→  },
+   626→  {
+   627→    "file": "github",
+   628→    "fn": "inviteRepositoryMember",
+   629→    "method": "POST",
+   630→    "route": "sessions/:p/github/members/:p/invite"
+   631→  },
+   632→  {
+   633→    "file": "github",
+   634→    "fn": "reconcileRepositoryAccess",
+   635→    "method": "POST",
+   636→    "route": "sessions/:p/github/reconcile"
+   637→  },
+   638→  {
+   639→    "file": "github",
+   640→    "fn": "configureGithubWebhook",
+   641→    "method": "POST",
+   642→    "route": "sessions/:p/github/webhook"
+   643→  },
+   644→  {
+   645→    "file": "github",
+   646→    "fn": "githubRepositoryActivity",
+   647→    "method": "GET",
+   648→    "route": "sessions/:p/github/activity"
+   649→  },
+   650→  {
+   651→    "file": "imported-reviews",
+   652→    "fn": "listImportedReviews",
+   653→    "method": "GET",
+   654→    "route": "imported-reviews"
+   655→  },
+   656→  {
+   657→    "file": "imported-reviews",
+   658→    "fn": "updateImportedReview",
+   659→    "method": "PATCH",
+   660→    "route": "imported-reviews/:p"
+   661→  },
+   662→  {
+   663→    "file": "instructor-setup",
+   664→    "fn": "activateAcademic",
+   665→    "method": "PATCH",
+   666→    "route": ":p/:p"
+   667→  },
+   668→  {
+   669→    "file": "knowledge-runs",
+   670→    "fn": "createKnowledgeRun",
+   671→    "method": "POST",
+   672→    "route": "admin/agents/knowledge-runs"
+   673→  },
+   674→  {
+   675→    "file": "knowledge-runs",
+   676→    "fn": "getKnowledgeRun",
+   677→    "method": "GET",
+   678→    "route": "admin/agents/knowledge-runs/:p"
+   679→  },
+   680→  {
+   681→    "file": "knowledge-runs",
+   682→    "fn": "cancelKnowledgeRun",
+   683→    "method": "POST",
+   684→    "route": "admin/agents/knowledge-runs/:p/cancel"
+   685→  },
+   686→  {
+   687→    "file": "knowledge-runs",
+   688→    "fn": "resumeKnowledgeRun",
+   689→    "method": "POST",
+   690→    "route": "admin/agents/knowledge-runs/:p/resume"
+   691→  },
+   692→  {
+   693→    "file": "knowledge",
+   694→    "fn": "listKnowledge",
+   695→    "method": "GET",
+   696→    "route": "admin/knowledge"
+   697→  },
+   698→  {
+   699→    "file": "knowledge",
+   700→    "fn": "getKnowledge",
+   701→    "method": "GET",
+   702→    "route": "admin/knowledge/:p"
+   703→  },
+   704→  {
+   705→    "file": "knowledge",
+   706→    "fn": "checkKnowledgePublication",
+   707→    "method": "GET",
+   708→    "route": "admin/knowledge/:p/publication-check"
+   709→  },
+   710→  {
+   711→    "file": "knowledge",
+   712→    "fn": "createKnowledge",
+   713→    "method": "POST",
+   714→    "route": "admin/knowledge"
+   715→  },
+   716→  {
+   717→    "file": "knowledge",
+   718→    "fn": "updateKnowledge",
+   719→    "method": "PUT",
+   720→    "route": "admin/knowledge/:p"
+   721→  },
+   722→  {
+   723→    "file": "knowledge",
+   724→    "fn": "publishKnowledge",
+   725→    "method": "POST",
+   726→    "route": "admin/knowledge/:p/publish"
+   727→  },
+   728→  {
+   729→    "file": "knowledge",
+   730→    "fn": "archiveKnowledge",
+   731→    "method": "POST",
+   732→    "route": "admin/knowledge/:p/archive"
+   733→  },
+   734→  {
+   735→    "file": "knowledge",
+   736→    "fn": "restoreKnowledge",
+   737→    "method": "POST",
+   738→    "route": "admin/knowledge/:p/restore"
+   739→  },
+   740→  {
+   741→    "file": "knowledge",
+   742→    "fn": "listKnowledgeHistory",
+   743→    "method": "GET",
+   744→    "route": "admin/knowledge/:p/revisions"
+   745→  },
+   746→  {
+   747→    "file": "knowledge",
+   748→    "fn": "knowledgeDryRun",
+   749→    "method": "POST",
+   750→    "route": "admin/knowledge/import/dry-run"
+   751→  },
+   752→  {
+   753→    "file": "management",
+   754→    "fn": "listCycles",
+   755→    "method": "GET",
+   756→    "route": "evaluation-cycles"
+   757→  },
+   758→  {
+   759→    "file": "management",
+   760→    "fn": "createCycle",
+   761→    "method": "POST",
+   762→    "route": "evaluation-cycles"
+   763→  },
+   764→  {
+   765→    "file": "management",
+   766→    "fn": "updateCycle",
+   767→    "method": "PATCH",
+   768→    "route": "evaluation-cycles/:p"
+   769→  },
+   770→  {
+   771→    "file": "management",
+   772→    "fn": "transitionCycle",
+   773→    "method": "POST",
+   774→    "route": "evaluation-cycles/:p/status"
+   775→  },
+   776→  {
+   777→    "file": "management",
+   778→    "fn": "getCriteria",
+   779→    "method": "GET",
+   780→    "route": "evaluation-cycles/:p/criteria"
+   781→  },
+   782→  {
+   783→    "file": "management",
+   784→    "fn": "updateCriterion",
+   785→    "method": "PATCH",
+   786→    "route": "evaluation-cycles/:p/criteria/:p"
+   787→  },
+   788→  {
+   789→    "file": "management",
+   790→    "fn": "createCriterion",
+   791→    "method": "POST",
+   792→    "route": "evaluation-cycles/:p/criteria"
+   793→  },
+   794→  {
+   795→    "file": "management",
+   796→    "fn": "deleteCriterion",
+   797→    "method": "DELETE",
+   798→    "route": "evaluation-cycles/:p/criteria/:p"
+   799→  },
+   800→  {
+   801→    "file": "management",
+   802→    "fn": "listManagedEvaluations",
+   803→    "method": "GET",
+   804→    "route": "evaluations"
+   805→  },
+   806→  {
+   807→    "file": "management",
+   808→    "fn": "createEvaluation",
+   809→    "method": "POST",
+   810→    "route": "evaluations"
+   811→  },
+   812→  {
+   813→    "file": "management",
+   814→    "fn": "getManagedEvaluation",
+   815→    "method": "GET",
+   816→    "route": "evaluations/:p"
+   817→  },
+   818→  {
+   819→    "file": "management",
+   820→    "fn": "saveEvaluation",
+   821→    "method": "PATCH",
+   822→    "route": "evaluations/:p"
+   823→  },
+   824→  {
+   825→    "file": "management",
+   826→    "fn": "advanceEvaluation",
+   827→    "method": "POST",
+   828→    "route": "evaluations/:p/:p"
+   829→  },
+   830→  {
+   831→    "file": "management",
+   832→    "fn": "suggestEvaluation",
+   833→    "method": "POST",
+   834→    "route": "evaluations/:p/ai-suggestions"
+   835→  },
+   836→  {
+   837→    "file": "management",
+   838→    "fn": "listEvaluationSuggestions",
+   839→    "method": "GET",
+   840→    "route": "evaluations/:p/ai-suggestions"
+   841→  },
+   842→  {
+   843→    "file": "management",
+   844→    "fn": "getEvaluationSuggestion",
+   845→    "method": "GET",
+   846→    "route": "evaluations/:p/ai-suggestions/:p"
+   847→  },
+   848→  {
+   849→    "file": "management",
+   850→    "fn": "getManagedSprint",
+   851→    "method": "GET",
+   852→    "route": "sprints/:p"
+   853→  },
+   854→  {
+   855→    "file": "management",
+   856→    "fn": "listSprints",
+   857→    "method": "GET",
+   858→    "route": "sprints"
+   859→  },
+   860→  {
+   861→    "file": "management",
+   862→    "fn": "saveSprint",
+   863→    "method": "GET",
+   864→    "route": "sprints/:p"
+   865→  },
+   866→  {
+   867→    "file": "management",
+   868→    "fn": "transitionSprint",
+   869→    "method": "POST",
+   870→    "route": "sprints/:p/status"
+   871→  },
+   872→  {
+   873→    "file": "management",
+   874→    "fn": "saveManagedTask",
+   875→    "method": "GET",
+   876→    "route": "tasks/:p"
+   877→  },
+   878→  {
+   879→    "file": "management",
+   880→    "fn": "deleteTask",
+   881→    "method": "DELETE",
+   882→    "route": "tasks/:p"
+   883→  },
+   884→  {
+   885→    "file": "management",
+   886→    "fn": "listPerformance",
+   887→    "method": "GET",
+   888→    "route": "performance/interns"
+   889→  },
+   890→  {
+   891→    "file": "management",
+   892→    "fn": "getMemberPerformance",
+   893→    "method": "GET",
+   894→    "route": "performance/interns/:p"
+   895→  },
+   896→  {
+   897→    "file": "management",
+   898→    "fn": "getMemberRecommendations",
+   899→    "method": "GET",
+   900→    "route": "performance/interns/:p/ai-recommendations"
+   901→  },
+   902→  {
+   903→    "file": "mentor",
+   904→    "fn": "listConversations",
+   905→    "method": "GET",
+   906→    "route": "intern/me/ai-mentor/conversations"
+   907→  },
+   908→  {
+   909→    "file": "mentor",
+   910→    "fn": "createConversation",
+   911→    "method": "POST",
+   912→    "route": "intern/me/ai-mentor/conversations"
+   913→  },
+   914→  {
+   915→    "file": "mentor",
+   916→    "fn": "getConversation",
+   917→    "method": "GET",
+   918→    "route": "intern/me/ai-mentor/conversations/:p"
+   919→  },
+   920→  {
+   921→    "file": "mentor",
+   922→    "fn": "archiveConversation",
+   923→    "method": "POST",
+   924→    "route": "intern/me/ai-mentor/conversations/:p/archive"
+   925→  },
+   926→  {
+   927→    "file": "mentor",
+   928→    "fn": "sendMentorMessage",
+   929→    "method": "POST",
+   930→    "route": "intern/me/ai-mentor/conversations/:p/messages"
+   931→  },
+   932→  {
+   933→    "file": "outcomes",
+   934→    "fn": "getEvaluations",
+   935→    "method": "GET",
+   936→    "route": "intern/me/evaluations"
+   937→  },
+   938→  {
+   939→    "file": "outcomes",
+   940→    "fn": "getEvaluation",
+   941→    "method": "GET",
+   942→    "route": "intern/me/evaluations/:p"
+   943→  },
+   944→  {
+   945→    "file": "outcomes",
+   946→    "fn": "getPerformance",
+   947→    "method": "GET",
+   948→    "route": "intern/me/performance"
+   949→  },
+   950→  {
+   951→    "file": "outcomes",
+   952→    "fn": "getKpis",
+   953→    "method": "GET",
+   954→    "route": "intern/me/kpi"
+   955→  },
+   956→  {
+   957→    "file": "outcomes",
+   958→    "fn": "getKpi",
+   959→    "method": "GET",
+   960→    "route": "intern/me/kpi/:p"
+   961→  },
+   962→  {
+   963→    "file": "outcomes",
+   964→    "fn": "getSalary",
+   965→    "method": "GET",
+   966→    "route": "intern/me/virtual-salary"
+   967→  },
+   968→  {
+   969→    "file": "outcomes",
+   970→    "fn": "getLedger",
+   971→    "method": "GET",
+   972→    "route": "intern/me/virtual-salary/ledger"
+   973→  },
+   974→  {
+   975→    "file": "outcomes",
+   976→    "fn": "getCertificates",
+   977→    "method": "GET",
+   978→    "route": "intern/me/certificates"
+   979→  },
+   980→  {
+   981→    "file": "outcomes",
+   982→    "fn": "getCertificate",
+   983→    "method": "GET",
+   984→    "route": "intern/me/certificates/:p"
+   985→  },
+   986→  {
+   987→    "file": "outcomes",
+   988→    "fn": "getCertificatePdf",
+   989→    "method": "GET",
+   990→    "route": "intern/me/certificates/:p/pdf"
+   991→  },
+   992→  {
+   993→    "file": "outcomes",
+   994→    "fn": "getNotifications",
+   995→    "method": "GET",
+   996→    "route": "notifications"
+   997→  },
+   998→  {
+   999→    "file": "outcomes",
+  1000→    "fn": "fetchUnreadCount",
+  1001→    "method": "GET",
+  1002→    "route": "notifications/unread-count"
+  1003→  },
+  1004→  {
+  1005→    "file": "outcomes",
+  1006→    "fn": "markNotification",
+  1007→    "method": "POST",
+  1008→    "route": "notifications/:p/read"
+  1009→  },
+  1010→  {
+  1011→    "file": "outcomes",
+  1012→    "fn": "markAllNotifications",
+  1013→    "method": "POST",
+  1014→    "route": "notifications/read-all"
+  1015→  },
+  1016→  {
+  1017→    "file": "outcomes",
+  1018→    "fn": "getNotificationPreferences",
+  1019→    "method": "GET",
+  1020→    "route": "notifications/preferences"
+  1021→  },
+  1022→  {
+  1023→    "file": "outcomes",
+  1024→    "fn": "setNotificationPreference",
+  1025→    "method": "PUT",
+  1026→    "route": "notifications/preferences"
+  1027→  },
+  1028→  {
+  1029→    "file": "outcomes",
+  1030→    "fn": "getRecommendations",
+  1031→    "method": "GET",
+  1032→    "route": "intern/me/ai-recommendations"
+  1033→  },
+  1034→  {
+  1035→    "file": "outcomes",
+  1036→    "fn": "refreshRecommendations",
+  1037→    "method": "POST",
+  1038→    "route": "intern/me/ai-recommendations/refresh"
+  1039→  },
+  1040→  {
+  1041→    "file": "participation",
+  1042→    "fn": "ownParticipation",
+  1043→    "method": "GET",
+  1044→    "route": "participation/me"
+  1045→  },
+  1046→  {
+  1047→    "file": "participation",
+  1048→    "fn": "sessionParticipation",
+  1049→    "method": "GET",
+  1050→    "route": "sessions/:p/participation"
+  1051→  },
+  1052→  {
+  1053→    "file": "participation",
+  1054→    "fn": "saveParticipationPolicy",
+  1055→    "method": "POST",
+  1056→    "route": "sessions/:p/participation/policy"
+  1057→  },
+  1058→  {
+  1059→    "file": "participation",
+  1060→    "fn": "resolveParticipation",
+  1061→    "method": "POST",
+  1062→    "route": "sessions/:p/participation/incidents/:p/resolve"
+  1063→  },
+  1064→  {
+  1065→    "file": "participation",
+  1066→    "fn": "extendParticipationDeadline",
+  1067→    "method": "POST",
+  1068→    "route": "sessions/:p/participation/tasks/:p/extend"
+  1069→  },
+  1070→  {
+  1071→    "file": "participation",
+  1072→    "fn": "refreshParticipation",
+  1073→    "method": "POST",
+  1074→    "route": "sessions/:p/participation/refresh"
+  1075→  },
+  1076→  {
+  1077→    "file": "planning",
+  1078→    "fn": "listPlans",
+  1079→    "method": "GET",
+  1080→    "route": "ai-generations/plans"
+  1081→  },
+  1082→  {
+  1083→    "file": "planning",
+  1084→    "fn": "getPlan",
+  1085→    "method": "GET",
+  1086→    "route": "ai-generations/plans/:p"
+  1087→  },
+  1088→  {
+  1089→    "file": "planning",
+  1090→    "fn": "generatePlan",
+  1091→    "method": "POST",
+  1092→    "route": "ai-generations/plans/generate"
+  1093→  },
+  1094→  {
+  1095→    "file": "planning",
+  1096→    "fn": "confirmPlan",
+  1097→    "method": "POST",
+  1098→    "route": "ai-generations/sprint-plan/confirm"
+  1099→  },
+  1100→  {
+  1101→    "file": "planning",
+  1102→    "fn": "draftSprintPlan",
+  1103→    "method": "POST",
+  1104→    "route": "ai-generations/sprint-plan/draft"
+  1105→  },
+  1106→  {
+  1107→    "file": "project-sessions",
+  1108→    "fn": "getProjectSessions",
+  1109→    "method": "GET",
+  1110→    "route": "projects/:p/sessions"
+  1111→  },
+  1112→  {
+  1113→    "file": "project-sessions",
+  1114→    "fn": "claimProject",
+  1115→    "method": "POST",
+  1116→    "route": "projects/:p/claim"
+  1117→  },
+  1118→  {
+  1119→    "file": "question-bank",
+  1120→    "fn": "listQuestionBank",
+  1121→    "method": "GET",
+  1122→    "route": "admin/question-bank"
+  1123→  },
+  1124→  {
+  1125→    "file": "question-bank",
+  1126→    "fn": "saveQuestion",
+  1127→    "method": "GET",
+  1128→    "route": "admin/question-bank/:p"
+  1129→  },
+  1130→  {
+  1131→    "file": "question-bank",
+  1132→    "fn": "retireQuestion",
+  1133→    "method": "DELETE",
+  1134→    "route": "admin/question-bank/:p"
+  1135→  },
+  1136→  {
+  1137→    "file": "recruitment",
+  1138→    "fn": "recruitmentApi",
+  1139→    "method": "GET",
+  1140→    "route": "recruitment/me"
+  1141→  },
+  1142→  {
+  1143→    "file": "recruitment",
+  1144→    "fn": "recruitmentApi",
+  1145→    "method": "GET",
+  1146→    "route": "recruitment/me/interviews"
+  1147→  },
+  1148→  {
+  1149→    "file": "recruitment",
+  1150→    "fn": "recruitmentApi",
+  1151→    "method": "PATCH",
+  1152→    "route": "recruitment/me/role"
+  1153→  },
+  1154→  {
+  1155→    "file": "recruitment",
+  1156→    "fn": "recruitmentApi",
+  1157→    "method": "POST",
+  1158→    "route": "recruitment/me/interviews"
+  1159→  },
+  1160→  {
+  1161→    "file": "recruitment",
+  1162→    "fn": "recruitmentApi",
+  1163→    "method": "GET",
+  1164→    "route": "recruitment/me/interviews/:p"
+  1165→  },
+  1166→  {
+  1167→    "file": "recruitment",
+  1168→    "fn": "recruitmentApi",
+  1169→    "method": "GET",
+  1170→    "route": "recruitment/me/interviews/:p/questions"
+  1171→  },
+  1172→  {
+  1173→    "file": "recruitment",
+  1174→    "fn": "recruitmentApi",
+  1175→    "method": "PUT",
+  1176→    "route": "recruitment/me/interviews/:p/answers/:p"
+  1177→  },
+  1178→  {
+  1179→    "file": "recruitment",
+  1180→    "fn": "recruitmentApi",
+  1181→    "method": "PUT",
+  1182→    "route": "recruitment/me/interviews/:p/follow-ups/:p"
+  1183→  },
+  1184→  {
+  1185→    "file": "recruitment",
+  1186→    "fn": "recruitmentApi",
+  1187→    "method": "POST",
+  1188→    "route": "recruitment/me/interviews/:p/submit"
+  1189→  },
+  1190→  {
+  1191→    "file": "recruitment",
+  1192→    "fn": "recruitmentApi",
+  1193→    "method": "POST",
+  1194→    "route": "recruitment/me/interviews/:p/retry-evaluation"
+  1195→  },
+  1196→  {
+  1197→    "file": "recruitment",
+  1198→    "fn": "recruitmentApi",
+  1199→    "method": "GET",
+  1200→    "route": "recruitment/me/result"
+  1201→  },
+  1202→  {
+  1203→    "file": "recruitment",
+  1204→    "fn": "conversationView",
+  1205→    "method": "GET",
+  1206→    "route": "recruitment/me/interviews/:p/conversation"
+  1207→  },
+  1208→  {
+  1209→    "file": "recruitment",
+  1210→    "fn": "conversationNext",
+  1211→    "method": "POST",
+  1212→    "route": "recruitment/me/interviews/:p/conversation/next"
+  1213→  },
+  1214→  {
+  1215→    "file": "recruitment",
+  1216→    "fn": "conversationClarify",
+  1217→    "method": "POST",
+  1218→    "route": "recruitment/me/interviews/:p/conversation/clarify"
+  1219→  },
+  1220→  {
+  1221→    "file": "replacements",
+  1222→    "fn": "replacementAdvice",
+  1223→    "method": "POST",
+  1224→    "route": "sessions/:p/participation/incidents/:p/replacement-advice"
+  1225→  },
+  1226→  {
+  1227→    "file": "replacements",
+  1228→    "fn": "prepareReplacement",
+  1229→    "method": "POST",
+  1230→    "route": "sessions/:p/participation/incidents/:p/replacement-preview"
+  1231→  },
+  1232→  {
+  1233→    "file": "replacements",
+  1234→    "fn": "approveReplacement",
+  1235→    "method": "POST",
+  1236→    "route": "sessions/:p/participation/replacements/:p/approve"
+  1237→  },
+  1238→  {
+  1239→    "file": "replacements",
+  1240→    "fn": "getReplacementCommand",
+  1241→    "method": "GET",
+  1242→    "route": "sessions/:p/participation/replacements/:p"
+  1243→  },
+  1244→  {
+  1245→    "file": "replacements",
+  1246→    "fn": "ownReplacements",
+  1247→    "method": "GET",
+  1248→    "route": "participation/me/replacements"
+  1249→  },
+  1250→  {
+  1251→    "file": "reports",
+  1252→    "fn": "listReports",
+  1253→    "method": "GET",
+  1254→    "route": "reports"
+  1255→  },
+  1256→  {
+  1257→    "file": "reports",
+  1258→    "fn": "getSavedReport",
+  1259→    "method": "GET",
+  1260→    "route": "reports/:p"
+  1261→  },
+  1262→  {
+  1263→    "file": "reports",
+  1264→    "fn": "createReport",
+  1265→    "method": "POST",
+  1266→    "route": "reports"
+  1267→  },
+  1268→  {
+  1269→    "file": "reports",
+  1270→    "fn": "getReportPdf",
+  1271→    "method": "GET",
+  1272→    "route": "reports/:p/pdf"
+  1273→  },
+  1274→  {
+  1275→    "file": "reports",
+  1276→    "fn": "getReportExcel",
+  1277→    "method": "GET",
+  1278→    "route": "reports/:p/xlsx"
+  1279→  },
+  1280→  {
+  1281→    "file": "repository-access",
+  1282→    "fn": "ownRepositoryAccess",
+  1283→    "method": "GET",
+  1284→    "route": "github/me/repository-access"
+  1285→  },
+  1286→  {
+  1287→    "file": "repository-access",
+  1288→    "fn": "sessionRepositoryAccess",
+  1289→    "method": "GET",
+  1290→    "route": "sessions/:p/participation/repository-access-jobs"
+  1291→  },
+  1292→  {
+  1293→    "file": "repository-access",
+  1294→    "fn": "retryRepositoryAccess",
+  1295→    "method": "POST",
+  1296→    "route": "sessions/:p/participation/repository-access-jobs/:p/retry"
+  1297→  },
+  1298→  {
+  1299→    "file": "session-work",
+  1300→    "fn": "listSessionWork",
+  1301→    "method": "GET",
+  1302→    "route": "sessions/:p/work"
+  1303→  },
+  1304→  {
+  1305→    "file": "session-work",
+  1306→    "fn": "listSessionTimeline",
+  1307→    "method": "GET",
+  1308→    "route": "sessions/:p/timeline"
+  1309→  },
+  1310→  {
+  1311→    "file": "sessions",
+  1312→    "fn": "listSessionOverview",
+  1313→    "method": "GET",
+  1314→    "route": "sessions/overview"
+  1315→  },
+  1316→  {
+  1317→    "file": "sessions",
+  1318→    "fn": "getSessionDetail",
+  1319→    "method": "GET",
+  1320→    "route": "sessions/:p"
+  1321→  },
+  1322→  {
+  1323→    "file": "student-detail",
+  1324→    "fn": "getStudentDetail",
+  1325→    "method": "GET",
+  1326→    "route": "performance/interns/:p/detail"
+  1327→  },
+  1328→  {
+  1329→    "file": "submissions",
+  1330→    "fn": "listSubmissions",
+  1331→    "method": "GET",
+  1332→    "route": "tasks/:p/submissions"
+  1333→  },
+  1334→  {
+  1335→    "file": "submissions",
+  1336→    "fn": "submitCode",
+  1337→    "method": "POST",
+  1338→    "route": "tasks/:p/submissions"
+  1339→  },
+  1340→  {
+  1341→    "file": "submissions",
+  1342→    "fn": "withdrawCode",
+  1343→    "method": "POST",
+  1344→    "route": "submissions/:p/withdraw"
+  1345→  },
+  1346→  {
+  1347→    "file": "submissions",
+  1348→    "fn": "confirmCodeReview",
+  1349→    "method": "POST",
+  1350→    "route": "submissions/:p/review"
+  1351→  },
+  1352→  {
+  1353→    "file": "submissions",
+  1354→    "fn": "listCodeReviews",
+  1355→    "method": "GET",
+  1356→    "route": "submissions/:p/code-reviews"
+  1357→  },
+  1358→  {
+  1359→    "file": "submissions",
+  1360→    "fn": "runCodeReview",
+  1361→    "method": "POST",
+  1362→    "route": "submissions/:p/code-reviews"
+  1363→  },
+  1364→  {
+  1365→    "file": "system-admin",
+  1366→    "fn": "getSystemContracts",
+  1367→    "method": "GET",
+  1368→    "route": "admin/system/contracts"
+  1369→  },
+  1370→  {
+  1371→    "file": "system-admin",
+  1372→    "fn": "validateSystemContractsDraft",
+  1373→    "method": "POST",
+  1374→    "route": "admin/system/contracts/validate"
+  1375→  },
+  1376→  {
+  1377→    "file": "system-admin",
+  1378→    "fn": "getAiConfiguration",
+  1379→    "method": "GET",
+  1380→    "route": "admin/ai-configuration"
+  1381→  },
+  1382→  {
+  1383→    "file": "system-admin",
+  1384→    "fn": "saveAiConfiguration",
+  1385→    "method": "PUT",
+  1386→    "route": "admin/ai-configuration"
+  1387→  },
+  1388→  {
+  1389→    "file": "system-admin",
+  1390→    "fn": "getSystemStatus",
+  1391→    "method": "GET",
+  1392→    "route": "admin/system/status"
+  1393→  },
+  1394→  {
+  1395→    "file": "system-admin",
+  1396→    "fn": "listSystemRepositories",
+  1397→    "method": "GET",
+  1398→    "route": "admin/system/repositories"
+  1399→  },
+  1400→  {
+  1401→    "file": "template-materials",
+  1402→    "fn": "getAssessment",
+  1403→    "method": "GET",
+  1404→    "route": "project-templates/:p/assessment"
+  1405→  },
+  1406→  {
+  1407→    "file": "template-materials",
+  1408→    "fn": "getPinnedProjectAssessment",
+  1409→    "method": "GET",
+  1410→    "route": "projects/:p/template-assessment"
+  1411→  },
+  1412→  {
+  1413→    "file": "template-materials",
+  1414→    "fn": "listTemplateRevisions",
+  1415→    "method": "GET",
+  1416→    "route": "project-templates/:p/revisions"
+  1417→  },
+  1418→  {
+  1419→    "file": "template-materials",
+  1420→    "fn": "getTemplateRevision",
+  1421→    "method": "GET",
+  1422→    "route": "project-templates/:p/revisions/:p"
+  1423→  },
+  1424→  {
+  1425→    "file": "template-materials",
+  1426→    "fn": "getOwnProjectPackage",
+  1427→    "method": "GET",
+  1428→    "route": "intern/me/projects/:p/learning-package"
+  1429→  },
+  1430→  {
+  1431→    "file": "templates",
+  1432→    "fn": "listTemplates",
+  1433→    "method": "GET",
+  1434→    "route": "project-templates"
+  1435→  },
+  1436→  {
+  1437→    "file": "templates",
+  1438→    "fn": "getTemplate",
+  1439→    "method": "GET",
+  1440→    "route": "project-templates/:p"
+  1441→  },
+  1442→  {
+  1443→    "file": "templates",
+  1444→    "fn": "saveTemplateDefinition",
+  1445→    "method": "GET",
+  1446→    "route": "project-templates/:p"
+  1447→  },
+  1448→  {
+  1449→    "file": "templates",
+  1450→    "fn": "setTemplateStatus",
+  1451→    "method": "PATCH",
+  1452→    "route": "project-templates/:p"
+  1453→  },
+  1454→  {
+  1455→    "file": "templates",
+  1456→    "fn": "getTemplateContext",
+  1457→    "method": "GET",
+  1458→    "route": "projects/:p/template-context"
+  1459→  },
+  1460→  {
+  1461→    "file": "templates",
+  1462→    "fn": "startTemplateSession",
+  1463→    "method": "POST",
+  1464→    "route": "project-templates/:p/start"
+  1465→  },
+  1466→  {
+  1467→    "file": "templates",
+  1468→    "fn": "listChanges",
+  1469→    "method": "GET",
+  1470→    "route": "projects/:p/changes"
+  1471→  },
+  1472→  {
+  1473→    "file": "templates",
+  1474→    "fn": "proposeChange",
+  1475→    "method": "POST",
+  1476→    "route": "projects/:p/changes"
+  1477→  },
+  1478→  {
+  1479→    "file": "templates",
+  1480→    "fn": "applyChange",
+  1481→    "method": "POST",
+  1482→    "route": "project-changes/:p/apply"
+  1483→  },
+  1484→  {
+  1485→    "file": "templates",
+  1486→    "fn": "getTaskSpec",
+  1487→    "method": "GET",
+  1488→    "route": "tasks/:p/spec"
+  1489→  },
+  1490→  {
+  1491→    "file": "templates",
+  1492→    "fn": "getTaskSpecSource",
+  1493→    "method": "GET",
+  1494→    "route": "tasks/:p/spec/source"
+  1495→  },
+  1496→  {
+  1497→    "file": "work",
+  1498→    "fn": "listTasks",
+  1499→    "method": "GET",
+  1500→    "route": "tasks"
+  1501→  },
+  1502→  {
+  1503→    "file": "work",
+  1504→    "fn": "getTask",
+  1505→    "method": "GET",
+  1506→    "route": "tasks/:p"
+  1507→  },
+  1508→  {
+  1509→    "file": "work",
+  1510→    "fn": "getComments",
+  1511→    "method": "GET",
+  1512→    "route": "tasks/:p/comments"
+  1513→  },
+  1514→  {
+  1515→    "file": "work",
+  1516→    "fn": "getHistory",
+  1517→    "method": "GET",
+  1518→    "route": "tasks/:p/history"
+  1519→  },
+  1520→  {
+  1521→    "file": "work",
+  1522→    "fn": "addTaskComment",
+  1523→    "method": "POST",
+  1524→    "route": "tasks/:p/comments"
+  1525→  },
+  1526→  {
+  1527→    "file": "work",
+  1528→    "fn": "updateOwnTask",
+  1529→    "method": "PATCH",
+  1530→    "route": "tasks/:p/my"
+  1531→  },
+  1532→  {
+  1533→    "file": "work",
+  1534→    "fn": "getBoard",
+  1535→    "method": "GET",
+  1536→    "route": "sprints/:p/board"
+  1537→  },
+  1538→  {
+  1539→    "file": "work",
+  1540→    "fn": "getSprintCompletion",
+  1541→    "method": "GET",
+  1542→    "route": "sprints/:p/completion"
+  1543→  },
+  1544→  {
+  1545→    "file": "work",
+  1546→    "fn": "getProject",
+  1547→    "method": "GET",
+  1548→    "route": "projects/:p"
+  1549→  },
+  1550→  {
+  1551→    "file": "work",
+  1552→    "fn": "getOwnBoard",
+  1553→    "method": "GET",
+  1554→    "route": "intern/me/sprint/board"
+  1555→  },
+  1556→  {
+  1557→    "file": "work",
+  1558→    "fn": "getOwnSprintBoard",
+  1559→    "method": "GET",
+  1560→    "route": "intern/me/sprints/:p/board"
+  1561→  },
+  1562→  {
+  1563→    "file": "work",
+  1564→    "fn": "getOwnSprints",
+  1565→    "method": "GET",
+  1566→    "route": "intern/me/sprints"
+  1567→  },
+  1568→  {
+  1569→    "file": "work",
+  1570→    "fn": "getOwnProject",
+  1571→    "method": "GET",
+  1572→    "route": "intern/me/project"
+  1573→  },
+  1574→  {
+  1575→    "file": "workspace",
+  1576→    "fn": "getWorkspace",
+  1577→    "method": "GET",
+  1578→    "route": "intern/me/workspace"
+  1579→  }
+  1580→]
