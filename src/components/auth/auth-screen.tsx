@@ -460,6 +460,7 @@ function DividerHoac() {
 
 export default function AuthScreen() {
   const goLanding = useApp((s) => s.goLanding);
+  const goApply = useApp((s) => s.goApply);
   const login = useApp((s) => s.login);
 
   const [tab, setTab] = useState<TabKey>("login");
@@ -804,20 +805,6 @@ export default function AuthScreen() {
               <MarginNote className="mt-7">
                 sổ tay này ghi lại từng bước của bạn
               </MarginNote>
-
-              <button
-                type="button"
-                onClick={() =>
-                  toast.info("Đợt tuyển dụng mở đầu mỗi tháng — xem trang chủ để biết thêm")
-                }
-                className="focus-ink group/apply mt-6 inline-flex items-center gap-1.5 rounded-[8px] text-sm font-bold text-[var(--royal)] transition-colors hover:text-[var(--royal-deep)]"
-              >
-                Ứng tuyển chương trình thực tập
-                <VArrowUpRight
-                  size={16}
-                  className="transition-transform duration-150 group-hover/apply:-translate-y-0.5 group-hover/apply:translate-x-0.5"
-                />
-              </button>
 
               {/* Câu nói chân trang — dán băng dính, xoay vòng 5 giây/câu */}
               <div className="relative mt-10 max-w-md">
@@ -1214,16 +1201,22 @@ export default function AuthScreen() {
                             Đăng nhập với Google
                           </InkButton>
 
-                          <p className="pt-1 text-center text-sm text-[var(--ink-soft)]">
-                            Chưa có tài khoản?{" "}
-                            <button
+                          {/* Chưa có tài khoản → cổng ứng tuyển công khai (không cần đăng ký) */}
+                          <div className="space-y-2.5 pt-1">
+                            <p className="text-center text-sm text-[var(--ink-soft)]">
+                              Chưa có tài khoản? Nộp hồ sơ ứng tuyển — không cần đăng ký.
+                            </p>
+                            <InkButton
                               type="button"
-                              onClick={() => switchTab("register")}
-                              className="focus-ink rounded-[6px] font-bold text-[var(--royal)] underline decoration-2 underline-offset-4 transition-colors hover:text-[var(--royal-deep)]"
+                              variant="outline"
+                              size="lg"
+                              className="w-full"
+                              onClick={goApply}
                             >
-                              Đăng ký ngay
-                            </button>
-                          </p>
+                              Ứng Tuyển Ngay
+                              <VArrowUpRight size={17} className="text-[var(--royal)]" />
+                            </InkButton>
+                          </div>
                         </form>
                       ) : regSuccess ? (
                         /* --------------------- ĐĂNG KÝ THÀNH CÔNG --------------------- */

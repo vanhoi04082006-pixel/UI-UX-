@@ -7,7 +7,9 @@ import { LiquidButton } from "@/components/animate-ui/buttons/liquid";
 import { useApp } from "@/lib/store";
 import {
   IconArrowRight,
+  IconAward,
   IconMenu,
+  IconSend,
   IconX,
 } from "@/components/v-intern/icons";
 
@@ -69,19 +71,22 @@ export function Navbar() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <ThemeToggle />
+          {/* Hai nút hành chính công khai — ứng tuyển & tra cứu chứng chỉ */}
           <button
             type="button"
             onClick={goApply}
-            className="inline-flex min-h-11 items-center rounded-lg px-3 py-1 text-sm font-semibold text-ink-soft transition-colors hover:text-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border-2 border-ink/15 bg-blue-mist px-3 py-1 text-sm font-bold text-ink transition-all hover:-translate-y-0.5 hover:border-blue hover:text-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
           >
-            <span className="marker">Ứng tuyển</span>
+            <IconSend className="h-4 w-4" aria-hidden="true" />
+            Ứng tuyển
           </button>
           <button
             type="button"
             onClick={goVerify}
-            className="inline-flex min-h-11 items-center rounded-lg px-3 py-1 text-sm font-semibold text-ink-soft transition-colors hover:text-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border-2 border-ink/15 bg-raised px-3 py-1 text-sm font-bold text-ink transition-all hover:-translate-y-0.5 hover:border-blue hover:text-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
           >
-            <span className="marker">Tra chứng chỉ</span>
+            <IconAward className="h-4 w-4" aria-hidden="true" />
+            Tra chứng chỉ
           </button>
           <LiquidButton
             delay="0.35s"
@@ -133,32 +138,33 @@ export function Navbar() {
                 </a>
               </li>
             ))}
-            <li>
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  goApply();
-                }}
-                className="flex min-h-11 w-full items-center rounded-xl border-2 border-transparent px-4 text-sm font-semibold text-ink transition-colors hover:border-blue hover:bg-blue-mist hover:text-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-              >
-                Ứng tuyển ngay
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  goVerify();
-                }}
-                className="flex min-h-11 w-full items-center rounded-xl border-2 border-transparent px-4 text-sm font-semibold text-ink transition-colors hover:border-blue hover:bg-blue-mist hover:text-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-              >
-                Tra cứu chứng chỉ
-              </button>
-            </li>
           </ul>
-          <div className="mx-auto flex max-w-7xl flex-col px-4 pb-5 md:px-6">
+          {/* Hai nút hành chính công khai — đặt cạnh nhau cho dễ bấm trên mobile */}
+          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-3 px-4 pt-2 md:px-6">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                goApply();
+              }}
+              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border-2 border-ink/15 bg-blue-mist px-3 py-1 text-sm font-bold text-ink transition-colors hover:border-blue hover:text-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+            >
+              <IconSend className="h-4 w-4" aria-hidden="true" />
+              Ứng tuyển ngay
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                goVerify();
+              }}
+              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border-2 border-ink/15 bg-raised px-3 py-1 text-sm font-bold text-ink transition-colors hover:border-blue hover:text-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+            >
+              <IconAward className="h-4 w-4" aria-hidden="true" />
+              Tra cứu chứng chỉ
+            </button>
+          </div>
+          <div className="mx-auto flex max-w-7xl flex-col px-4 pb-5 pt-4 md:px-6">
           <button
             type="button"
             onClick={() => {
