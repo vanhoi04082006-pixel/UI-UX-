@@ -1,0 +1,894 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useEffect, useMemo, useRef, useState } from "react";
+     4→     4→import {
+     5→     5→  Dialog,
+     6→     6→  DialogContent,
+     7→     7→  DialogDescription,
+     8→     8→  DialogHeader,
+     9→     9→  DialogTitle,
+    10→    10→} from "@/components/ui/dialog";
+    11→    11→import { Input } from "@/components/ui/input";
+    12→    12→import { Label } from "@/components/ui/label";
+    13→    13→import { Textarea } from "@/components/ui/textarea";
+    14→    14→import { toast } from "sonner";
+    15→    15→import {
+    16→    16→  VBan,
+    17→    17→  VCalendar,
+    18→    18→  VChartColumn,
+    19→    19→  VCheck,
+    20→    20→  VClipboardCheck,
+    21→    21→  VClock,
+    22→    22→  VFlag,
+    23→    23→  VGraduation,
+    24→    24→  VHourglass,
+    25→    25→  VKanban,
+    26→    26→  VPlus,
+    27→    27→  VStopwatch,
+    28→    28→  VUsers,
+    29→    29→} from "@/components/icons/v-icons";
+    30→    30→import { FadeIn, InkButton, Stagger, StaggerItem } from "@/components/notebook/reveal";
+    31→    31→import { InkBadge, MarginNote, SketchCard, Tape, formatDateVN } from "@/components/notebook/ui";
+    32→    32→import {
+    33→    33→  AvatarStack,
+    34→    34→  CodeChip,
+    35→    35→  EmptyState,
+    36→    36→  ErrorState,
+    37→    37→  FilterChips,
+    38→    38→  MiniBar,
+    39→    39→  PageHeading,
+    40→    40→  SkeletonBlock,
+    41→    41→  initialsOf,
+    42→    42→} from "@/components/staff/instructor-shared";
+    43→    43→import { useApp } from "@/lib/store";
+    44→    44→import { postMock, useMock } from "@/lib/use-mock";
+    45→    45→import { sessionStatusLabel } from "@/lib/mock/data";
+    46→    46→import type { InstructorSession, SessionMember, SessionStatus } from "@/lib/mock/types";
+    47→    47→
+    48→    48→/* =====================================================================
+    49→    49→ * PHIÊN THỰC TẬP — quản lý các phiên đang mở / đã kết thúc.
+    50→    50→ * Codex đồng bộ: trạng thái ending + cancelled, hành động vòng đời
+    51→    51→ * phiên (SessionLifecycleActions) và hoàn thành phân công
+    52→    52→ * (AssignmentCompletion) ngay trong hộp thoại chi tiết.
+    53→    53→ * ===================================================================== */
+    54→    54→
+    55→    55→type SessionFilter = "all" | "active" | "upcoming" | "ending" | "closed" | "cancelled";
+    56→    56→type BusyAction = "ending" | "closed" | "cancelled" | "assignment";
+    57→    57→
+    58→    58→const MEMBER_ROLES = ["Frontend", "Backend", "QA", "Tài liệu", "DevOps", "Thiết kế"];
+    59→    59→
+    60→    60→/** Màu tem theo trạng thái — ending vàng hổ phách, cancelled đỏ mực. */
+    61→    61→const STATUS_TONE: Record<SessionStatus, string> = {
+    62→    62→  active: "green",
+    63→    63→  upcoming: "blue",
+    64→    64→  ending: "amber",
+    65→    65→  closed: "neutral",
+    66→    66→  cancelled: "red",
+    67→    67→};
+    68→    68→
+    69→    69→const FILTER_KEYS: SessionFilter[] = ["active", "upcoming", "ending", "closed", "cancelled"];
+    70→    70→
+    71→    71→interface MemberRow {
+    72→    72→  name: string;
+    73→    73→  email: string;
+    74→    74→  role: string;
+    75→    75→  assignmentStatus: SessionMember["assignmentStatus"];
+    76→    76→}
+    77→    77→
+    78→    78→/** Thành viên lấy từ memberDetails (email + trạng thái phân công), thiếu thì fallback memberNames. */
+    79→    79→function memberRowsOf(session: InstructorSession): MemberRow[] {
+    80→    80→  const details: SessionMember[] =
+    81→    81→    session.memberDetails.length > 0
+    82→    82→      ? session.memberDetails
+    83→    83→      : session.memberNames.map((name) => ({
+    84→    84→          name,
+    85→    85→          email: "",
+    86→    86→          assignmentStatus: "active" as const,
+    87→    87→        }));
+    88→    88→  return details.map((m, i) => ({
+    89→    89→    name: m.name,
+    90→    90→    email: m.email,
+    91→    91→    assignmentStatus: m.assignmentStatus,
+    92→    92→    role: MEMBER_ROLES[i % MEMBER_ROLES.length],
+    93→    93→  }));
+    94→    94→}
+    95→    95→
+    96→    96→export default function InstructorSessions() {
+    97→    97→  const navigate = useApp((s) => s.navigate);
+    98→    98→  const { data, loading, error, reload } = useMock<InstructorSession[]>("instructor/sessions");
+    99→    99→
+   100→   100→  const [filter, setFilter] = useState<SessionFilter>("all");
+   101→   101→  const [creating, setCreating] = useState(false);
+   102→   102→  const [detailId, setDetailId] = useState<string | null>(null);
+   103→   103→
+   104→   104→  const [form, setForm] = useState({ project: "", start: "", desc: "" });
+   105→   105→  const [formError, setFormError] = useState<string | null>(null);
+   106→   106→  const [creatingBusy, setCreatingBusy] = useState(false);
+   107→   107→
+   108→   108→  /* ---- Vòng đời phiên + hoàn thành phân công (codex đồng bộ) ---- */
+   109→   109→  const [busyAction, setBusyAction] = useState<BusyAction | null>(null);
+   110→   110→  const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+   111→   111→  const [confirmTransition, setConfirmTransition] = useState<{
+   112→   112→    session: InstructorSession;
+   113→   113→    next: Extract<SessionStatus, "closed" | "cancelled">;
+   114→   114→  } | null>(null);
+   115→   115→  const [assignmentTarget, setAssignmentTarget] = useState<{
+   116→   116→    session: InstructorSession;
+   117→   117→    member: SessionMember;
+   118→   118→  } | null>(null);
+   119→   119→  const [assignmentError, setAssignmentError] = useState<string | null>(null);
+   120→   120→
+   121→   121→  /** Gói confetti bung khi tạo phiên thành công (JS thêm class `play`). */
+   122→   122→  const burstRef = useRef<HTMLSpanElement>(null);
+   123→   123→  const createTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+   124→   124→
+   125→   125→  useEffect(() => {
+   126→   126→    return () => {
+   127→   127→      if (createTimer.current) clearTimeout(createTimer.current);
+   128→   128→    };
+   129→   129→  }, []);
+   130→   130→
+   131→   131→  const [extra, setExtra] = useState<InstructorSession[]>([]);
+   132→   132→
+   133→   133→  const sessions = useMemo(() => [...extra, ...(data ?? [])], [extra, data]);
+   134→   134→  const filtered = useMemo(
+   135→   135→    () => (filter === "all" ? sessions : sessions.filter((s) => s.status === filter)),
+   136→   136→    [filter, sessions],
+   137→   137→  );
+   138→   138→  const detail = sessions.find((s) => s.id === detailId) ?? null;
+   139→   139→  const detailRows = useMemo(() => (detail ? memberRowsOf(detail) : []), [detail]);
+   140→   140→  const memberSummary = useMemo(() => {
+   141→   141→    const done = detailRows.filter((m) => m.assignmentStatus === "completed").length;
+   142→   142→    const active = detailRows.filter((m) => m.assignmentStatus === "active").length;
+   143→   143→    return { done, active, total: detailRows.length };
+   144→   144→  }, [detailRows]);
+   145→   145→  const busy = busyAction !== null;
+   146→   146→
+   147→   147→  function openCreate() {
+   148→   148→    setForm({ project: "", start: "", desc: "" });
+   149→   149→    setFormError(null);
+   150→   150→    setCreating(true);
+   151→   151→  }
+   152→   152→
+   153→   153→  function submitCreate() {
+   154→   154→    if (!form.project.trim()) {
+   155→   155→      setFormError("Bạn chưa điền tên dự án.");
+   156→   156→      return;
+   157→   157→    }
+   158→   158→    if (!form.start) {
+   159→   159→      setFormError("Chọn ngày bắt đầu cho phiên nhé.");
+   160→   160→      return;
+   161→   161→    }
+   162→   162→    setFormError(null);
+   163→   163→    setCreatingBusy(true);
+   164→   164→    burstRef.current?.classList.add("play");
+   165→   165→    // Giữ hộp thoại thêm chốc lát để trông thấy confetti + tem sáng tạo.
+   166→   166→    createTimer.current = setTimeout(() => {
+   167→   167→      const seq = sessions.filter((s) => s.code.startsWith("SS-2026")).length + 3;
+   168→   168→      const end = new Date(form.start);
+   169→   169→      end.setDate(end.getDate() + 84);
+   170→   170→      setExtra((prev) => [
+   171→   171→        {
+   172→   172→          id: `local-${Date.now()}`,
+   173→   173→          code: `SS-2026-${String(seq).padStart(2, "0")}`,
+   174→   174→          project: form.project.trim(),
+   175→   175→          members: 0,
+   176→   176→          memberNames: [],
+   177→   177→          memberDetails: [],
+   178→   178→          sprint: "Chưa mở sprint",
+   179→   179→          sprintStatus: "Đang chuẩn bị",
+   180→   180→          progress: 0,
+   181→   181→          startDate: new Date(form.start).toISOString(),
+   182→   182→          endDate: end.toISOString(),
+   183→   183→          status: "upcoming" as const,
+   184→   184→        },
+   185→   185→        ...prev,
+   186→   186→      ]);
+   187→   187→      burstRef.current?.classList.remove("play");
+   188→   188→      setCreating(false);
+   189→   189→      setCreatingBusy(false);
+   190→   190→      toast.success("Đã tạo phiên (mô phỏng)");
+   191→   191→    }, 700);
+   192→   192→  }
+   193→   193→
+   194→   194→  /** Chuyển trạng thái phiên qua mock API — ending đi thẳng, closed/cancelled đã có modal xác nhận. */
+   195→   195→  async function runTransition(session: InstructorSession, next: "ending" | "closed" | "cancelled") {
+   196→   196→    setBusyAction(next);
+   197→   197→    setLifecycleError(null);
+   198→   198→    try {
+   199→   199→      await postMock<{ sessionId: string; status: SessionStatus }, { session: InstructorSession }>(
+   200→   200→        "instructor/session-transition",
+   201→   201→        { sessionId: session.id, status: next },
+   202→   202→      );
+   203→   203→      setConfirmTransition(null);
+   204→   204→      reload();
+   205→   205→      toast.success(
+   206→   206→        next === "ending"
+   207→   207→          ? `Đã chuyển ${session.code} sang Sắp kết thúc`
+   208→   208→          : next === "closed"
+   209→   209→            ? `Phiên ${session.code} đã hoàn thành — lịch sử được giữ lại`
+   210→   210→            : `Đã hủy phiên ${session.code} — lịch sử được giữ lại`,
+   211→   211→      );
+   212→   212→    } catch (err) {
+   213→   213→      setLifecycleError(err instanceof Error ? err.message : "Không đổi được trạng thái phiên.");
+   214→   214→    } finally {
+   215→   215→      setBusyAction(null);
+   216→   216→    }
+   217→   217→  }
+   218→   218→
+   219→   219→  /** Chốt phân công của một thành viên — sinh viên có thể được giao vào phiên khác. */
+   220→   220→  async function runAssignmentComplete(session: InstructorSession, member: SessionMember) {
+   221→   221→    setBusyAction("assignment");
+   222→   222→    setAssignmentError(null);
+   223→   223→    try {
+   224→   224→      await postMock<
+   225→   225→        { sessionId: string; memberEmail: string },
+   226→   226→        { member: SessionMember }
+   227→   227→      >("instructor/assignment-complete", { sessionId: session.id, memberEmail: member.email });
+   228→   228→      setAssignmentTarget(null);
+   229→   229→      reload();
+   230→   230→      toast.success(`Đã hoàn thành phân công của ${member.name}`);
+   231→   231→    } catch (err) {
+   232→   232→      setAssignmentError(err instanceof Error ? err.message : "Không hoàn tất được phân công.");
+   233→   233→    } finally {
+   234→   234→      setBusyAction(null);
+   235→   235→    }
+   236→   236→  }
+   237→   237→
+   238→   238→  if (error) {
+   239→   239→    return (
+   240→   240→      <div className="space-y-5">
+   241→   241→        <PageHeading eyebrow="Sổ tay hành trình · Giảng viên" title="Phiên thực tập" />
+   242→   242→        <ErrorState message={error} onRetry={reload} />
+   243→   243→      </div>
+   244→   244→    );
+   245→   245→  }
+   246→   246→
+   247→   247→  return (
+   248→   248→    <div className="space-y-5">
+   249→   249→      <PageHeading eyebrow="Sổ tay hành trình · Giảng viên" title="Phiên thực tập">
+   250→   250→        <InkButton variant="royal" size="sm" onClick={openCreate}>
+   251→   251→          <VPlus size={16} /> Mở phiên mới
+   252→   252→        </InkButton>
+   253→   253→      </PageHeading>
+   254→   254→
+   255→   255→      <FilterChips<SessionFilter>
+   256→   256→        ariaLabel="Lọc phiên theo trạng thái"
+   257→   257→        value={filter}
+   258→   258→        onChange={setFilter}
+   259→   259→        options={[
+   260→   260→          { key: "all", label: "Tất cả", count: sessions.length },
+   261→   261→          ...FILTER_KEYS.map((key) => ({
+   262→   262→            key,
+   263→   263→            label: sessionStatusLabel(key as SessionStatus),
+   264→   264→            count: sessions.filter((s) => s.status === key).length,
+   265→   265→          })),
+   266→   266→        ]}
+   267→   267→      />
+   268→   268→
+   269→   269→      {loading && !data ? (
+   270→   270→        <div className="grid gap-5 lg:grid-cols-2">
+   271→   271→          {Array.from({ length: 4 }).map((_, i) => (
+   272→   272→            <SkeletonBlock key={i} className="h-64" />
+   273→   273→          ))}
+   274→   274→        </div>
+   275→   275→      ) : filtered.length === 0 ? (
+   276→   276→        <EmptyState
+   277→   277→          icon={VKanban}
+   278→   278→          title="Chưa có phiên nào ở đây"
+   279→   279→          hint="Đổi bộ lọc hoặc mở phiên mới để bắt đầu một hành trình thực tập."
+   280→   280→        />
+   281→   281→      ) : (
+   282→   282→        <Stagger className="grid gap-5 lg:grid-cols-2">
+   283→   283→          {filtered.map((s) => {
+   284→   284→            const daysToStart = Math.max(
+   285→   285→              0,
+   286→   286→              Math.ceil((new Date(s.startDate).getTime() - Date.now()) / 86_400_000),
+   287→   287→            );
+   288→   288→            const daysToEnd = Math.max(
+   289→   289→              0,
+   290→   290→              Math.ceil((new Date(s.endDate).getTime() - Date.now()) / 86_400_000),
+   291→   291→            );
+   292→   292→            const shownMembers = s.memberNames.slice(0, 5);
+   293→   293→            const restMembers = s.memberNames.length - shownMembers.length;
+   294→   294→            const isLocal = s.id.startsWith("local-");
+   295→   295→            return (
+   296→   296→              <StaggerItem key={s.id} className="h-full">
+   297→   297→                <SketchCard
+   298→   298→                  as="article"
+   299→   299→                  className={`relative card-tilt flex h-full flex-col p-4 sm:p-5 ${
+   300→   300→                    isLocal ? "animate-pop-in" : ""
+   301→   301→                  } ${s.status === "cancelled" ? "opacity-75" : s.status === "closed" ? "opacity-80" : ""}`}
+   302→   302→                >
+   303→   303→                  {/* Băng dính: phiên sắp mở dán băng hổ phách nhắc lịch */}
+   304→   304→                  {s.status === "upcoming" && (
+   305→   305→                    <Tape variant="warm" rotate={-4} className="-top-3 left-7 !w-16 !h-5" />
+   306→   306→                  )}
+   307→   307→                  {/* Băng dính vàng son — phiên sắp kết thúc cần chốt quân */}
+   308→   308→                  {s.status === "ending" && (
+   309→   309→                    <Tape variant="warm" rotate={-4} className="tape-gold -top-3 left-7 !w-16 !h-5" />
+   310→   310→                  )}
+   311→   311→                  {/* Tem xám nghiêng — phiên đã hủy vẫn giữ lịch sử */}
+   312→   312→                  {s.status === "cancelled" && (
+   313→   313→                    <span
+   314→   314→                      aria-hidden="true"
+   315→   315→                      className="pointer-events-none absolute right-3 top-6 rotate-[9deg] rounded-full border-[2.5px] border-[color-mix(in_srgb,var(--ink)_50%,transparent)] px-3 py-0.5 text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--ink)_50%,transparent)]"
+   316→   316→                    >
+   317→   317→                      Đã hủy
+   318→   318→                    </span>
+   319→   319→                  )}
+   320→   320→                  <div className="flex flex-wrap items-center gap-2">
+   321→   321→                    <CodeChip className="!text-[0.72rem]">{s.code}</CodeChip>
+   322→   322→                    {s.status === "active" ? (
+   323→   323→                      <InkBadge tone={STATUS_TONE[s.status]}>
+   324→   324→                        <span aria-hidden="true" className="ws-dot-live" />
+   325→   325→                        {sessionStatusLabel(s.status)}
+   326→   326→                      </InkBadge>
+   327→   327→                    ) : (
+   328→   328→                      <InkBadge tone={STATUS_TONE[s.status]} dot>
+   329→   329→                        {sessionStatusLabel(s.status)}
+   330→   330→                      </InkBadge>
+   331→   331→                    )}
+   332→   332→                    <span className="ml-auto flex items-center gap-1 font-geist-mono text-[0.66rem] uppercase tracking-[0.12em] text-[var(--ink-soft)]">
+   333→   333→                      {(s.status === "closed" || s.status === "cancelled") && (
+   334→   334→                        <VClock size={13} aria-hidden="true" />
+   335→   335→                      )}
+   336→   336→                      {s.members} SV
+   337→   337→                    </span>
+   338→   338→                  </div>
+   339→   339→
+   340→   340→                  <h2 className="mt-2.5 text-[1.05rem] font-bold leading-snug">{s.project}</h2>
+   341→   341→
+   342→   342→                  {s.status === "upcoming" && (
+   343→   343→                    <p className="mt-1 flex items-center gap-1.5 font-hand text-[0.95rem] text-[var(--warning)]">
+   344→   344→                      <VStopwatch size={14} aria-hidden="true" />
+   345→   345→                      bắt đầu sau {daysToStart} ngày
+   346→   346→                    </p>
+   347→   347→                  )}
+   348→   348→                  {s.status === "ending" && (
+   349→   349→                    <p className="mt-1 flex items-center gap-1.5 font-hand text-[0.95rem] text-[var(--warning)]">
+   350→   350→                      <VHourglass size={14} aria-hidden="true" />
+   351→   351→                      còn {daysToEnd} ngày là khép lại
+   352→   352→                    </p>
+   353→   353→                  )}
+   354→   354→
+   355→   355→                  <div className="mt-3 flex flex-wrap items-center gap-2">
+   356→   356→                    <InkBadge tone="blue">{s.sprint}</InkBadge>
+   357→   357→                    <span className="text-[0.74rem] text-[var(--ink-soft)]">{s.sprintStatus}</span>
+   358→   358→                  </div>
+   359→   359→
+   360→   360→                  <div className="mt-3.5">
+   361→   361→                    <div className="mb-1 flex items-center justify-between text-[0.72rem] font-bold">
+   362→   362→                      <span className="text-[var(--ink-soft)]">Tiến độ</span>
+   363→   363→                      <span className="tabular">{s.progress}%</span>
+   364→   364→                    </div>
+   365→   365→                    <MiniBar
+   366→   366→                      value={s.progress}
+   367→   367→                      tone={
+   368→   368→                        s.status === "closed"
+   369→   369→                          ? "success"
+   370→   370→                          : s.status === "cancelled"
+   371→   371→                            ? "danger"
+   372→   372→                            : "royal"
+   373→   373→                      }
+   374→   374→                      label={`Tiến độ ${s.code}`}
+   375→   375→                    />
+   376→   376→                  </div>
+   377→   377→
+   378→   378→                  <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.72rem] text-[var(--ink-soft)] tabular">
+   379→   379→                    <span className="inline-flex items-center gap-1.5">
+   380→   380→                      <VCalendar size={14} />
+   381→   381→                      {formatDateVN(s.startDate)} → {formatDateVN(s.endDate)}
+   382→   382→                    </span>
+   383→   383→                    {s.memberNames.length > 0 && <AvatarStack names={s.memberNames} max={5} size={24} />}
+   384→   384→                  </div>
+   385→   385→
+   386→   386→                  {s.memberNames.length > 0 && (
+   387→   387→                    <ul className="mt-3 flex flex-wrap gap-1.5">
+   388→   388→                      {shownMembers.map((n, i) => (
+   389→   389→                        <li
+   390→   390→                          key={n}
+   391→   391→                          className="inline-flex items-center gap-1.5 rounded-full border-[1.5px] border-[color-mix(in_srgb,var(--ink)_28%,transparent)] bg-[var(--paper)] px-2 py-0.5 text-[0.68rem] font-semibold"
+   392→   392→                        >
+   393→   393→                          <span
+   394→   394→                            aria-hidden="true"
+   395→   395→                            className="grid h-4 w-4 place-items-center rounded-full bg-[var(--blue-mist)] text-[0.5rem] font-bold text-[var(--royal)]"
+   396→   396→                          >
+   397→   397→                            {initialsOf(n)}
+   398→   398→                          </span>
+   399→   399→                          {n}
+   400→   400→                          <span className="sr-only">— vai trò {MEMBER_ROLES[i % MEMBER_ROLES.length]}</span>
+   401→   401→                        </li>
+   402→   402→                      ))}
+   403→   403→                      {restMembers > 0 && (
+   404→   404→                        <li
+   405→   405→                          title={`Còn lại: ${s.memberNames.slice(5).join(", ")}`}
+   406→   406→                          className="inline-flex items-center rounded-full border-[1.5px] border-dashed border-[color-mix(in_srgb,var(--ink)_35%,transparent)] bg-[var(--paper)] px-2 py-0.5 text-[0.68rem] font-bold text-[var(--ink-soft)]"
+   407→   407→                        >
+   408→   408→                          +{restMembers} nữa
+   409→   409→                        </li>
+   410→   410→                      )}
+   411→   411→                    </ul>
+   412→   412→                  )}
+   413→   413→                  {s.memberNames.length === 0 && (
+   414→   414→                    <p className="mt-3 font-hand text-[0.95rem] text-[var(--ink-soft)]">
+   415→   415→                      Chưa có sinh viên nào tham gia — mời sinh viên vào phiên nhé.
+   416→   416→                    </p>
+   417→   417→                  )}
+   418→   418→
+   419→   419→                  <div className="mt-auto flex flex-wrap items-center gap-2.5 pt-4">
+   420→   420→                    <InkButton variant="outline" size="sm" onClick={() => setDetailId(s.id)}>
+   421→   421→                      Chi tiết
+   422→   422→                    </InkButton>
+   423→   423→                    {s.status === "closed" && (
+   424→   424→                      <button type="button" onClick={() => navigate("reports")} className="link-chip focus-ink">
+   425→   425→                        <VChartColumn size={13} aria-hidden="true" />
+   426→   426→                        Xem báo cáo
+   427→   427→                      </button>
+   428→   428→                    )}
+   429→   429→                  </div>
+   430→   430→                </SketchCard>
+   431→   431→              </StaggerItem>
+   432→   432→            );
+   433→   433→          })}
+   434→   434→        </Stagger>
+   435→   435→      )}
+   436→   436→
+   437→   437→      {/* ===== Dialog mở phiên mới ===== */}
+   438→   438→      <Dialog open={creating} onOpenChange={setCreating}>
+   439→   439→        <DialogContent className="sm:max-w-md">
+   440→   440→          <DialogHeader>
+   441→   441→            <DialogTitle>Mở phiên thực tập mới</DialogTitle>
+   442→   442→            <DialogDescription>
+   443→   443→              Phiên mới sẽ ở trạng thái Sắp mở cho tới khi bạn kích hoạt sprint đầu tiên.
+   444→   444→            </DialogDescription>
+   445→   445→          </DialogHeader>
+   446→   446→          <div className="space-y-4">
+   447→   447→            <div className="space-y-1.5">
+   448→   448→              <Label htmlFor="ss-project">Tên dự án</Label>
+   449→   449→              <Input
+   450→   450→                id="ss-project"
+   451→   451→                value={form.project}
+   452→   452→                onChange={(e) => setForm((f) => ({ ...f, project: e.target.value }))}
+   453→   453→                placeholder="VD: Cổng thông tin thực tập số"
+   454→   454→                className="focus-ink"
+   455→   455→              />
+   456→   456→            </div>
+   457→   457→            <div className="space-y-1.5">
+   458→   458→              <Label htmlFor="ss-start">Ngày bắt đầu</Label>
+   459→   459→              <Input
+   460→   460→                id="ss-start"
+   461→   461→                type="date"
+   462→   462→                value={form.start}
+   463→   463→                onChange={(e) => setForm((f) => ({ ...f, start: e.target.value }))}
+   464→   464→                className="focus-ink"
+   465→   465→              />
+   466→   466→            </div>
+   467→   467→            <div className="space-y-1.5">
+   468→   468→              <Label htmlFor="ss-desc">Mô tả</Label>
+   469→   469→              <Textarea
+   470→   470→                id="ss-desc"
+   471→   471→                value={form.desc}
+   472→   472→                onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))}
+   473→   473→                placeholder="Mục tiêu, phạm vi, kỹ năng sinh viên cần..."
+   474→   474→                rows={3}
+   475→   475→                className="focus-ink resize-none"
+   476→   476→              />
+   477→   477→            </div>
+   478→   478→            {formError && (
+   479→   479→              <p key={formError} role="alert" className="animate-shake-ink text-[0.8rem] font-semibold text-[var(--danger)]">
+   480→   480→                {formError}
+   481→   481→              </p>
+   482→   482→            )}
+   483→   483→            <div className="flex flex-wrap justify-end gap-2.5 pt-1">
+   484→   484→              <InkButton variant="ghost" size="sm" onClick={() => setCreating(false)} disabled={creatingBusy}>
+   485→   485→                Huỷ
+   486→   486→              </InkButton>
+   487→   487→              <span ref={burstRef} className="confetti-pop relative inline-flex">
+   488→   488→                <InkButton variant="royal" size="sm" onClick={submitCreate} disabled={creatingBusy}>
+   489→   489→                  <VPlus size={15} /> {creatingBusy ? "Đang mở phiên…" : "Tạo phiên"}
+   490→   490→                </InkButton>
+   491→   491→              </span>
+   492→   492→            </div>
+   493→   493→          </div>
+   494→   494→        </DialogContent>
+   495→   495→      </Dialog>
+   496→   496→
+   497→   497→      {/* ===== Dialog chi tiết phiên ===== */}
+   498→   498→      <Dialog open={!!detail} onOpenChange={(open) => !open && setDetailId(null)}>
+   499→   499→        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+   500→   500→          {detail && (
+   501→   501→            <>
+   502→   502→              <DialogHeader>
+   503→   503→                <div className="flex flex-wrap items-center gap-2">
+   504→   504→                  <CodeChip className="!text-[0.72rem]">{detail.code}</CodeChip>
+   505→   505→                  <InkBadge tone={STATUS_TONE[detail.status]} dot>
+   506→   506→                    {sessionStatusLabel(detail.status)}
+   507→   507→                  </InkBadge>
+   508→   508→                </div>
+   509→   509→                <DialogTitle className="mt-1.5">{detail.project}</DialogTitle>
+   510→   510→                <DialogDescription>
+   511→   511→                  {formatDateVN(detail.startDate)} → {formatDateVN(detail.endDate)} · {detail.members} sinh viên
+   512→   512→                </DialogDescription>
+   513→   513→              </DialogHeader>
+   514→   514→
+   515→   515→              <div className="flex flex-wrap items-center gap-2">
+   516→   516→                <InkBadge tone="blue">{detail.sprint}</InkBadge>
+   517→   517→                <span className="text-[0.78rem] text-[var(--ink-soft)]">{detail.sprintStatus}</span>
+   518→   518→                <span className="ml-auto text-[0.78rem] font-bold tabular">Tiến độ {detail.progress}%</span>
+   519→   519→              </div>
+   520→   520→              <MiniBar
+   521→   521→                value={detail.progress}
+   522→   522→                tone={detail.status === "closed" ? "success" : "royal"}
+   523→   523→                label={`Tiến độ ${detail.code}`}
+   524→   524→              />
+   525→   525→
+   526→   526→              {/* ===== Hành động vòng đời phiên (codex: SessionLifecycleActions) ===== */}
+   527→   527→              {(detail.status === "active" ||
+   528→   528→                detail.status === "ending" ||
+   529→   529→                detail.status === "upcoming") && (
+   530→   530→                <section
+   531→   531→                  aria-label="Hành động vòng đời phiên"
+   532→   532→                  className="sketch-border-thin space-y-2.5 bg-[var(--paper)] p-3"
+   533→   533→                >
+   534→   534→                  <p className="eyebrow">Vòng đời phiên</p>
+   535→   535→                  <div className="flex flex-wrap items-center gap-2.5">
+   536→   536→                    {detail.status === "active" && (
+   537→   537→                      <InkButton
+   538→   538→                        variant="outline"
+   539→   539→                        size="sm"
+   540→   540→                        disabled={busy}
+   541→   541→                        onClick={() => runTransition(detail, "ending")}
+   542→   542→                        aria-label={`Chuyển phiên ${detail.code} sang Sắp kết thúc`}
+   543→   543→                      >
+   544→   544→                        <VHourglass size={15} />
+   545→   545→                        {busyAction === "ending" ? "Đang xử lý…" : "Chuyển sang Sắp kết thúc"}
+   546→   546→                      </InkButton>
+   547→   547→                    )}
+   548→   548→                    {(detail.status === "active" || detail.status === "ending") && (
+   549→   549→                      <InkButton
+   550→   550→                        variant="royal"
+   551→   551→                        size="sm"
+   552→   552→                        disabled={busy}
+   553→   553→                        onClick={() => setConfirmTransition({ session: detail, next: "closed" })}
+   554→   554→                        aria-label={`Hoàn thành phiên ${detail.code}`}
+   555→   555→                      >
+   556→   556→                        <VFlag size={15} /> Hoàn thành phiên
+   557→   557→                      </InkButton>
+   558→   558→                    )}
+   559→   559→                    <InkButton
+   560→   560→                      variant="coal"
+   561→   561→                      size="sm"
+   562→   562→                      disabled={busy}
+   563→   563→                      onClick={() => setConfirmTransition({ session: detail, next: "cancelled" })}
+   564→   564→                      aria-label={`Hủy phiên ${detail.code}`}
+   565→   565→                    >
+   566→   566→                      <VBan size={15} /> Hủy phiên
+   567→   567→                    </InkButton>
+   568→   568→                  </div>
+   569→   569→                  {lifecycleError && (
+   570→   570→                    <p
+   571→   571→                      key={lifecycleError}
+   572→   572→                      role="alert"
+   573→   573→                      className="animate-shake-ink text-[0.8rem] font-semibold text-[var(--danger)]"
+   574→   574→                    >
+   575→   575→                      {lifecycleError}
+   576→   576→                    </p>
+   577→   577→                  )}
+   578→   578→                </section>
+   579→   579→              )}
+   580→   580→
+   581→   581→              {/* Tóm tắt nhanh trạng thái phân công trong phiên */}
+   582→   582→              <div className="grid grid-cols-3 gap-2.5">
+   583→   583→                {[
+   584→   584→                  {
+   585→   585→                    icon: VGraduation,
+   586→   586→                    label: "Hoàn thành",
+   587→   587→                    value: memberSummary.done,
+   588→   588→                    tone: "text-[var(--success)]",
+   589→   589→                  },
+   590→   590→                  {
+   591→   591→                    icon: VClipboardCheck,
+   592→   592→                    label: "Đang làm",
+   593→   593→                    value: memberSummary.active,
+   594→   594→                    tone: "text-[var(--royal)]",
+   595→   595→                  },
+   596→   596→                  {
+   597→   597→                    icon: VUsers,
+   598→   598→                    label: "Thành viên",
+   599→   599→                    value: memberSummary.total,
+   600→   600→                    tone: "text-[var(--ink)]",
+   601→   601→                  },
+   602→   602→                ].map((t) => (
+   603→   603→                  <div key={t.label} className="sketch-border-thin flex items-center gap-2.5 bg-[var(--paper)] p-2.5">
+   604→   604→                    <t.icon size={18} className={`shrink-0 ${t.tone}`} aria-hidden="true" />
+   605→   605→                    <span className="min-w-0">
+   606→   606→                      <span className="block text-lg font-extrabold leading-none tabular">{t.value}</span>
+   607→   607→                      <span className="block text-[0.66rem] font-bold uppercase tracking-[0.08em] text-[var(--ink-soft)]">
+   608→   608→                        {t.label}
+   609→   609→                      </span>
+   610→   610→                    </span>
+   611→   611→                  </div>
+   612→   612→                ))}
+   613→   613→              </div>
+   614→   614→
+   615→   615→              <div className="mt-1 overflow-x-auto rounded-[10px_12px_10px_12px] border-2 border-[var(--ink)]">
+   616→   616→                <table className="ink-table">
+   617→   617→                  <caption className="sr-only">Danh sách thành viên phiên {detail.code}</caption>
+   618→   618→                  <thead>
+   619→   619→                    <tr>
+   620→   620→                      <th scope="col">Thành viên</th>
+   621→   621→                      <th scope="col">Vai trò</th>
+   622→   622→                      <th scope="col">Phân công</th>
+   623→   623→                      <th scope="col" className="text-right">Thao tác</th>
+   624→   624→                    </tr>
+   625→   625→                  </thead>
+   626→   626→                  <tbody>
+   627→   627→                    {detailRows.map((m) => {
+   628→   628→                      const canComplete =
+   629→   629→                        (detail.status === "active" ||
+   630→   630→                          detail.status === "ending" ||
+   631→   631→                          detail.status === "closed") &&
+   632→   632→                        m.assignmentStatus === "active" &&
+   633→   633→                        m.email !== "";
+   634→   634→                      return (
+   635→   635→                        <tr key={`${m.email || m.name}`}>
+   636→   636→                          <td>
+   637→   637→                            <span className="flex flex-col items-start gap-0.5">
+   638→   638→                              <span className="flex items-center gap-2 font-semibold">
+   639→   639→                                <span
+   640→   640→                                  aria-hidden="true"
+   641→   641→                                  className="grid h-6 w-6 shrink-0 place-items-center rounded-full border-[1.5px] border-[var(--ink)] bg-[var(--blue-mist)] text-[0.58rem] font-bold text-[var(--royal)]"
+   642→   642→                                >
+   643→   643→                                  {initialsOf(m.name)}
+   644→   644→                                </span>
+   645→   645→                                {m.name}
+   646→   646→                              </span>
+   647→   647→                              {m.email && (
+   648→   648→                                <span className="pl-8 font-geist-mono text-[0.64rem] text-[var(--ink-soft)]">
+   649→   649→                                  {m.email}
+   650→   650→                                </span>
+   651→   651→                              )}
+   652→   652→                            </span>
+   653→   653→                          </td>
+   654→   654→                          <td className="text-[var(--ink-soft)]">{m.role}</td>
+   655→   655→                          <td>
+   656→   656→                            {m.assignmentStatus === "completed" ? (
+   657→   657→                              <span className="flex items-center gap-1.5">
+   658→   658→                                <InkBadge tone="green" dot>
+   659→   659→                                  Phân công đã hoàn thành
+   660→   660→                                </InkBadge>
+   661→   661→                              </span>
+   662→   662→                            ) : (
+   663→   663→                              <InkBadge tone="blue" dot>
+   664→   664→                                Đang thực hiện
+   665→   665→                              </InkBadge>
+   666→   666→                            )}
+   667→   667→                          </td>
+   668→   668→                          <td className="text-right">
+   669→   669→                            {canComplete ? (
+   670→   670→                              <InkButton
+   671→   671→                                variant="outline"
+   672→   672→                                size="sm"
+   673→   673→                                disabled={busy}
+   674→   674→                                onClick={() =>
+   675→   675→                                  setAssignmentTarget({
+   676→   676→                                    session: detail,
+   677→   677→                                    member: {
+   678→   678→                                      name: m.name,
+   679→   679→                                      email: m.email,
+   680→   680→                                      assignmentStatus: m.assignmentStatus,
+   681→   681→                                    },
+   682→   682→                                  })
+   683→   683→                                }
+   684→   684→                                aria-label={`Hoàn thành phân công của ${m.name} trong phiên ${detail.code}`}
+   685→   685→                              >
+   686→   686→                                <VCheck size={14} /> Hoàn thành phân công
+   687→   687→                              </InkButton>
+   688→   688→                            ) : (
+   689→   689→                              <>
+   690→   690→                                <span aria-hidden="true" className="font-hand text-[0.95rem] text-[var(--ink-faint)]">
+   691→   691→                                  —
+   692→   692→                                </span>
+   693→   693→                                <span className="sr-only">Không có thao tác</span>
+   694→   694→                              </>
+   695→   695→                            )}
+   696→   696→                          </td>
+   697→   697→                        </tr>
+   698→   698→                      );
+   699→   699→                    })}
+   700→   700→                    {detailRows.length === 0 && (
+   701→   701→                      <tr>
+   702→   702→                        <td colSpan={4} className="py-6 text-center">
+   703→   703→                          <span className="font-hand text-lg text-[var(--ink-soft)]">
+   704→   704→                            Chưa có thành viên — phiên mới toanh ✎
+   705→   705→                          </span>
+   706→   706→                        </td>
+   707→   707→                      </tr>
+   708→   708→                    )}
+   709→   709→                  </tbody>
+   710→   710→                </table>
+   711→   711→              </div>
+   712→   712→
+   713→   713→              <MarginNote>
+   714→   714→                trạng thái phân công lấy từ hệ thống — hoàn tất khi sinh viên đã xong việc được giao
+   715→   715→              </MarginNote>
+   716→   716→
+   717→   717→              <div className="flex flex-wrap justify-end gap-2.5 pt-1">
+   718→   718→                <InkButton variant="ghost" size="sm" onClick={() => setDetailId(null)}>
+   719→   719→                  Đóng
+   720→   720→                </InkButton>
+   721→   721→                <InkButton
+   722→   722→                  variant="royal"
+   723→   723→                  size="sm"
+   724→   724→                  onClick={() => {
+   725→   725→                    setDetailId(null);
+   726→   726→                    navigate("sprints");
+   727→   727→                  }}
+   728→   728→                >
+   729→   729→                  <VKanban size={15} /> Xem sprint board
+   730→   730→                </InkButton>
+   731→   731→              </div>
+   732→   732→            </>
+   733→   733→          )}
+   734→   734→        </DialogContent>
+   735→   735→      </Dialog>
+   736→   736→
+   737→   737→      {/* ===== Modal xác nhận hoàn thành / hủy phiên (chặn đóng khi đang xử lý) ===== */}
+   738→   738→      <Dialog
+   739→   739→        open={confirmTransition !== null}
+   740→   740→        onOpenChange={(open) => {
+   741→   741→          if (!open && busyAction === null) {
+   742→   742→            setConfirmTransition(null);
+   743→   743→            setLifecycleError(null);
+   744→   744→          }
+   745→   745→        }}
+   746→   746→      >
+   747→   747→        <DialogContent className="sm:max-w-md" showCloseButton={busyAction === null}>
+   748→   748→          {confirmTransition && (
+   749→   749→            <>
+   750→   750→              <DialogHeader>
+   751→   751→                <DialogTitle className="flex items-center gap-2 leading-snug">
+   752→   752→                  {confirmTransition.next === "closed" ? (
+   753→   753→                    <VFlag size={18} className="shrink-0 text-[var(--royal)]" aria-hidden="true" />
+   754→   754→                  ) : (
+   755→   755→                    <VBan size={18} className="shrink-0 text-[var(--danger)]" aria-hidden="true" />
+   756→   756→                  )}
+   757→   757→                  {confirmTransition.next === "closed" ? "Hoàn thành phiên?" : "Hủy phiên?"}
+   758→   758→                </DialogTitle>
+   759→   759→                <DialogDescription>
+   760→   760→                  {confirmTransition.next === "closed"
+   761→   761→                    ? "Kiểm tra nhiệm vụ, đánh giá và hoàn tất các phân công trước khi kết thúc phiên. Phiên đã hoàn thành không thể bắt đầu lại; lịch sử được giữ."
+   762→   762→                    : "Phiên đã hủy không thể bắt đầu lại. Hãy kiểm tra đội hình và công việc đang thực hiện trước khi xác nhận; lịch sử được giữ."}
+   763→   763→                </DialogDescription>
+   764→   764→              </DialogHeader>
+   765→   765→              <div className="flex flex-wrap items-center gap-2">
+   766→   766→                <CodeChip className="!text-[0.72rem]">{confirmTransition.session.code}</CodeChip>
+   767→   767→                <InkBadge tone={STATUS_TONE[confirmTransition.session.status]} dot>
+   768→   768→                  {sessionStatusLabel(confirmTransition.session.status)}
+   769→   769→                </InkBadge>
+   770→   770→              </div>
+   771→   771→              {lifecycleError && (
+   772→   772→                <p
+   773→   773→                  key={lifecycleError}
+   774→   774→                  role="alert"
+   775→   775→                  className="animate-shake-ink text-[0.8rem] font-semibold text-[var(--danger)]"
+   776→   776→                >
+   777→   777→                  {lifecycleError}
+   778→   778→                </p>
+   779→   779→              )}
+   780→   780→              <div className="flex flex-wrap justify-end gap-2.5 pt-1">
+   781→   781→                <InkButton
+   782→   782→                  variant="ghost"
+   783→   783→                  size="sm"
+   784→   784→                  disabled={busy}
+   785→   785→                  onClick={() => {
+   786→   786→                    setConfirmTransition(null);
+   787→   787→                    setLifecycleError(null);
+   788→   788→                  }}
+   789→   789→                >
+   790→   790→                  Giữ phiên
+   791→   791→                </InkButton>
+   792→   792→                <InkButton
+   793→   793→                  variant={confirmTransition.next === "cancelled" ? "coal" : "royal"}
+   794→   794→                  size="sm"
+   795→   795→                  disabled={busy}
+   796→   796→                  onClick={() => runTransition(confirmTransition.session, confirmTransition.next)}
+   797→   797→                  aria-label={
+   798→   798→                    confirmTransition.next === "closed"
+   799→   799→                      ? `Xác nhận hoàn thành phiên ${confirmTransition.session.code}`
+   800→   800→                      : `Xác nhận hủy phiên ${confirmTransition.session.code}`
+   801→   801→                  }
+   802→   802→                >
+   803→   803→                  {confirmTransition.next === "closed" ? <VFlag size={15} /> : <VBan size={15} />}
+   804→   804→                  {busyAction === confirmTransition.next
+   805→   805→                    ? "Đang xử lý…"
+   806→   806→                    : confirmTransition.next === "closed"
+   807→   807→                      ? "Xác nhận hoàn thành phiên"
+   808→   808→                      : "Xác nhận hủy phiên"}
+   809→   809→                </InkButton>
+   810→   810→              </div>
+   811→   811→            </>
+   812→   812→          )}
+   813→   813→        </DialogContent>
+   814→   814→      </Dialog>
+   815→   815→
+   816→   816→      {/* ===== Modal xác nhận hoàn thành phân công (chặn đóng khi đang xử lý) ===== */}
+   817→   817→      <Dialog
+   818→   818→        open={assignmentTarget !== null}
+   819→   819→        onOpenChange={(open) => {
+   820→   820→          if (!open && busyAction === null) {
+   821→   821→            setAssignmentTarget(null);
+   822→   822→            setAssignmentError(null);
+   823→   823→          }
+   824→   824→        }}
+   825→   825→      >
+   826→   826→        <DialogContent className="sm:max-w-md" showCloseButton={busyAction === null}>
+   827→   827→          {assignmentTarget && (
+   828→   828→            <>
+   829→   829→              <DialogHeader>
+   830→   830→                <DialogTitle className="flex items-center gap-2 leading-snug">
+   831→   831→                  <VClipboardCheck size={18} className="shrink-0 text-[var(--success)]" aria-hidden="true" />
+   832→   832→                  Hoàn thành phân công?
+   833→   833→                </DialogTitle>
+   834→   834→                <DialogDescription>
+   835→   835→                  Xác nhận <b className="font-semibold text-[var(--ink)]">{assignmentTarget.member.name}</b> đã
+   836→   836→                  hoàn tất công việc được giao. Phân công sẽ kết thúc và sinh viên có thể được giao vào phiên
+   837→   837→                  khác. Thành viên, bài nộp và lịch sử của phiên này được giữ lại.
+   838→   838→                </DialogDescription>
+   839→   839→              </DialogHeader>
+   840→   840→              <div className="flex flex-wrap items-center gap-2">
+   841→   841→                <CodeChip className="!text-[0.72rem]">{assignmentTarget.session.code}</CodeChip>
+   842→   842→                <InkBadge tone="blue" dot>
+   843→   843→                  {assignmentTarget.member.email}
+   844→   844→                </InkBadge>
+   845→   845→              </div>
+   846→   846→              {assignmentError && (
+   847→   847→                <p
+   848→   848→                  key={assignmentError}
+   849→   849→                  role="alert"
+   850→   850→                  className="animate-shake-ink text-[0.8rem] font-semibold text-[var(--danger)]"
+   851→   851→                >
+   852→   852→                  {assignmentError}
+   853→   853→                </p>
+   854→   854→              )}
+   855→   855→              <div className="flex flex-wrap justify-end gap-2.5 pt-1">
+   856→   856→                <InkButton
+   857→   857→                  variant="ghost"
+   858→   858→                  size="sm"
+   859→   859→                  disabled={busy}
+   860→   860→                  onClick={() => {
+   861→   861→                    setAssignmentTarget(null);
+   862→   862→                    setAssignmentError(null);
+   863→   863→                  }}
+   864→   864→                >
+   865→   865→                  Giữ phân công
+   866→   866→                </InkButton>
+   867→   867→                <InkButton
+   868→   868→                  variant="royal"
+   869→   869→                  size="sm"
+   870→   870→                  disabled={busy}
+   871→   871→                  onClick={() => runAssignmentComplete(assignmentTarget.session, assignmentTarget.member)}
+   872→   872→                  aria-label={`Xác nhận hoàn thành phân công của ${assignmentTarget.member.name}`}
+   873→   873→                >
+   874→   874→                  <VCheck size={15} />
+   875→   875→                  {busyAction === "assignment"
+   876→   876→                    ? "Đang xử lý…"
+   877→   877→                    : "Xác nhận hoàn thành phân công"}
+   878→   878→                </InkButton>
+   879→   879→              </div>
+   880→   880→            </>
+   881→   881→          )}
+   882→   882→        </DialogContent>
+   883→   883→      </Dialog>
+   884→   884→
+   885→   885→      <FadeIn delay={0.1}>
+   886→   886→        <p className="flex items-center gap-2 text-[0.75rem] text-[var(--ink-soft)]">
+   887→   887→          <VUsers size={14} />
+   888→   888→          Mọi thay đổi vòng đời phiên (kết thúc, hủy) và phân công đều ghi vào nhật ký hệ thống.
+   889→   889→        </p>
+   890→   890→      </FadeIn>
+   891→   891→    </div>
+   892→   892→  );
+   893→   893→}
+   894→   894→
