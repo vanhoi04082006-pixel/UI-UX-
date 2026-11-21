@@ -6,15 +6,16 @@ import type { Role, SessionUser } from "@/lib/mock/types";
 /* =====================================================================
  * V-INTERN STORE — bộ máy điều hướng ảo (SPA một route "/").
  * view: landing → auth → app; route là "đường dẫn ảo" theo vai trò.
+ * Bổ sung view công khai: apply (ứng tuyển) + verify (tra cứu chứng chỉ).
  *
  * Bản nâng cấp v2:
  *  · Session persistence — localStorage "v-intern-session" (chỉ client,
  *    hydrate() gọi sau mount nên không lệch hydration).
- *  · Hash routing — #/landing · #/auth · #/{role}/{route}; nút Back/
- *    Forward của trình duyệt hoạt động, chia sẻ được đường dẫn sâu.
+ *  · Hash routing — #/landing · #/auth · #/apply · #/verify · #/{role}/{route};
+ *    nút Back/Forward của trình duyệt hoạt động, chia sẻ được đường dẫn sâu.
  * ===================================================================== */
 
-export type AppView = "landing" | "auth" | "app";
+export type AppView = "landing" | "auth" | "app" | "apply" | "verify";
 
 const SESSION_KEY = "v-intern-session";
 
@@ -31,7 +32,12 @@ export const NAV_CONFIG: Record<
           { key: "work", label: "Công việc của tôi" },
           { key: "sprint", label: "Sprint Board" },
           { key: "mentor", label: "AI Mentor" },
+          { key: "github", label: "GitHub" },
         ],
+      },
+      {
+        label: "Tuyển dụng",
+        items: [{ key: "recruitment", label: "Phỏng vấn AI" }],
       },
       {
         label: "Năng lực & kết quả",
@@ -39,6 +45,7 @@ export const NAV_CONFIG: Record<
           { key: "evaluations", label: "Đánh giá" },
           { key: "kpi", label: "KPI & Lương ảo" },
           { key: "certificates", label: "Chứng nhận" },
+          { key: "performance", label: "Năng lực & Khuyến nghị" },
         ],
       },
       {
@@ -57,15 +64,23 @@ export const NAV_CONFIG: Record<
         items: [
           { key: "overview", label: "Tổng quan" },
           { key: "sessions", label: "Phiên thực tập" },
+          { key: "operations", label: "Điều phối phiên" },
           { key: "sprints", label: "Sprint & Task" },
+          { key: "projects", label: "Dự án & Mẫu" },
         ],
       },
       {
         label: "Theo dõi & đánh giá",
         items: [
           { key: "grading", label: "Chấm bài" },
+          { key: "evaluations", label: "Chu kỳ đánh giá" },
+          { key: "performance", label: "Hiệu suất SV" },
           { key: "reports", label: "Báo cáo" },
         ],
+      },
+      {
+        label: "Trợ lý AI",
+        items: [{ key: "ai-plan", label: "Lập kế hoạch AI" }],
       },
       {
         label: "Cá nhân",
@@ -83,6 +98,9 @@ export const NAV_CONFIG: Record<
         items: [
           { key: "overview", label: "Tổng quan" },
           { key: "users", label: "Người dùng" },
+          { key: "groups", label: "Nhóm & Phân quyền" },
+          { key: "recruitment", label: "Vòng tuyển dụng" },
+          { key: "audit", label: "Nhật ký hệ thống" },
         ],
       },
       {
@@ -90,7 +108,17 @@ export const NAV_CONFIG: Record<
         items: [
           { key: "questions", label: "Ngân hàng câu hỏi" },
           { key: "templates", label: "Mẫu dự án" },
+          { key: "projects", label: "Dự án đang chạy" },
+          { key: "cycles", label: "Chu kỳ đánh giá" },
+          { key: "kpi", label: "KPI & Lương ảo" },
+          { key: "knowledge", label: "Thư viện kiến thức" },
+          { key: "catalogs", label: "Danh mục & Nghề nghiệp" },
+          { key: "certificates", label: "Chứng nhận" },
         ],
+      },
+      {
+        label: "Hệ thống",
+        items: [{ key: "system", label: "Vận hành & Cấu hình" }],
       },
       {
         label: "Cá nhân",
@@ -133,6 +161,8 @@ function parseHash(): { view: AppView; route: string } | null {
   if (!raw) return null;
   if (raw === "landing") return { view: "landing", route: "overview" };
   if (raw === "auth") return { view: "auth", route: "overview" };
+  if (raw === "apply") return { view: "apply", route: "overview" };
+  if (raw === "verify") return { view: "verify", route: "overview" };
   // #/{role}/{route} — user được lấy từ localStorage ở caller
   const role = roleFromHash(raw);
   if (role) {
@@ -145,6 +175,8 @@ function parseHash(): { view: AppView; route: string } | null {
 function buildHash(view: AppView, user: SessionUser | null, route: string): string {
   if (view === "app" && user) return `#/${user.role}/${route}`;
   if (view === "auth") return "#/auth";
+  if (view === "apply") return "#/apply";
+  if (view === "verify") return "#/verify";
   return "#/landing";
 }
 
@@ -159,6 +191,10 @@ interface AppState {
   enterAuth: () => void;
   /** Về trang chủ công khai */
   goLanding: () => void;
+  /** Cổng ứng tuyển công khai (giữ nguyên phiên nếu đã đăng nhập). */
+  goApply: () => void;
+  /** Trang tra cứu chứng chỉ công khai. */
+  goVerify: () => void;
   /** Đăng nhập thành công */
   login: (user: SessionUser) => void;
   logout: () => void;
@@ -195,29 +231,47 @@ export const useApp = create<AppState>((set, get) => ({
     if (user) {
       const h = hash?.view === "app" ? hash : null;
       const route = h && canNavigate(user.role, h.route) ? h.route : "overview";
-      set({ view: "app", user, route });
+      if (hash?.view === "apply" || hash?.view === "verify") {
+        set({ view: hash.view, user, route: "overview" });
+      } else {
+        set({ view: "app", user, route });
+      }
     } else if (hash?.view === "auth") {
       set({ view: "auth" });
+    } else if (hash?.view === "apply" || hash?.view === "verify") {
+      set({ view: hash.view });
     } else {
       set({ view: "landing" });
     }
-    // Lắng nghe Back/Forward của trình duyệt
-    window.addEventListener("popstate", () => {
+    // Lắng nghe Back/Forward + hashchange của trình duyệt (hash đổi không
+    // qua popstate ở một số trường hợp navigate cùng trang).
+    const syncHash = () => {
       const state = get();
       const p = parseHash();
       if (!p) return;
       suppressHash = true;
-      if (p.view !== "app" || !state.user) {
+      if (p.view === "apply" || p.view === "verify") {
+        /* View công khai — giữ nguyên phiên đang đăng nhập. */
+        set({ view: p.view, sidebarOpen: false });
+      } else if (p.view !== "app" || !state.user) {
         set({ view: p.view, user: null, route: "overview", sidebarOpen: false });
       } else {
-        set({ route: canNavigate(state.user.role, p.route) ? p.route : "overview", sidebarOpen: false });
+        set({
+          view: "app",
+          route: canNavigate(state.user.role, p.route) ? p.route : "overview",
+          sidebarOpen: false,
+        });
       }
       window.setTimeout(() => (suppressHash = false), 0);
-    });
+    };
+    window.addEventListener("popstate", syncHash);
+    window.addEventListener("hashchange", syncHash);
   },
 
   enterAuth: () => set({ view: "auth", user: null, route: "overview" }),
   goLanding: () => set({ view: "landing", user: null, route: "overview" }),
+  goApply: () => set({ view: "apply", route: "overview", sidebarOpen: false }),
+  goVerify: () => set({ view: "verify", route: "overview", sidebarOpen: false }),
 
   login: (user) => {
     set({ view: "app", user, route: "overview", sidebarOpen: false });

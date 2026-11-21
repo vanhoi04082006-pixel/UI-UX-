@@ -5,9 +5,12 @@ import { useEffect } from "react";
 import AppShell from "@/components/shell/app-shell";
 import Landing from "@/components/landing/landing";
 import AuthScreen from "@/components/auth/auth-screen";
+import ApplyPortal from "@/components/public/apply-portal";
+import VerifyPortal from "@/components/public/verify-portal";
 import { useApp } from "@/lib/store";
 
-/* Trang duy nhất "/" — máy trạng thái: landing → auth → app.
+/* Trang duy nhất "/" — máy trạng thái: landing → auth → app
+ * + hai view công khai: apply (ứng tuyển) · verify (tra cứu chứng chỉ).
  * Toàn bộ "điều hướng" diễn ra trong store (SPA một route) + hash routing. */
 
 export default function Page() {
@@ -36,6 +39,30 @@ export default function Page() {
           transition={{ duration: 0.28 }}
         >
           <Landing />
+        </motion.div>
+      )}
+      {view === "apply" && (
+        <motion.div
+          key="apply"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -14 }}
+          transition={{ duration: 0.28, ease: [0.21, 0.47, 0.32, 0.98] }}
+          className="min-h-screen"
+        >
+          <ApplyPortal />
+        </motion.div>
+      )}
+      {view === "verify" && (
+        <motion.div
+          key="verify"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -14 }}
+          transition={{ duration: 0.28, ease: [0.21, 0.47, 0.32, 0.98] }}
+          className="min-h-screen"
+        >
+          <VerifyPortal />
         </motion.div>
       )}
       {view === "auth" && (
