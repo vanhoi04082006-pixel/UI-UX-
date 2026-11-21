@@ -16,7 +16,7 @@ import {
   sendMentorMessage,
 } from "@/lib/api/mentor";
 import { useApi } from "@/lib/use-api";
-import type { MentorConversation, MentorMessage } from "@/lib/mock/types";
+import type { MentorConversation, MentorMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   Eyebrow,

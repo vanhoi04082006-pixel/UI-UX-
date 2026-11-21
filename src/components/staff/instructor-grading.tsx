@@ -33,7 +33,7 @@ import {
 import { InkBadge, MarginNote, SketchCard, StampMoc, formatDateTimeVN } from "@/components/notebook/ui";
 import { useApi } from "@/lib/use-api";
 import { listSubmissions, reviewSubmission } from "@/lib/api/instructor";
-import type { GradingItem } from "@/lib/mock/types";
+import type { GradingItem } from "@/lib/types";
 
 /* =====================================================================
  * CHẤM BÀI — AI chấm nháp trước, giảng viên chốt điểm chính thức.

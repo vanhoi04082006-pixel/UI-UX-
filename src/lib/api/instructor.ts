@@ -4,7 +4,7 @@
  * submissions, reports. Đã CHỈNH THEO CONTRACT BE THẬT (giữ nguyên export
  * names cho các màn instructor-* cũ):
  *   · GET /sessions, /sprints, /tasks      → { data, meta }
- *   · GET /dashboard/instructor            → object phẳng (metrics đếm khác mock)
+ *   · GET /dashboard/instructor            → object phẳng (metrics đếm)
  *   · GET /reports                         → { items, total } (KHÔNG nhận pageSize)
  *   · Chuyển trạng thái phiên: PATCH /sessions/{id} (BE không có /status;
  *     "closed" của màn cũ → "completed" của BE)
@@ -24,7 +24,7 @@ import type {
   Sprint,
   SprintBoard,
   TaskStatus,
-} from "@/lib/mock/types";
+} from "@/lib/types";
 
 /* ------------------------------ dashboard ------------------------------ */
 
@@ -34,7 +34,7 @@ export interface InstructorDashboard {
   pendingQueue: GradingItem[];
 }
 
-/** Phiên dạng mock của màn cũ — map phòng thủ từ shape BE thật. */
+/** Phiên hiển thị của màn instructor — map phòng thủ từ shape BE thật. */
 function parseSession(value: unknown): InstructorSession {
   const v = record(value);
   const name = nullable(v.name, string) ?? "";

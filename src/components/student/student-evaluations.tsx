@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { listMyEvaluations } from "@/lib/api/outcomes";
 import { useApi } from "@/lib/use-api";
-import type { Evaluation } from "@/lib/mock/types";
+import type { Evaluation } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   InkBadge,

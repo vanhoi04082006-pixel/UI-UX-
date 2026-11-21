@@ -1,14 +1,9 @@
 /* =====================================================================
- * API CLIENT — port 1:1 từ production V-Intern-FE (src/lib/auth/api-client.ts).
+ * API CLIENT — gọi thẳng BE thật (port 1:1 từ production V-Intern-FE).
  *
- * SWAP SANDBOX → PRODUCTION:
- *  · Muốn dùng BE thật: đặt NEXT_PUBLIC_API_BASE_URL (vd
- *    http://localhost:8080/api/v1) trong .env.local → mọi request đi ra BE,
- *    không sửa bất kỳ màn hình/nào của app.
- *  · Chưa đặt (mặc định sandbox) → request đi tới mock REST nội bộ
- *    /api/v1/** (route src/app/api/v1/[...path]) — "fake server" giả hợp
- *    đồng thật để preview.
- *  · Khi tải src về: xóa thư mục src/app/api/v1 + src/lib/mock là sạch mock.
+ * Bắt buộc cấu hình NEXT_PUBLIC_API_BASE_URL (vd https://host/api/v1)
+ * trong .env — thiếu biến này mọi request sẽ ném API_CONFIG_MISSING
+ * (không còn fallback mock nội bộ).
  * ===================================================================== */
 
 export class ApiError extends Error {
@@ -27,9 +22,9 @@ export function getApiBaseUrl(): string {
     .trim()
     .replace(/\/+$/, "");
 }
-/** Sandbox: chưa cấu hình base → dùng mock REST nội bộ (relative /api/v1). */
+/** Đã cấu hình NEXT_PUBLIC_API_BASE_URL? Chưa có → app từ chối gọi API. */
 export function isApiConfigured(): boolean {
-  return true;
+  return !!getApiBaseUrl();
 }
 export interface ApiFetchOptions {
   method?: string;
@@ -54,16 +49,22 @@ export async function apiFetch(
   }: ApiFetchOptions = {},
 ): Promise<unknown> {
   const base = getApiBaseUrl();
-  const url = base ? `${base}${path}` : `/api/v1${path}`;
+  if (!base)
+    throw new ApiError(
+      0,
+      "API_CONFIG_MISSING",
+      "NEXT_PUBLIC_API_BASE_URL chưa được cấu hình.",
+    );
+  const url = `${base}${path}`;
   let response: Response;
   try {
     response = await fetch(url, {
       method,
       cache: "no-store",
       signal,
-      /* Cross-site tới BE thật (tunnel): refresh cookie HttpOnly cần credentials
+      /* Cross-site tới BE (tunnel/domain): refresh cookie HttpOnly cần credentials
        * (BE đã bật SameSite=None + Secure + CORS allow-credentials). */
-      credentials: base ? "include" : "same-origin",
+      credentials: "include",
       headers: {
         ...(formData || body === undefined ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

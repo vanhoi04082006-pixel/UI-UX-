@@ -48,7 +48,7 @@ import { useApp } from "@/lib/store";
 import { useApi } from "@/lib/use-api";
 import { getAdminDashboardView, listActivity } from "@/lib/api/admin";
 import type { AdminDashboardView } from "@/lib/api/admin";
-import type { ActivityItem, AdminUserRow } from "@/lib/mock/types";
+import type { ActivityItem, AdminUserRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   CountUpNumber,

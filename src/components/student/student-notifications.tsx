@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useApp } from "@/lib/store";
 import { listNotifications, markNotificationsRead, markNotificationsUnread } from "@/lib/api/outcomes";
 import { useApi } from "@/lib/use-api";
-import type { NotificationCategory, NotificationItem } from "@/lib/mock/types";
+import type { NotificationCategory, NotificationItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { InkBadge, formatDateTimeVN } from "@/components/notebook/ui";
 import { FadeIn, InkButton } from "@/components/notebook/reveal";
@@ -21,7 +21,7 @@ import { ErrorPanel, LoadingPanel, PageHeading } from "./nb-kit-5c2";
 
 /* =====================================================================
  * THÔNG BÁO — hộp thư sinh viên, nhóm theo ngày, điều hướng nhanh.
- * Trạng thái "đã đọc" ghi lên máy chủ mock (POST notifications/read |
+ * Trạng thái "đã đọc" ghi lên BE (POST notifications/read |
  * unread) qua ShellNotifContext — badge chuông sidebar dùng chung số
  * chưa đọc, cập nhật ngay khi thao tác ở đây.
  * ====================================================================== */

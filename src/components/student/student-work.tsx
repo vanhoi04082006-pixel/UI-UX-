@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { listMyTasks } from "@/lib/api/work";
 import { useApi } from "@/lib/use-api";
-import type { Priority, Task, TaskStatus } from "@/lib/mock/types";
+import type { Priority, Task, TaskStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {

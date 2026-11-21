@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { Role, SessionUser } from "@/lib/mock/types";
+import type { Role, SessionUser } from "@/lib/types";
 
 /* =====================================================================
  * V-INTERN STORE — bộ máy điều hướng ảo (SPA một route "/").

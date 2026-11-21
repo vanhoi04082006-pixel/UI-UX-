@@ -13,7 +13,7 @@
  * ===================================================================== */
 import { request } from "./client";
 import { array, nullable, record, string } from "./parse";
-import type { MentorConversation, MentorMessage } from "@/lib/mock/types";
+import type { MentorConversation, MentorMessage } from "@/lib/types";
 
 /* --------------------- parser dạng BE thật --------------------- */
 

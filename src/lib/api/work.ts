@@ -17,7 +17,7 @@
 import { request } from "./client";
 import { ApiError } from "./api-client";
 import { array, parsePage, record } from "./parse";
-import type { InternOverview, Task, TaskStatus } from "@/lib/mock/types";
+import type { InternOverview, Task, TaskStatus } from "@/lib/types";
 
 /* --------------------- helpers parse defensive --------------------- */
 

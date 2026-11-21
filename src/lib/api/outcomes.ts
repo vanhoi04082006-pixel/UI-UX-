@@ -24,7 +24,7 @@ import type {
   NotificationItem,
   Role,
   SalaryEntry,
-} from "@/lib/mock/types";
+} from "@/lib/types";
 
 /* --------------------- helpers parse defensive --------------------- */
 
@@ -217,7 +217,7 @@ function mapCategory(raw: string | null): NotificationItem["category"] {
   const key = raw.toLowerCase();
   const vn = CATEGORY_VN[key];
   if (vn) return vn as NotificationItem["category"];
-  /* BE/mock có thể trả sẵn nhãn tiếng Việt — giữ nguyên. */
+  /* BE có thể trả sẵn nhãn tiếng Việt — giữ nguyên. */
   return raw as NotificationItem["category"];
 }
 

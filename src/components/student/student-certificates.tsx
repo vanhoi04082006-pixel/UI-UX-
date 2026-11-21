@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useApp } from "@/lib/store";
 import { listMyCertificates } from "@/lib/api/outcomes";
 import { useApi } from "@/lib/use-api";
-import type { Certificate } from "@/lib/mock/types";
+import type { Certificate } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {

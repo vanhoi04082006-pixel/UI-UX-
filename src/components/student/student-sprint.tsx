@@ -25,7 +25,7 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { motion } from "framer-motion";
 import { getMySprintBoard, listMyTasks, type SprintBoardView } from "@/lib/api/work";
 import { useApi } from "@/lib/use-api";
-import type { Task, TaskStatus } from "@/lib/mock/types";
+import type { Task, TaskStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   Eyebrow,
@@ -77,7 +77,7 @@ export default function StudentSprint() {
   );
 
   /* Trạng thái sprint đọc từ bảng chung (board sinh viên và giảng viên dùng
-   * chung một mock) — chỉ cần trường `status` (codex: sprint terminal). */
+   * BE) — chỉ cần trường `status` (codex: sprint terminal). */
   const board = useApi<SprintBoardView>(() => getMySprintBoard(), []);
   const sprintStatus = board.data?.status;
   const boardLocked = sprintStatus === "completed" || sprintStatus === "cancelled";

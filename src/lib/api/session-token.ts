@@ -1,7 +1,7 @@
 "use client";
 /* =====================================================================
  * SESSION TOKEN — lưu accessToken do /auth/login cấp (localStorage).
- * Sandbox mock token không hết hạn; khi swap sang BE thật, cookie/refresh
+ * Access token TTL ngắn (15 phút); khi hết hạn, cookie/refresh
  * sẽ nằm ở đây (production dùng cookie coordination — xem repo thật).
  * ===================================================================== */
 

@@ -26,7 +26,7 @@ import {
   type VIconComponent,
 } from "@/components/icons/v-icons";
 import { cn } from "@/lib/utils";
-import type { Priority, Task, TaskStatus } from "@/lib/mock/types";
+import type { Priority, Task, TaskStatus } from "@/lib/types";
 
 /* ------------------------- Hạn chót nhiệm vụ ------------------------- */
 

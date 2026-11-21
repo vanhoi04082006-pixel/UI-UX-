@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { listMyKpi, listMySalaryLedger } from "@/lib/api/outcomes";
 import { useApi } from "@/lib/use-api";
-import type { KpiMetric, KpiRecord, SalaryEntry } from "@/lib/mock/types";
+import type { KpiMetric, KpiRecord, SalaryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   InkBadge,

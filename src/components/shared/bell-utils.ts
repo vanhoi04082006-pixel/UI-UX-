@@ -7,7 +7,7 @@ import {
   markNotificationsRead,
   markNotificationsUnread,
 } from "@/lib/api/outcomes";
-import type { NotificationItem, Role, SessionUser } from "@/lib/mock/types";
+import type { NotificationItem, Role, SessionUser } from "@/lib/types";
 
 /* =====================================================================
  * BELL UTILS — dữ liệu chuông thông báo dùng chung shell.

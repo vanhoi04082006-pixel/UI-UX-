@@ -60,7 +60,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { NAV_CONFIG, routeLabel, useApp } from "@/lib/store";
-import type { InternState, Role, SessionUser } from "@/lib/mock/types";
+import type { InternState, Role, SessionUser } from "@/lib/types";
 import type { VIconComponent } from "@/components/icons/v-icons";
 
 import StudentOverview from "@/components/student/student-overview";

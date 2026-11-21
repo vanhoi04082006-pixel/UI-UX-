@@ -59,7 +59,7 @@ import type {
   GradingItem,
   InstructorSession,
   SprintBoard,
-} from "@/lib/mock/types";
+} from "@/lib/types";
 
 /* =====================================================================
  * TỔNG QUAN GIẢNG DẠY — Sổ tay hành trình, vai trò giảng viên.

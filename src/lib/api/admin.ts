@@ -24,7 +24,7 @@
 import { request } from "./client";
 import { array, nullable, number, parsePage, record, string } from "./parse";
 import { ApiError } from "./api-client";
-import type { AccountStatus, ActivityItem, AdminUserRow, Role } from "@/lib/mock/types";
+import type { AccountStatus, ActivityItem, AdminUserRow, Role } from "@/lib/types";
 
 /* ------------------------------ dashboard ------------------------------ */
 

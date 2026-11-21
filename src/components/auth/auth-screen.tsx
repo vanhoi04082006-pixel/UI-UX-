@@ -42,11 +42,10 @@ import {
 } from "@/components/notebook/doodles";
 import { InkButton } from "@/components/notebook/reveal";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
-import { DemoAccountPanel, type DemoAccountRow } from "./demo-account-panel";
 import { ApiError } from "@/lib/api/api-client";
 import { changePassword, login as apiLogin, register } from "@/lib/api/auth";
 import { useApp } from "@/lib/store";
-import type { Role, SessionUser } from "@/lib/mock/types";
+import type { Role, SessionUser } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /* =====================================================================
@@ -464,7 +463,6 @@ export default function AuthScreen() {
   const login = useApp((s) => s.login);
 
   const [tab, setTab] = useState<TabKey>("login");
-  const [demoBusyId, setDemoBusyId] = useState<string | null>(null);
 
   /* --- đăng nhập --- */
   const [email, setEmail] = useState("");
@@ -509,13 +507,17 @@ export default function AuthScreen() {
 
   /* ------------------------------ effects ------------------------------ */
 
-  /* Đọc email được ghi nhớ từ lần đăng nhập trước (chỉ chạy phía client). */
+  /* Đọc email được ghi nhớ từ lần đăng nhập trước (chỉ chạy phía client).
+   * Đọc qua rAF — không setState đồng bộ trong effect (tránh cascading render). */
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(REMEMBER_KEY);
       if (saved) {
-        setEmail(saved);
-        setRemember(true);
+        const id = window.requestAnimationFrame(() => {
+          setEmail(saved);
+          setRemember(true);
+        });
+        return () => window.cancelAnimationFrame(id);
       }
     } catch {
       /* localStorage bị chặn — bỏ qua */
@@ -600,23 +602,6 @@ export default function AuthScreen() {
       return;
     }
     await runLogin(nextEmail, password);
-  }
-
-  async function handleDemoPick(account: DemoAccountRow) {
-    if (cpCtx !== null || demoBusyId !== null || loginStatus === "submitting") return;
-    setTab("login");
-    setEmail(account.email);
-    setPassword(account.password);
-    setLoginError(null);
-    setLoginNotice(null);
-    setLockedMsg(null);
-    setDemoBusyId(account.id);
-    try {
-      /* Tài khoản bị khóa vẫn bấm được — để form đăng nhập "sống dậy" với lỗi 403 một cách tự nhiên. */
-      await runLogin(account.email, account.password);
-    } finally {
-      setDemoBusyId(null);
-    }
   }
 
   async function handleRegisterSubmit(e: FormEvent<HTMLFormElement>) {
@@ -1429,10 +1414,6 @@ export default function AuthScreen() {
               <PaperclipDoodle className="absolute -right-3.5 -top-6 z-10 h-14 w-9 text-[var(--ink)] opacity-85" />
             </div>
 
-            {/* Dải tài khoản demo — ẩn khi đang ở luồng đổi mật khẩu bắt buộc */}
-            {cpCtx === null ? (
-              <DemoAccountPanel onPick={handleDemoPick} pendingId={demoBusyId} />
-            ) : null}
           </div>
         </div>
       </main>

@@ -40,7 +40,7 @@ import {
 import { InkBadge, MarginNote, NoteCard, SketchCard, Tape } from "@/components/notebook/ui";
 import { useApi } from "@/lib/use-api";
 import { listReports, listSessions } from "@/lib/api/instructor";
-import type { InstructorSession, ReportRow } from "@/lib/mock/types";
+import type { InstructorSession, ReportRow } from "@/lib/types";
 
 /* =====================================================================
  * BÁO CÁO — số liệu tổng hợp theo sprint và phiên.

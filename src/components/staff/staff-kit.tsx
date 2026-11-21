@@ -11,7 +11,7 @@ import {
 import { VAlert, VRefresh, type VIconComponent } from "@/components/icons/v-icons";
 import { InkButton } from "@/components/notebook/reveal";
 import { Eyebrow, MarginNote, SketchCard, formatDateTimeVN } from "@/components/notebook/ui";
-import type { Role } from "@/lib/mock/types";
+import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /* =====================================================================

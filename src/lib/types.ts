@@ -1,5 +1,7 @@
 /* =====================================================================
- * V-INTERN MOCK TYPES — hợp đồng dữ liệu dùng chung FE/BE mock.
+ * V-INTERN DOMAIN TYPES — hợp đồng dữ liệu dùng chung toàn app FE.
+ * (Tách từ thư mục mock cũ khi loại bỏ mock khỏi hệ thống — production
+ * chỉ gọi BE thật qua NEXT_PUBLIC_API_BASE_URL.)
  * ===================================================================== */
 
 export type Role = "intern" | "instructor" | "admin";
@@ -22,20 +24,6 @@ export interface SessionUser {
   initials: string;
   internState?: InternState;
   mustChangePassword?: boolean;
-}
-
-export interface MockAccount {
-  id: string;
-  email: string;
-  password: string;
-  name: string;
-  role: Role;
-  status: AccountStatus;
-  title: string;
-  internState?: InternState;
-  /** true → sau đăng nhập phải đổi mật khẩu mặc định trước khi dùng tiếp. */
-  mustChangePassword?: boolean;
-  note: string;
 }
 
 /* ------------------------------ INTERN ------------------------------ */
@@ -290,10 +278,4 @@ export interface NotificationItem {
   body: string;
   at: string;
   read: boolean;
-}
-
-export interface ApiEnvelope<T> {
-  ok: boolean;
-  data: T;
-  message?: string;
 }

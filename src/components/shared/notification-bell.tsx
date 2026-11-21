@@ -6,13 +6,13 @@ import { VBell, VCheckCheck, VInbox } from "@/components/icons/v-icons";
 import { InkBadge } from "@/components/notebook/ui";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/lib/store";
-import type { NotificationItem } from "@/lib/mock/types";
+import type { NotificationItem } from "@/lib/types";
 import { notifRouteFor, notifToneFor, relativeTimeVN, useShellNotif } from "./bell-utils";
 
 /* =====================================================================
  * Chuông thông báo — dữ liệu server-persisted qua ShellNotifContext
  * (shell là chủ sở hữu state: poll 45s + visibilitychange, POST
- * read/unread lên mock API). Badge sidebar "Thông báo" dùng chung
+ * read/unread lên BE). Badge sidebar "Thông báo" dùng chung
  * unreadCount từ context này.
  * ===================================================================== */
 export function NotificationBell() {

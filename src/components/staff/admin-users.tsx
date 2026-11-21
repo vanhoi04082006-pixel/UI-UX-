@@ -42,7 +42,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { AdminUserRow, Role } from "@/lib/mock/types";
+import type { AdminUserRow, Role } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 import {
   adminErrorMessage,

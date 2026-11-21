@@ -44,8 +44,8 @@ import { useApp } from "@/lib/store";
 import { useApi } from "@/lib/use-api";
 import { completeAssignment, listSessions, transitionSessionStatus } from "@/lib/api/instructor";
 import { staffApiErrorMessage } from "@/components/staff/staff-api";
-import { sessionStatusLabel } from "@/lib/mock/data";
-import type { InstructorSession, SessionMember, SessionStatus } from "@/lib/mock/types";
+import { sessionStatusLabel } from "@/lib/status-labels";
+import type { InstructorSession, SessionMember, SessionStatus } from "@/lib/types";
 
 /* =====================================================================
  * PHIÊN THỰC TẬP — quản lý các phiên đang mở / đã kết thúc.

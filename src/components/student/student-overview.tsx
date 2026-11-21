@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useApp } from "@/lib/store";
 import { getInternOverview } from "@/lib/api/work";
 import { useApi } from "@/lib/use-api";
-import type { InternOverview, Task } from "@/lib/mock/types";
+import type { InternOverview, Task } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   Eyebrow,

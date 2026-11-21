@@ -6,7 +6,7 @@ import { useApp } from "@/lib/store";
 import { listMyEvaluations, listMyKpi } from "@/lib/api/outcomes";
 import { listMyTasks } from "@/lib/api/work";
 import { useApi } from "@/lib/use-api";
-import type { Evaluation, InternState, KpiRecord, Task } from "@/lib/mock/types";
+import type { Evaluation, InternState, KpiRecord, Task } from "@/lib/types";
 import { InkBadge, NoteCard, SketchCard } from "@/components/notebook/ui";
 import { FadeIn, InkButton } from "@/components/notebook/reveal";
 import {

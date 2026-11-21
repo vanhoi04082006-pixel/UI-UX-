@@ -18,7 +18,7 @@ import {
   useShellNotif,
 } from "@/components/shared/bell-utils";
 import { Switch } from "@/components/ui/switch";
-import type { NotificationItem, Role } from "@/lib/mock/types";
+import type { NotificationItem, Role } from "@/lib/types";
 import { routeLabel, useApp } from "@/lib/store";
 import { useApi } from "@/lib/use-api";
 import { listNotifications } from "@/lib/api/outcomes";
@@ -28,7 +28,7 @@ import { ChipGroup, EmptyState, PencilLines, SectionError, StaffPageHeader } fro
 /* =====================================================================
  * THÔNG BÁO — dùng chung cho Giảng viên & Quản trị viên.
  *
- * Trạng thái "đã đọc" giờ ghi lên máy chủ mock (POST notifications/
+ * Trạng thái "đã đọc" giờ ghi lên BE (POST notifications/
  * read|unread) và dùng chung nguồn với chuông shell — badge sidebar,
  * badge chuông và trang này cùng đọc một dữ liệu (ShellNotifContext).
  * ===================================================================== */

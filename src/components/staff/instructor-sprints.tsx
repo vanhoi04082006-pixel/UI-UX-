@@ -80,7 +80,7 @@ import type {
   SprintBoard,
   SprintBoardTask,
   SprintStatus,
-} from "@/lib/mock/types";
+} from "@/lib/types";
 
 /* =====================================================================
  * SPRINT & TASK — vòng đời sprint theo phiên + bảng kanban chỉ xem của

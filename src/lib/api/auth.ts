@@ -7,12 +7,11 @@
  *  POST /auth/register {fullName, email, password, acceptedTerms:true} → 201 {message?}
  *  POST /auth/logout  (Bearer) → 204, revoke refresh cookie
  *  POST /auth/change-password {currentPassword, newPassword} → 201, clear cookie
- * Preview-only: GET /auth/demo-accounts (sandbox mock — BE thật không có).
  * ===================================================================== */
 import { apiFetch, ApiError } from "./api-client";
-import { array, record, string, boolean, nullable, number } from "./parse";
+import { array, record, string, nullable, number } from "./parse";
 import { setSessionToken, clearSessionToken, getSessionToken } from "./session-token";
-import type { Role, SessionUser } from "@/lib/mock/types";
+import type { Role, SessionUser } from "@/lib/types";
 
 /* ------------------------- principal & mapping ------------------------- */
 
@@ -33,7 +32,7 @@ export interface Principal {
   permissions: string[];
 }
 
-/** Chấp nhận cả flat BE thật và envelope mock cũ {user:{...}} (sandbox). */
+/** Principal BE: login trả {user:{...}}, /auth/me trả principal phẳng — chấp nhận cả hai. */
 export function parsePrincipal(value: unknown): Principal {
   const v = record(value);
   const inner = v.user !== undefined ? record(v.user) : v;
@@ -150,42 +149,5 @@ export async function fetchMe(): Promise<Principal | null> {
   } catch (error) {
     if (error instanceof ApiError && error.statusCode === 401) return null;
     throw error;
-  }
-}
-
-/* ------------------- preview-only demo accounts panel ------------------ */
-
-export interface DemoAccount {
-  id: string;
-  email: string;
-  name: string;
-  role: Role;
-  status: string;
-  title: string;
-  internState: string | null;
-  mustChangePassword: boolean;
-  note: string;
-}
-
-/** Chỉ tồn tại ở sandbox mock; BE thật trả 404 → trả [] để panel tự ẩn. */
-export async function listDemoAccounts(): Promise<DemoAccount[]> {
-  try {
-    const body = await apiFetch("/auth/demo-accounts");
-    return array(body, (raw) => {
-      const v = record(raw);
-      return {
-        id: string(v.id),
-        email: string(v.email),
-        name: string(v.name),
-        role: ROLES.find((r) => r === string(v.role)) ?? "intern",
-        status: string(v.status),
-        title: string(v.title),
-        internState: nullable(v.internState, string),
-        mustChangePassword: boolean(v.mustChangePassword),
-        note: string(v.note),
-      };
-    });
-  } catch {
-    return [];
   }
 }
