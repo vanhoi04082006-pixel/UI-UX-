@@ -22,6 +22,8 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const enterAuth = useApp((s) => s.enterAuth);
+  const goApply = useApp((s) => s.goApply);
+  const goVerify = useApp((s) => s.goVerify);
 
   // Menu mobile đóng bằng Escape và trả focus về nút bật/tắt — cùng hợp đồng
   // bàn phím với drawer của workspace (tiêu chí responsive + a11y).
@@ -67,6 +69,20 @@ export function Navbar() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <ThemeToggle />
+          <button
+            type="button"
+            onClick={goApply}
+            className="inline-flex min-h-11 items-center rounded-lg px-3 py-1 text-sm font-semibold text-ink-soft transition-colors hover:text-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+          >
+            <span className="marker">Ứng tuyển</span>
+          </button>
+          <button
+            type="button"
+            onClick={goVerify}
+            className="inline-flex min-h-11 items-center rounded-lg px-3 py-1 text-sm font-semibold text-ink-soft transition-colors hover:text-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+          >
+            <span className="marker">Tra chứng chỉ</span>
+          </button>
           <LiquidButton
             delay="0.35s"
             onClick={enterAuth}
@@ -117,6 +133,30 @@ export function Navbar() {
                 </a>
               </li>
             ))}
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  goApply();
+                }}
+                className="flex min-h-11 w-full items-center rounded-xl border-2 border-transparent px-4 text-sm font-semibold text-ink transition-colors hover:border-blue hover:bg-blue-mist hover:text-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+              >
+                Ứng tuyển ngay
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  goVerify();
+                }}
+                className="flex min-h-11 w-full items-center rounded-xl border-2 border-transparent px-4 text-sm font-semibold text-ink transition-colors hover:border-blue hover:bg-blue-mist hover:text-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+              >
+                Tra cứu chứng chỉ
+              </button>
+            </li>
           </ul>
           <div className="mx-auto flex max-w-7xl flex-col px-4 pb-5 md:px-6">
           <button
