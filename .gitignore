@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# .env được cam kết: mặc định trỏ BE QA tunnel (chỉ test) — override cục bộ bằng .env.local
+!.env
 
 # vercel
 .vercel
