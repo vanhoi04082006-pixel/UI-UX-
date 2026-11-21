@@ -123,17 +123,16 @@ function parseSubmission(value: unknown): TaskSubmissionRow {
     submittedAt: pickStr(v.submittedAt, v.submitted_at, v.createdAt),
     reviewedAt: pickStr(v.reviewedAt, v.reviewed_at, v.decidedAt),
     score: pickNum(v.score, v.finalScore, v.aiScore),
-    note: pickStr(v.note, v.notes, v.comment, v.reviewComment),
+    note: pickStr(v.feedback, v.note, v.notes, v.comment, v.reviewComment, v.summary),
     raw: v,
   };
 }
 
 export async function listTaskSubmissions(taskId: string): Promise<TaskSubmissionRow[]> {
-  const body = await request(
-    `/tasks/${encodeURIComponent(taskId)}/submissions?page=1&pageSize=50`,
-    (value) => parsePage(value, parseSubmission),
+  /* BE trả MẢNG phẳng (không envelope {data, meta}) — parse trực tiếp. */
+  return request(`/tasks/${encodeURIComponent(taskId)}/submissions`, (value) =>
+    Array.isArray(value) ? value.map(parseSubmission) : [],
   );
-  return body.items;
 }
 
 /** POST /tasks/{id}/submissions — SubmitTaskDto mờ (body truyền thẳng, thường {}). */

@@ -160,6 +160,8 @@ export interface InstructorSession {
 export interface Sprint {
   id: string;
   sessionId: string;
+  /** Dự án của sprint (BE trả kèm — cần cho tạo task / sprint). */
+  projectId: string;
   name: string;
   goal: string;
   startsAt: string;
@@ -205,14 +207,39 @@ export interface GradingItem {
   notes: string;
 }
 
+/** Hàng báo cáo — field thật từ GET /reports ({id,title,kind,projectName,createdAt}). */
 export interface ReportRow {
   id: string;
-  period: string;
-  scope: string;
-  avgScore: number;
-  completion: number;
-  kpiAvg: number;
-  students: number;
+  title: string;
+  kind: string;
+  projectName: string;
+  createdAt: string;
+}
+
+/** Thành viên trong snapshot chi tiết báo cáo (GET /reports/{id}). */
+export interface ReportMember {
+  userId: string;
+  displayName: string;
+  completedTaskCount: number;
+  totalTaskCount: number;
+  taskCompletionRate: number;
+  averageEvaluationScore: number | null;
+  submissionCount: number;
+  approvedCount: number;
+  reworkCount: number;
+  onTimeCompletionRate: number | null;
+  overdueOpenTaskCount: number;
+}
+
+/** Chi tiết báo cáo — snapshot thật từ GET /reports/{id}. */
+export interface ReportDetail {
+  id: string;
+  title: string;
+  kind: string;
+  projectName: string | null;
+  createdAt: string;
+  members: ReportMember[];
+  taskTotal: number;
 }
 
 /* ------------------------------- ADMIN ------------------------------ */

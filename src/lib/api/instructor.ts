@@ -11,7 +11,8 @@
  *   · Chuyển trạng thái sprint: POST /sprints/{id}/status { status, allowOpenTasks }
  *   · GET /sprints/{id}/board              → { sprint, columns, total, overdue }
  *   · GET /submissions KHÔNG tồn tại trên BE thật (chỉ có /tasks/{id}/submissions)
- *     → listSubmissions trả [] khi endpoint 404.
+ *     → listSubmissions tổng hợp từ GET /tasks + /tasks/{id}/submissions (BE
+ *       không có list submissions toàn cục).
  * ===================================================================== */
 import { request } from "./client";
 import { array, nullable, number, parsePage, record, string } from "./parse";
@@ -19,6 +20,8 @@ import { ApiError } from "./api-client";
 import type {
   GradingItem,
   InstructorSession,
+  ReportDetail,
+  ReportMember,
   ReportRow,
   SessionStatus,
   Sprint,
@@ -116,6 +119,7 @@ function parseSprint(value: unknown): Sprint {
   return {
     id: nullable(v.id, string) ?? "",
     sessionId: nullable(v.sessionId, string) ?? "",
+    projectId: nullable(v.projectId, string) ?? "",
     name: nullable(v.name, string) ?? "",
     goal: nullable(v.goal, string) ?? "",
     startsAt: nullable(v.startDate, string) ?? new Date().toISOString(),
@@ -132,9 +136,10 @@ export async function listSprints(sessionId?: string): Promise<Sprint[]> {
   return body.items;
 }
 
-/** POST /sprints thật sự cần {code*, name*, projectId*, startDate*, endDate*}. */
+/** POST /sprints cần {code*, name*, projectId*, sessionId*, startDate*, endDate*}. */
 export async function createSprint(input: {
   sessionId: string;
+  projectId: string;
   name: string;
   goal: string;
   startDate: string;
@@ -147,7 +152,7 @@ export async function createSprint(input: {
       name: input.name,
       goal: input.goal,
       sessionId: input.sessionId,
-      projectId: input.sessionId,
+      projectId: input.projectId,
       startDate: input.startDate,
       endDate: input.endDate,
     },
@@ -235,8 +240,10 @@ export async function getSprintBoard(sprintId?: string): Promise<SprintBoard> {
   return request(`/sprints/${encodeURIComponent(target.id)}/board`, parseBoard);
 }
 
-/** POST /tasks thật sự cần {title*, projectId*}; "urgent" của màn cũ → "critical". */
-export async function createBoardTask(input: {
+/** POST /tasks — CreateTaskDto: title + projectId BẮT BUỘC, các trường khác tùy chọn. */
+export async function createTask(input: {
+  projectId: string;
+  sprintId?: string;
   title: string;
   assignee: string;
   priority: "low" | "medium" | "high" | "urgent";
@@ -255,6 +262,8 @@ export async function createBoardTask(input: {
     body: {
       title: input.title,
       description: input.description,
+      projectId: input.projectId,
+      ...(input.sprintId ? { sprintId: input.sprintId } : {}),
       assigneeId: input.assignee || undefined,
       priority: input.priority === "urgent" ? "critical" : input.priority,
       storyPoints: input.points,
@@ -264,19 +273,68 @@ export async function createBoardTask(input: {
 
 /* ------------------------------ submissions ----------------------------- */
 
-/**
- * BE thật KHÔNG có GET /submissions (chỉ /tasks/{id}/submissions).
- * Endpoint 404 → trả danh sách rỗng thay vì lỗi cứng cho các màn cũ.
- */
+/** BE không có GET /submissions tổng — lấy qua GET /tasks rồi ghép submissions
+ *  từng task (GET /tasks/{id}/submissions trả MẢNG phẳng). */
 export async function listSubmissions(status?: "pending" | "approved" | "changes"): Promise<GradingItem[]> {
-  const query = status ? `?status=${status}&page=1&pageSize=50` : "?page=1&pageSize=50";
-  try {
-    const body = await request(`/submissions${query}`, (value) => parsePage(value, parseGrading));
-    return body.items;
-  } catch (error) {
-    if (error instanceof ApiError && error.statusCode === 404) return [];
-    throw error;
+  const tasks: { id: string; code: string; title: string }[] = [];
+  for (let page = 1; page <= 3; page += 1) {
+    const body = await request(`/tasks?page=${page}&pageSize=100`, (value) =>
+      parsePage(value, (raw) => {
+        const v = record(raw);
+        return {
+          id: nullable(v.id, string) ?? "",
+          code: nullable(v.code, string) ?? "",
+          title: nullable(v.title, string) ?? "",
+        };
+      }),
+    );
+    tasks.push(...body.items);
+    if (body.items.length < 100) break;
   }
+  const perTask = await Promise.all(
+    tasks.map(async (task) => {
+      try {
+        const rows = await request(`/tasks/${encodeURIComponent(task.id)}/submissions`, (value) =>
+          Array.isArray(value) ? value : [],
+        );
+        return rows.map((raw) => {
+          const v = record(raw);
+          const rubricRaw = nullable(v.rubricJson, string);
+          let aiScore = 0;
+          if (rubricRaw) {
+            try {
+              const rubric = JSON.parse(rubricRaw) as Record<string, unknown>;
+              const vals = Object.values(rubric).filter((x): x is number => typeof x === "number");
+              if (vals.length > 0) aiScore = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+            } catch {
+              /* rubricJson lỗi định dạng — giữ aiScore 0 */
+            }
+          }
+          const beStatus = nullable(v.status, string) ?? "pending";
+          return {
+            id: nullable(v.id, string) ?? "",
+            taskCode: task.code,
+            taskTitle: task.title,
+            student: nullable(v.internId, string) ?? "",
+            submittedAt: nullable(v.submittedAt, string) ?? new Date().toISOString(),
+            aiScore,
+            finalScore:
+              v.score === null || v.score === undefined
+                ? undefined
+                : nullable(v.score, number) ?? undefined,
+            prLink: nullable(v.prUrl, string) ?? "",
+            status: (beStatus === "approved" || beStatus === "changes" ? beStatus : "pending") as GradingItem["status"],
+            notes: nullable(v.feedback, string) ?? nullable(v.summary, string) ?? "",
+          } satisfies GradingItem;
+        });
+      } catch {
+        /* task không đọc được submissions (403/404) — bỏ qua task này */
+        return [];
+      }
+    }),
+  );
+  const items = perTask.flat();
+  return status ? items.filter((x) => x.status === status) : items;
 }
 
 /**
@@ -312,21 +370,78 @@ function parseReportRow(value: unknown): ReportRow {
   const v = record(value);
   return {
     id: nullable(v.id, string) ?? "",
-    period: nullable(v.kind, string) ?? "",
-    scope: nullable(v.projectName, string) ?? "",
-    avgScore: 0,
-    completion: 0,
-    kpiAvg: 0,
-    students: 0,
+    title: nullable(v.title, string) ?? "",
+    kind: nullable(v.kind, string) ?? "",
+    projectName: nullable(v.projectName, string) ?? "",
+    createdAt: nullable(v.createdAt, string) ?? "",
   };
 }
 
-/** GET /reports trả { items, total } và KHÔNG nhận query phân trang. */
+/** GET /reports/{id} — chi tiết kèm snapshot thật (members + tasks). */
+export async function getReport(id: string): Promise<ReportDetail> {
+  return request(`/reports/${encodeURIComponent(id)}`, (value) => {
+    const v = record(value);
+    const snap = v.snapshot !== undefined ? record(v.snapshot) : null;
+    const members = snap ? array(snap.members ?? [], (raw) => {
+      const m = record(raw);
+      return {
+        userId: nullable(m.userId, string) ?? "",
+        displayName: nullable(m.displayName, string) ?? "",
+        completedTaskCount: nullable(m.completedTaskCount, number) ?? 0,
+        totalTaskCount: nullable(m.totalTaskCount, number) ?? 0,
+        taskCompletionRate: nullable(m.taskCompletionRate, number) ?? 0,
+        averageEvaluationScore: nullable(m.averageEvaluationScore, number),
+        submissionCount: nullable(m.submissionCount, number) ?? 0,
+        approvedCount: nullable(m.approvedCount, number) ?? 0,
+        reworkCount: nullable(m.reworkCount, number) ?? 0,
+        onTimeCompletionRate: nullable(m.onTimeCompletionRate, number),
+        overdueOpenTaskCount: nullable(m.overdueOpenTaskCount, number) ?? 0,
+      } satisfies ReportMember;
+    }) : [];
+    const details = snap?.details !== undefined ? record(snap.details) : null;
+    return {
+      id: nullable(v.id, string) ?? "",
+      title: nullable(v.title, string) ?? "",
+      kind: nullable(v.kind, string) ?? "",
+      projectName: snap ? nullable(snap.projectName, string) : null,
+      createdAt: nullable(v.createdAt, string) ?? "",
+      members,
+      taskTotal: details ? array(details.tasks ?? [], () => null).length : 0,
+    } satisfies ReportDetail;
+  });
+}
+
+/** GET /reports trả { items, total, counts } — instructor thấy báo cáo trong phạm vi mình. */
 export async function listReports(): Promise<ReportRow[]> {
   return request("/reports", (value) => {
     const r = record(value);
     return array(r.items, parseReportRow);
   });
+}
+
+/** GET /reports/{id}/pdf — blob application/pdf (chỉ report đã dựng xong). */
+export async function exportReportPdf(id: string): Promise<Blob> {
+  return request(`/reports/${encodeURIComponent(id)}/pdf`, (value) => value as Blob, {
+    responseType: "blob",
+  });
+}
+
+/** GET /reports/{id}/xlsx — blob Excel OOXML. */
+export async function exportReportXlsx(id: string): Promise<Blob> {
+  return request(`/reports/${encodeURIComponent(id)}/xlsx`, (value) => value as Blob, {
+    responseType: "xlsx",
+  });
+}
+
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /**

@@ -65,13 +65,14 @@ import {
 import { InkBadge, MarginNote, NoteCard, SketchCard, StampMoc, Tape } from "@/components/notebook/ui";
 import { useApi } from "@/lib/use-api";
 import {
-  createBoardTask,
+  createTask,
   createSprint,
   listSessions,
   listSprints,
   transitionSprintStatus,
   updateSprint,
 } from "@/lib/api/instructor";
+import { listProjectOptions } from "@/lib/api/evaluation-cycles";
 import { fetchPreviewBoard, staffApiErrorMessage } from "@/components/staff/staff-api";
 import type {
   InstructorSession,
@@ -196,6 +197,7 @@ export default function InstructorSprints() {
     error: sessionsError,
     reload: reloadSessions,
   } = useApi<InstructorSession[]>(listSessions);
+  const projects = useApi(listProjectOptions);
   const reduced = useReducedMotion();
 
   /* ---------- trạng thái hành động vòng đời ---------- */
@@ -214,7 +216,7 @@ export default function InstructorSprints() {
 
   /* ---------- dialog tạo sprint ---------- */
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({ sessionId: "", name: "", goal: "", startsAt: "", endsAt: "" });
+  const [createForm, setCreateForm] = useState({ projectId: "", sessionId: "", name: "", goal: "", startsAt: "", endsAt: "" });
   const [createBusy, setCreateBusy] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createdNotice, setCreatedNotice] = useState<string | null>(null);
@@ -385,15 +387,19 @@ export default function InstructorSprints() {
 
   function openCreate() {
     const first = (sessions ?? []).find((s) => s.status !== "cancelled");
-    setCreateForm({ sessionId: first?.id ?? "", name: "", goal: "", startsAt: "", endsAt: "" });
+    setCreateForm({ projectId: "", sessionId: first?.id ?? "", name: "", goal: "", startsAt: "", endsAt: "" });
     setCreateError(null);
     setCreateOpen(true);
   }
 
   async function submitCreate() {
     const name = createForm.name.trim();
+    if (!createForm.projectId) {
+      setCreateError("Hãy chọn dự án của Sprint.");
+      return;
+    }
     if (!createForm.sessionId) {
-      setCreateError("Chọn phiên thực tập cho Sprint mới.");
+      setCreateError("Hãy chọn phiên thực tập.");
       return;
     }
     if (!name) {
@@ -410,6 +416,7 @@ export default function InstructorSprints() {
     try {
       await createSprint({
         sessionId: createForm.sessionId,
+        projectId: createForm.projectId,
         name,
         goal: createForm.goal.trim(),
         startDate: createForm.startsAt,
@@ -462,8 +469,15 @@ export default function InstructorSprints() {
     setTaskBusy(true);
     setTaskError(null);
     const targetSprint = sprints.find((s) => s.id === taskForm.sprintId);
+    if (!targetSprint?.projectId) {
+      setTaskError("Không xác định được dự án của Sprint — hãy tải lại danh sách Sprint.");
+      setTaskBusy(false);
+      return;
+    }
     try {
-      await createBoardTask({
+      await createTask({
+        projectId: targetSprint.projectId,
+        sprintId: targetSprint.id,
         title,
         assignee,
         priority: taskForm.priority,
@@ -1203,6 +1217,24 @@ export default function InstructorSprints() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="sp-create-project">Dự án</Label>
+              <Select
+                value={createForm.projectId}
+                onValueChange={(v) => setCreateForm((f) => ({ ...f, projectId: v }))}
+              >
+                <SelectTrigger id="sp-create-project" className="focus-ink w-full" aria-label="Chọn dự án">
+                  <SelectValue placeholder="Chọn dự án" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(projects.data ?? []).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.code} · {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="sp-create-session">Phiên thực tập</Label>
               <Select
