@@ -143,3 +143,30 @@ curl -s "$NEXT_PUBLIC_API_BASE_URL/docs-json" -o /tmp/openapi.json
 python3 scripts/audit-fe-be.py /tmp/openapi.json
 # Chi tiết: scripts/audit-result.json
 ```
+
+## 13. Kết quả E2E (agent-browser, 2026-11-21) — ✅
+
+Đăng nhập lần lượt 3 role QA + 2 màn public, click qua từng màn, theo dõi
+Network (100% request → tunnel BE thật) + console error:
+
+| Flow | Kết quả |
+|---|---|
+| Login intern / instructor / admin | ✅ 3/3 (workspace đúng role) |
+| Intern: Tổng quan · Công việc · AI Mentor · KPI · Thông báo | ✅ (empty-state đúng trạng thái data thật — SV chưa phân công) |
+| AI Mentor: hội thoại thật load từ BE (GET conversations 200) | ✅ |
+| Instructor: Tổng quan · Phiên · Sprint & Task | ✅ |
+| Instructor **Chấm bài** (aggregation mới) | ✅ GET /tasks?pageSize=100 → 200 (0 task trong scope GV QA) |
+| Instructor **Báo cáo** (màn dựng lại) | ✅ GET /reports → 200, empty-state chuẩn |
+| Admin: dashboard + 13 màn (users/groups/recruitment/audit/question-bank/templates/projects/cycles/kpi/knowledge/catalogs/certificates/system) | ✅ render đủ, số liệu thật (10 users · 188 questions · 2 đợt tuyển) |
+| Public `#/apply` | ✅ đợt tuyển thật từ BE |
+| Public `#/verify` | ✅ tra mã thật → đóng dấu **HỢP LỆ** |
+| Auth refresh rotate + logout revoke | ✅ (probe curl §7) |
+| Console errors toàn session | **0** |
+| Request non-2xx toàn session | 1 — `GET /intern/me/project 404` (đúng data: SV chưa phân công, FE xử lý graceful) |
+| Sticky footer: mobile 390×844 (push) + desktop trang ngắn (stick đáy) | ✅ |
+
+**Chưa exercise được do trạng thái data QA (không phải lỗi FE):**
+- Nộp bài / duyệt bài (SV chưa có task; API đã verify qua probe)
+- Bấm nút xuất PDF/XLSX trong UI (GV scope chưa có report; API đã verify
+  200 + `application/pdf` 31KB / OOXML 11KB qua probe)
+- GitHub connect (`/github/me`: `configured:true, connected:false` — OAuth QA chưa liên kết)
