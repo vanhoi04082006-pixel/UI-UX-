@@ -46,7 +46,8 @@ import {
 } from "@/components/notebook/ui";
 import { useApp } from "@/lib/store";
 import { useApi } from "@/lib/use-api";
-import { getAdminDashboard, listActivity, listUsers } from "@/lib/api/admin";
+import { getAdminDashboardView, listActivity } from "@/lib/api/admin";
+import type { AdminDashboardView } from "@/lib/api/admin";
 import type { ActivityItem, AdminUserRow } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import {
@@ -64,25 +65,11 @@ import {
  * Ít trang trí, nhiều số liệu, mọi hành động rõ ràng.
  * ===================================================================== */
 
-interface AdminStats {
-  users: number;
-  interns: number;
-  instructors: number;
-  admins: number;
-  pendingAccounts: number;
-  lockedAccounts: number;
-  activeSessions: number;
-  certificatesIssued: number;
-  questions: number;
-  templates: number;
-  aiCallsToday: number;
-  uptime: number;
-}
+/* Interface AdminStats giờ đến từ adapter @/lib/api/admin (compose BE thật). */
 
 interface OverviewPayload {
-  stats: AdminStats;
+  view: AdminDashboardView;
   activity: ActivityItem[];
-  recentUsers: AdminUserRow[];
 }
 
 type CounterKey =
@@ -174,24 +161,19 @@ export default function AdminOverview() {
   const user = useApp((s) => s.user);
   const navigate = useApp((s) => s.navigate);
   const reduced = useReducedMotion();
-  const statsApi = useApi<AdminStats>(getAdminDashboard);
+  const viewApi = useApi<AdminDashboardView>(getAdminDashboardView);
   const activityApi = useApi<ActivityItem[]>(listActivity);
-  const usersApi = useApi<AdminUserRow[]>(listUsers);
-  /* Payload tổng quan — gộp 3 endpoint contract (stats + activity + users). */
+  /* Payload tổng quan — dashboard BE thật (metrics + roles + statuses +
+   * đăng nhập gần nhất) + dòng thời gian hoạt động. */
   const data = useMemo<OverviewPayload | null>(() => {
-    if (!statsApi.data || !activityApi.data || !usersApi.data) return null;
-    return {
-      stats: statsApi.data,
-      activity: activityApi.data,
-      recentUsers: usersApi.data.slice(0, 5),
-    };
-  }, [statsApi.data, activityApi.data, usersApi.data]);
-  const loading = statsApi.loading || activityApi.loading || usersApi.loading;
-  const error = statsApi.error ?? activityApi.error ?? usersApi.error;
+    if (!viewApi.data || !activityApi.data) return null;
+    return { view: viewApi.data, activity: activityApi.data };
+  }, [viewApi.data, activityApi.data]);
+  const loading = viewApi.loading || activityApi.loading;
+  const error = viewApi.error ?? activityApi.error;
   const reload = () => {
-    statsApi.reload();
+    viewApi.reload();
     activityApi.reload();
-    usersApi.reload();
   };
   const [nowLabel] = useState(() =>
     new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
@@ -241,15 +223,28 @@ export default function AdminOverview() {
     return <SectionError message={error ?? "Chưa có dữ liệu tổng quan."} onRetry={reload} />;
   }
 
-  const { stats, activity, recentUsers } = data;
+  const { view, activity } = data;
+  const stats = view.stats;
+  const recentUsers = view.recentLogins.slice(0, 5);
 
-  /* ---- Vòng tròn cơ cấu vai trò ---- */
-  const roleSlices = [
-    { key: "interns", label: "Sinh viên", value: stats.interns, color: "var(--royal)" },
-    { key: "instructors", label: "Giảng viên", value: stats.instructors, color: "var(--gold)" },
-    { key: "admins", label: "Quản trị", value: stats.admins, color: "var(--danger)" },
-  ];
-  const roleTotal = stats.interns + stats.instructors + stats.admins;
+  /* ---- Vòng tròn cơ cấu vai trò — số thật từ GET /dashboard/access ---- */
+  const ROLE_SLICE_COLORS = ["var(--royal)", "var(--gold)", "var(--danger)", "var(--success)"];
+  const roleSlices =
+    view.roles.length > 0
+      ? view.roles
+          .filter((r) => r.userCount > 0)
+          .map((r, i) => ({
+            key: r.code,
+            label: r.name,
+            value: r.userCount,
+            color: ROLE_SLICE_COLORS[i % ROLE_SLICE_COLORS.length]!,
+          }))
+      : [
+          { key: "interns", label: "Sinh viên", value: stats.interns, color: "var(--royal)" },
+          { key: "instructors", label: "Giảng viên", value: stats.instructors, color: "var(--gold)" },
+          { key: "admins", label: "Quản trị", value: stats.admins, color: "var(--danger)" },
+        ];
+  const roleTotal = roleSlices.reduce((sum, s) => sum + s.value, 0);
 
   const quickLinks: { route: string; label: string; icon: VIconComponent; hint: string }[] = [
     { route: "users", label: "Người dùng", icon: VUsers, hint: `${stats.users} tài khoản` },
@@ -385,7 +380,7 @@ export default function AdminOverview() {
           <div
             className="relative mt-3 h-[196px]"
             role="img"
-            aria-label={`Biểu đồ cơ cấu người dùng: ${stats.interns} sinh viên, ${stats.instructors} giảng viên, ${stats.admins} quản trị viên`}
+            aria-label={`Biểu đồ cơ cấu người dùng: ${roleSlices.map((s) => `${s.value} ${s.label}`).join(", ")}`}
           >
             <div className="chart-ink h-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -560,24 +555,36 @@ export default function AdminOverview() {
           {/* Trạng thái dịch vụ */}
           <SketchCard hover={false} className="p-5">
             <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-base font-extrabold">Trạng thái dịch vụ</h2>
-              <span className="tabular inline-flex items-center gap-1.5 text-xs font-bold text-[var(--success)]">
-                <span className="ws-dot-live" aria-hidden="true" />
-                {stats.uptime}% uptime
+              <h2 className="text-base font-extrabold">Trạng thái tài khoản</h2>
+              <span className="tabular text-[0.68rem] font-bold text-[var(--ink-soft)]">
+                cập nhật{" "}
+                {view.generatedAt
+                  ? new Date(view.generatedAt).toLocaleTimeString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : nowLabel}
               </span>
             </div>
-            <div
-              className="mt-3 h-2.5 overflow-hidden rounded-full border-2 border-[var(--ink)] bg-[var(--paper)]"
-              role="progressbar"
-              aria-label="Tỷ lệ hoạt động ổn định 30 ngày qua"
-              aria-valuenow={stats.uptime}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
-              <div
-                className="bar-grow h-full rounded-full bg-[var(--success)]"
-                style={{ width: `${stats.uptime}%` }}
-              />
+            <div className="mt-3 flex flex-wrap gap-2" aria-label="Phân bố trạng thái tài khoản">
+              {view.statuses.length > 0 ? (
+                view.statuses.map((s) => (
+                  <InkBadge
+                    key={s.status}
+                    tone={
+                      s.status === "locked" ? "red" : s.status === "pending" ? "amber" : "green"
+                    }
+                    className="tabular !text-[0.62rem]"
+                  >
+                    {s.status === "locked" ? "Bị khóa" : s.status === "pending" ? "Chờ duyệt" : "Hoạt động"}{" "}
+                    · {s.count}
+                  </InkBadge>
+                ))
+              ) : (
+                <InkBadge tone="green" className="tabular !text-[0.62rem]">
+                  Hoạt động · {stats.users}
+                </InkBadge>
+              )}
             </div>
             <ul className="mt-3 space-y-2.5">
               {SERVICE_ROWS.map(({ name, detail, ok, icon: Icon }) => (
@@ -659,9 +666,13 @@ export default function AdminOverview() {
                     </div>
                   </td>
                   <td>
-                    <InkBadge tone={ROLE_META[row.role].tone} className="!text-[0.65rem]">
-                      {ROLE_META[row.role].label}
-                    </InkBadge>
+                    {row.role ? (
+                      <InkBadge tone={ROLE_META[row.role].tone} className="!text-[0.65rem]">
+                        {ROLE_META[row.role].label}
+                      </InkBadge>
+                    ) : (
+                      <span className="font-mono text-[0.68rem] text-[var(--ink-soft)]">—</span>
+                    )}
                   </td>
                   <td>
                     <UserStatusMini status={row.status} />
