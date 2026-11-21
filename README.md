@@ -10,13 +10,11 @@ bun install
 bun run dev   # → http://localhost:3000 (port 3000)
 ```
 
-Mặc định chạy **sandbox mock nội bộ** (`/api/v1` — mirror contract BE thật).
-Muốn cắm **BE thật**: tạo `.env.local` rồi restart:
+Mặc định (`.env` đã cam kết repo) chạy **BE QA thật** qua tunnel:
 ```ini
-NEXT_PUBLIC_API_BASE_URL=<url BE>/api/v1
-# ví dụ tunnel QA: https://trance-bull-changelog-observe.trycloudflare.com/api/v1
+NEXT_PUBLIC_API_BASE_URL=https://trance-bull-changelog-observe.trycloudflare.com/api/v1
 ```
-URL tunnel đổi mỗi lần restart BE → cập nhật biến này. Xóa biến để quay lại sandbox mock.
+URL tunnel đổi mỗi lần restart BE → cập nhật `.env` rồi restart. Muốn chạy **sandbox mock nội bộ** (`/api/v1` — mirror contract BE thật): xóa biến khỏi `.env`, hoặc tạo `.env.local` (được gitignore) đè `NEXT_PUBLIC_API_BASE_URL=` (rỗng).
 
 **Tài khoản QA** (mật khẩu chung `Vq7!mK2pR9#tLx4H`): `qa.admin@vintern.test` · `qa.instructor@vintern.test` · `qa.intern@vintern.test`
 

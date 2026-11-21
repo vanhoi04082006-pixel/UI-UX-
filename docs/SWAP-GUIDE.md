@@ -41,15 +41,15 @@ src/lib/mock/                 ← seed dữ liệu mock
 
 ## 2. Hai chế độ chạy
 
-**Chế độ BE thật (đang bật mặc định)** — `.env.local`:
+**Chế độ BE thật (đang bật mặc định)** — biến trong `.env` (đã cam kết repo):
 ```ini
 NEXT_PUBLIC_API_BASE_URL=https://trance-bull-changelog-observe.trycloudflare.com/api/v1
 ```
 - CORS + cookie refresh đã được BE bật cho origin preview (SameSite=None, allow-credentials).
 - Access token TTL 15 phút — client tự `POST /auth/refresh` khi gặp 401 rồi retry request gốc.
-- URL tunnel **đổi mỗi lần restart BE** → cập nhật biến này (xem `upload/FE-HANDOFF.md`).
+- URL tunnel **đổi mỗi lần restart BE** → cập nhật `.env` (xem `upload/FE-HANDOFF.md`).
 
-**Chế độ sandbox mock** — xóa `NEXT_PUBLIC_API_BASE_URL` khỏi `.env.local`:
+**Chế độ sandbox mock** — xóa `NEXT_PUBLIC_API_BASE_URL` khỏi `.env`, hoặc tạo `.env.local` (được gitignore) đè giá trị rỗng:
 - Mọi request đi tới `/api/v1/**` nội bộ (mock mirror contract thật cho auth + mentor;
   các endpoint mới trả 404 → màn hình hiện empty/error state chuẩn).
 
