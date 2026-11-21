@@ -90,6 +90,17 @@ function sessionUserFrom(account: (typeof ACCOUNTS)[number]) {
     mustChangePassword: account.mustChangePassword === true,
   };
 }
+/** Principal phẳng theo contract BE thật: {id, email, displayName, status, roles[], permissions[]}. */
+function principalFrom(account: (typeof ACCOUNTS)[number]) {
+  return {
+    id: account.id,
+    email: account.email,
+    displayName: account.name,
+    status: account.status === "locked" ? "locked" : "active",
+    roles: [account.role],
+    permissions: PERMISSIONS_BY_ROLE[account.role] ?? [],
+  };
+}
 function roleOf(account: { role: string }) {
   return account.role;
 }
@@ -150,15 +161,18 @@ const ROUTES: Record<string, Handler> = {
       return fail(403, "ACCOUNT_LOCKED", "Tài khoản đã bị khóa vì vi phạm quy định nộp bài.");
     const token = `mock-token-${account.id}-${Date.now()}`;
     tokenEmails.set(token, account.email);
-    return ok({ accessToken: token, expiresIn: 3600 });
+    /* Mirror contract BE thật: login trả kèm principal đầy đủ. */
+    return ok({ accessToken: token, expiresIn: 3600, user: principalFrom(account) });
   },
   "POST /auth/register": async (req) => {
     const body = await readBody(req);
-    const name = typeof body.name === "string" ? body.name.trim() : "";
+    /* Mirror BE thật: RegisterDto {fullName, email, password, acceptedTerms}. */
+    const name = typeof body.fullName === "string" ? body.fullName.trim() : typeof body.name === "string" ? body.name.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
-    if (!name || !email || password.length < 8)
-      return fail(400, "VALIDATION_FAILED", "Vui lòng điền đủ họ tên, email và mật khẩu tối thiểu 8 ký tự.");
+    const acceptedTerms = body.acceptedTerms === true;
+    if (!name || !email || password.length < 8 || !acceptedTerms)
+      return fail(400, "VALIDATION_FAILED", "Vui lòng điền đủ họ tên, email, mật khẩu tối thiểu 8 ký tự và đồng ý điều khoản.");
     if (!/^\S+@\S+\.\S+$/.test(email))
       return fail(400, "VALIDATION_FAILED", "Email chưa hợp lệ.");
     if (accountByEmail(email))
@@ -173,7 +187,8 @@ const ROUTES: Record<string, Handler> = {
   "GET /auth/me": (req) => {
     const { account, error } = requireAuth(req);
     if (error) return error;
-    return ok({ user: sessionUserFrom(account!), permissions: PERMISSIONS_BY_ROLE[account!.role] ?? [] });
+    /* Mirror contract BE thật: principal phẳng (displayName + roles[]). */
+    return ok(principalFrom(account!));
   },
   "POST /auth/logout": () => new NextResponse(null, { status: 204 }),
   "POST /auth/change-password": async (req) => {
@@ -184,8 +199,8 @@ const ROUTES: Record<string, Handler> = {
     const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
     if (account!.password !== currentPassword)
       return fail(401, "INVALID_CREDENTIALS", "Mật khẩu hiện tại không đúng.");
-    if (newPassword.length < 8)
-      return fail(400, "VALIDATION_FAILED", "Mật khẩu mới cần tối thiểu 8 ký tự.");
+    if (newPassword.length < 12)
+      return fail(400, "VALIDATION_FAILED", "Mật khẩu mới cần tối thiểu 12 ký tự.");
     account!.password = newPassword;
     account!.mustChangePassword = false;
     return ok({ user: sessionUserFrom(account!) });
@@ -336,21 +351,48 @@ const ROUTES: Record<string, Handler> = {
     const { account, error } = requireRole(req, ["intern"]);
     if (error) return error;
     const conversations = mentorForIntern(account!.email);
+    /* Mirror BE thật: envelope {items, total, page, pageSize} + status field. */
     const items = conversations.map((c) => ({
       id: c.id,
       title: c.title,
-      archived: c.archived,
-      messageCount: c.messages.length,
-      lastAt: c.messages.at(-1)?.at ?? null,
+      status: c.archived ? "archived" : "active",
+      createdAt: c.messages[0]?.at ?? new Date().toISOString(),
+      updatedAt: c.messages.at(-1)?.at ?? new Date().toISOString(),
+      lastMessageAt: c.messages.at(-1)?.at ?? null,
     }));
-    return page(items, numberParam(req, "page"), numberParam(req, "pageSize", 20));
+    const page_ = numberParam(req, "page");
+    const pageSize = numberParam(req, "pageSize", 20);
+    const start = (page_ - 1) * pageSize;
+    return ok({
+      items: items.slice(start, start + pageSize),
+      total: items.length,
+      page: page_,
+      pageSize,
+    });
   },
   "GET /intern/me/ai-mentor/conversations/*": (req, segments) => {
     const { account, error } = requireRole(req, ["intern"]);
     if (error) return error;
     const conversation = mentorForIntern(account!.email).find((c) => c.id === segments[4]);
     if (!conversation) return fail(404, "NOT_FOUND", "Không tìm thấy hội thoại.");
-    return ok(conversation);
+    /* Mirror BE thật: {conversation, messages[] (role/content)}. */
+    return ok({
+      conversation: {
+        id: conversation.id,
+        title: conversation.title,
+        status: conversation.archived ? "archived" : "active",
+        createdAt: conversation.messages[0]?.at ?? new Date().toISOString(),
+        updatedAt: conversation.messages.at(-1)?.at ?? new Date().toISOString(),
+        lastMessageAt: conversation.messages.at(-1)?.at ?? null,
+      },
+      messages: conversation.messages.map((m) => ({
+        id: m.id,
+        role: m.from === "me" ? "user" : "assistant",
+        content: m.text,
+        aiRunId: m.from === "ai" ? `run-${m.id}` : null,
+        createdAt: m.at,
+      })),
+    });
   },
   "POST /intern/me/ai-mentor/conversations/*/messages": async (req, segments) => {
     const { account, error } = requireRole(req, ["intern"]);
@@ -363,8 +405,23 @@ const ROUTES: Record<string, Handler> = {
     const now = new Date().toISOString();
     conversation.messages.push({ id: `m-${now}`, from: "me", text: content, at: now });
     const reply = mentorReply(content, conversation.title);
-    conversation.messages.push({ id: `m-${now}-ai`, from: "ai", text: reply, at: new Date(Date.now() + 600).toISOString() });
-    return ok({ reply, conversation });
+    const aiAt = new Date(Date.now() + 600).toISOString();
+    conversation.messages.push({ id: `m-${now}-ai`, from: "ai", text: reply, at: aiAt });
+    /* Mirror BE thật: {conversation, userMessage, assistantMessage, summary, followUps}. */
+    return ok({
+      conversation: {
+        id: conversation.id,
+        title: conversation.title,
+        status: conversation.archived ? "archived" : "active",
+        createdAt: conversation.messages[0]?.at ?? now,
+        updatedAt: aiAt,
+        lastMessageAt: aiAt,
+      },
+      userMessage: { id: `m-${now}`, role: "user", content, aiRunId: null, createdAt: now },
+      assistantMessage: { id: `m-${now}-ai`, role: "assistant", content: reply, aiRunId: `run-${now}`, createdAt: aiAt },
+      summary: reply.slice(0, 120),
+      followUps: [],
+    });
   },
   "POST /intern/me/ai-mentor/conversations/*/archive": (req, segments) => {
     const { account, error } = requireRole(req, ["intern"]);
@@ -372,7 +429,7 @@ const ROUTES: Record<string, Handler> = {
     const conversation = mentorForIntern(account!.email).find((c) => c.id === segments[4]);
     if (!conversation) return fail(404, "NOT_FOUND", "Không tìm thấy hội thoại.");
     conversation.archived = true;
-    return ok(conversation);
+    return ok({ archived: true, id: conversation.id });
   },
   "POST /intern/me/ai-mentor/conversations": async (req) => {
     const { account, error } = requireRole(req, ["intern"]);
@@ -380,6 +437,7 @@ const ROUTES: Record<string, Handler> = {
     const body = await readBody(req);
     const title = typeof body.title === "string" && body.title.trim() ? body.title.trim() : "Hội thoại mới";
     const conversations = mentorForIntern(account!.email);
+    const now = new Date().toISOString();
     const conversation = {
       id: `c-${Date.now()}`,
       title,
@@ -389,12 +447,23 @@ const ROUTES: Record<string, Handler> = {
           id: "m0",
           from: "ai" as const,
           text: `Chào bạn! Mình là AI Mentor của phiên "${title}". Bạn muốn ôn phần nào hôm nay?`,
-          at: new Date().toISOString(),
+          at: now,
         },
       ],
     };
     conversations.push(conversation);
-    return ok(conversation, 201);
+    /* Mirror BE thật: trả về conversation object phẳng {id, title, status, ...}. */
+    return ok(
+      {
+        id: conversation.id,
+        title,
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+        lastMessageAt: now,
+      },
+      201,
+    );
   },
 
   /* ============ INSTRUCTOR ============ */
