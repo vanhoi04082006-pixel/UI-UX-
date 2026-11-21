@@ -45,7 +45,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AdminUserRow, Role } from "@/lib/mock/types";
-import { useMock } from "@/lib/use-mock";
+import { useApi } from "@/lib/use-api";
+import { listUsers } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
 import {
   ChipGroup,
@@ -109,7 +110,7 @@ function fabricatedActivity(row: AdminUserRow) {
 }
 
 export default function AdminUsers() {
-  const { data, loading, error, reload } = useMock<AdminUserRow[]>("admin/users");
+  const { data, loading, error, reload } = useApi<AdminUserRow[]>(listUsers);
 
   /* Ghi đè cục bộ (khóa / duyệt) + danh sách thêm mới trong phiên */
   const [overrides, setOverrides] = useState<Record<string, Partial<AdminUserRow>>>({});

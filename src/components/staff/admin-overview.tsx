@@ -45,7 +45,8 @@ import {
   SketchCard,
 } from "@/components/notebook/ui";
 import { useApp } from "@/lib/store";
-import { useMock } from "@/lib/use-mock";
+import { useApi } from "@/lib/use-api";
+import { getAdminDashboard, listActivity, listUsers } from "@/lib/api/admin";
 import type { ActivityItem, AdminUserRow } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import {
@@ -173,7 +174,25 @@ export default function AdminOverview() {
   const user = useApp((s) => s.user);
   const navigate = useApp((s) => s.navigate);
   const reduced = useReducedMotion();
-  const { data, loading, error, reload } = useMock<OverviewPayload>("admin/overview");
+  const statsApi = useApi<AdminStats>(getAdminDashboard);
+  const activityApi = useApi<ActivityItem[]>(listActivity);
+  const usersApi = useApi<AdminUserRow[]>(listUsers);
+  /* Payload tổng quan — gộp 3 endpoint contract (stats + activity + users). */
+  const data = useMemo<OverviewPayload | null>(() => {
+    if (!statsApi.data || !activityApi.data || !usersApi.data) return null;
+    return {
+      stats: statsApi.data,
+      activity: activityApi.data,
+      recentUsers: usersApi.data.slice(0, 5),
+    };
+  }, [statsApi.data, activityApi.data, usersApi.data]);
+  const loading = statsApi.loading || activityApi.loading || usersApi.loading;
+  const error = statsApi.error ?? activityApi.error ?? usersApi.error;
+  const reload = () => {
+    statsApi.reload();
+    activityApi.reload();
+    usersApi.reload();
+  };
   const [nowLabel] = useState(() =>
     new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
   );

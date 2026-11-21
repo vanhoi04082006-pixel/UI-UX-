@@ -26,7 +26,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { QuestionRow } from "@/lib/mock/types";
-import { useMock } from "@/lib/use-mock";
+import { useApi } from "@/lib/use-api";
+import { listQuestions } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
 import {
   ChipGroup,
@@ -99,7 +100,7 @@ function StatusCell({ status }: { status: QuestionRow["status"] }) {
 }
 
 export default function AdminQuestions() {
-  const { data, loading, error, reload } = useMock<QuestionRow[]>("admin/questions");
+  const { data, loading, error, reload } = useApi<QuestionRow[]>(listQuestions);
 
   const [overrides, setOverrides] = useState<Record<string, Partial<QuestionRow>>>({});
   const [added, setAdded] = useState<QuestionRow[]>([]);

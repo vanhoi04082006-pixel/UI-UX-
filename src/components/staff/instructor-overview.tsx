@@ -47,7 +47,14 @@ import {
   formatDateTimeVN,
 } from "@/components/notebook/ui";
 import { useApp } from "@/lib/store";
-import { useMock } from "@/lib/use-mock";
+import { useApi } from "@/lib/use-api";
+import {
+  getInstructorDashboard,
+  listSessions,
+  listSubmissions,
+} from "@/lib/api/instructor";
+import type { InstructorDashboard } from "@/lib/api/instructor";
+import { fetchPreviewBoard } from "@/components/staff/staff-api";
 import type {
   GradingItem,
   InstructorSession,
@@ -71,21 +78,44 @@ export default function InstructorOverview() {
   const user = useApp((s) => s.user);
   const reduced = useReducedMotion();
 
-  const stats = useMock<OverviewStats>("instructor/overview");
-  const sessions = useMock<InstructorSession[]>("instructor/sessions");
-  const grading = useMock<GradingItem[]>("instructor/grading");
-  const board = useMock<SprintBoard>("instructor/board");
+  const dashboard = useApi<InstructorDashboard>(getInstructorDashboard);
+  const sessions = useApi<InstructorSession[]>(listSessions);
+  const grading = useApi<GradingItem[]>(listSubmissions);
+  const {
+    data: board,
+    loading: boardLoading,
+    error: boardError,
+    reload: reloadBoard,
+  } = useApi<SprintBoard | null>(fetchPreviewBoard);
 
-  const loading = stats.loading || sessions.loading || board.loading;
-  const error = stats.error ?? sessions.error ?? board.error;
+  const loading = dashboard.loading || sessions.loading || boardLoading;
+  const error = dashboard.error ?? sessions.error ?? boardError;
 
   const updatedAt = useMemo(() => formatDateTimeVN(new Date().toISOString()), []);
   const sessionList = sessions.data ?? [];
   const activeSessions = sessionList.filter((s) => s.status === "active");
   const pendingItems = (grading.data ?? []).filter((g) => g.status === "pending");
 
+  /* Tổng quan — gộp từ dashboard contract; sprintCompletion/avgAiScore không có
+     trong metrics nên suy ra đúng công thức máy chủ cũ (giữ nguyên số hiển thị). */
+  const stats = useMemo<OverviewStats | null>(() => {
+    const metrics = dashboard.data?.metrics;
+    if (!metrics || sessions.data === undefined || grading.data === undefined) return null;
+    const gradingRows = grading.data;
+    return {
+      sessions: metrics.activeSessions,
+      interns: activeSessions.reduce((sum, s) => sum + s.members, 0),
+      sprintCompletion: Math.round(
+        activeSessions.reduce((s, x) => s + x.progress, 0) / Math.max(activeSessions.length, 1),
+      ),
+      avgAiScore:
+        Math.round((gradingRows.reduce((s, g) => s + g.aiScore, 0) / Math.max(gradingRows.length, 1)) * 10) / 10,
+      pendingReviews: metrics.pendingReviews,
+    };
+  }, [dashboard.data, sessions.data, grading.data]);
+
   const burndownData = useMemo(() => {
-    const raw = board.data?.burndown ?? [];
+    const raw = board?.burndown ?? [];
     if (raw.length < 2) return [];
     const start = raw[0];
     const n = raw.length;
@@ -94,7 +124,7 @@ export default function InstructorOverview() {
       diem: v,
       lyTuong: Math.round((start * (n - 1 - i)) / (n - 1)),
     }));
-  }, [board.data]);
+  }, [board]);
 
   const ss02DaysLeft = useMemo(() => {
     const ss2 = sessionList.find((s) => s.code === "SS-2026-02");
@@ -121,10 +151,10 @@ export default function InstructorOverview() {
         <ErrorState
           message={error}
           onRetry={() => {
-            stats.reload();
+            dashboard.reload();
             sessions.reload();
             grading.reload();
-            board.reload();
+            reloadBoard();
           }}
         />
       </div>
@@ -158,10 +188,10 @@ export default function InstructorOverview() {
               <VStopwatch size={14} className="text-[var(--warning)]" />
               Hạn chấm <b>48h</b> · {pendingItems.length} bài chờ
             </span>
-            {board.data && (
+            {board && (
               <span className="flex items-center gap-1.5 text-[0.76rem] font-semibold">
                 <VHourglass size={14} className="text-[var(--success)]" />
-                Sprint còn <b className="tabular">{board.data.daysLeft}</b> ngày
+                Sprint còn <b className="tabular">{board.daysLeft}</b> ngày
               </span>
             )}
           </SketchCard>
@@ -170,15 +200,15 @@ export default function InstructorOverview() {
 
       {/* ===== 5 ô số liệu ===== */}
       <div className="nb-stagger grid grid-cols-2 gap-3.5 sm:grid-cols-3 xl:grid-cols-5">
-        {loading && !stats.data ? (
+        {loading && !stats ? (
           Array.from({ length: 5 }).map((_, i) => <SkeletonBlock key={i} className="h-[7.25rem]" />)
-        ) : stats.data ? (
+        ) : stats ? (
           <>
             <MetricTile
               icon={VKanban}
               label="Phiên đang diễn ra"
-              value={`${stats.data.sessions}/${sessionList.length}`}
-              countUp={{ to: stats.data.sessions, suffix: `/${sessionList.length}` }}
+              value={`${stats.sessions}/${sessionList.length}`}
+              countUp={{ to: stats.sessions, suffix: `/${sessionList.length}` }}
               sub="tổng đã mở"
               tone="royal"
               onClick={() => navigate("sessions")}
@@ -186,8 +216,8 @@ export default function InstructorOverview() {
             <MetricTile
               icon={VUsers}
               label="Sinh viên đang hướng dẫn"
-              value={stats.data.interns}
-              countUp={{ to: stats.data.interns }}
+              value={stats.interns}
+              countUp={{ to: stats.interns }}
               sub="2 phiên đang mở"
               tone="green"
               onClick={() => navigate("sessions")}
@@ -195,17 +225,17 @@ export default function InstructorOverview() {
             <MetricTile
               icon={VChartColumn}
               label="Hoàn thành sprint"
-              value={`${stats.data.sprintCompletion}%`}
-              countUp={{ to: stats.data.sprintCompletion, suffix: "%" }}
-              bar={stats.data.sprintCompletion}
+              value={`${stats.sprintCompletion}%`}
+              countUp={{ to: stats.sprintCompletion, suffix: "%" }}
+              bar={stats.sprintCompletion}
               tone="royal"
               onClick={() => navigate("sprints")}
             />
             <MetricTile
               icon={VSparkles}
               label="Điểm AI trung bình"
-              value={`${stats.data.avgAiScore.toFixed(1)}/10`}
-              countUp={{ to: stats.data.avgAiScore, decimals: 1, suffix: "/10" }}
+              value={`${stats.avgAiScore.toFixed(1)}/10`}
+              countUp={{ to: stats.avgAiScore, decimals: 1, suffix: "/10" }}
               sub="bản nháp tham khảo"
               tone="neutral"
               onClick={() => navigate("grading")}
@@ -213,8 +243,8 @@ export default function InstructorOverview() {
             <MetricTile
               icon={VClipboardCheck}
               label="Bài chờ duyệt"
-              value={stats.data.pendingReviews}
-              countUp={{ to: stats.data.pendingReviews }}
+              value={stats.pendingReviews}
+              countUp={{ to: stats.pendingReviews }}
               note="xử lý trong 48h"
               tone="amber"
               onClick={() => navigate("grading")}
@@ -344,19 +374,19 @@ export default function InstructorOverview() {
                 <div className="min-w-0">
                   <h2 className="text-[1.02rem] font-bold">Tiến độ sprint</h2>
                   <p className="mt-0.5 font-geist-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-                    {board.data?.name ?? "—"}
+                    {board?.name ?? "—"}
                   </p>
                 </div>
-                {board.data && (
+                {board && (
                   <InkBadge tone="amber">
-                    <VHourglass size={13} /> còn {board.data.daysLeft} ngày
+                    <VHourglass size={13} /> còn {board.daysLeft} ngày
                   </InkBadge>
                 )}
               </div>
-              {board.data && (
+              {board && (
                 <>
                   <blockquote className="mt-3 border-l-4 border-[color-mix(in_srgb,var(--royal)_55%,transparent)] pl-3 font-hand text-[1.02rem] leading-snug text-[var(--ink)]">
-                    “{board.data.goal}”
+                    “{board.goal}”
                   </blockquote>
                   <div className="chart-ink mt-3 h-[140px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -408,7 +438,7 @@ export default function InstructorOverview() {
                   <MarginNote className="mt-2">nét đứt xanh lá là nhịp lý tưởng — đường royal tụt nhanh là tín hiệu tốt</MarginNote>
                 </>
               )}
-              {loading && !board.data && <SkeletonBlock className="mt-3 h-[180px]" />}
+              {loading && !board && <SkeletonBlock className="mt-3 h-[180px]" />}
             </SketchCard>
           </FadeIn>
 

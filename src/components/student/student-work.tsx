@@ -7,8 +7,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useApp } from "@/lib/store";
-import { useMock } from "@/lib/use-mock";
+import { listMyTasks } from "@/lib/api/work";
+import { useApi } from "@/lib/use-api";
 import type { Priority, Task, TaskStatus } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -74,11 +74,7 @@ function historyIcon(label: string) {
 }
 
 export default function StudentWork() {
-  const user = useApp((s) => s.user);
-  const email = user?.email ?? "";
-  const { data, loading, error, reload } = useMock<Task[]>(
-    email ? `intern/tasks?email=${encodeURIComponent(email)}` : null,
-  );
+  const { data, loading, error, reload } = useApi<Task[]>(() => listMyTasks(), []);
 
   const [overrides, setOverrides] = useState<Record<string, Partial<Task>>>({});
   const tasks = useMemo<Task[]>(

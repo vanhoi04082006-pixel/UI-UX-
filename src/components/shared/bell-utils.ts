@@ -2,14 +2,18 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { postMock } from "@/lib/use-mock";
+import {
+  listNotifications,
+  markNotificationsRead,
+  markNotificationsUnread,
+} from "@/lib/api/outcomes";
 import type { NotificationItem, Role, SessionUser } from "@/lib/mock/types";
 
 /* =====================================================================
  * BELL UTILS — dữ liệu chuông thông báo dùng chung shell.
  *
- * Trạng thái "đã đọc" được máy chủ mock lưu bền (POST /api/mock/
- * notifications/read|unread), nên mọi thao tác đều ghi lên server rồi
+ * Trạng thái "đã đọc" được máy chủ lưu bền (POST /notifications/read|
+ * unread theo contract BE thật), nên mọi thao tác đều ghi lên server rồi
  * đồng bộ lại. Shell giữ MỘT nguồn dữ liệu duy nhất qua
  * ShellNotifContext để badge sidebar "Thông báo" và badge chuông
  * dùng chung số chưa đọc.
@@ -132,10 +136,9 @@ export function useShellNotifications(user: SessionUser | null): ShellNotifValue
     if (!role) return;
     let alive = true;
     const load = () => {
-      fetch(`/api/mock/notifications?role=${role}`)
-        .then((r) => r.json() as Promise<{ ok: boolean; data: NotificationItem[] }>)
-        .then((json) => {
-          if (alive && json.ok) setItems(json.data);
+      listNotifications()
+        .then((data) => {
+          if (alive) setItems(data);
         })
         .catch(() => {
           /* fail-soft: chuông không chặn shell */
@@ -160,7 +163,7 @@ export function useShellNotifications(user: SessionUser | null): ShellNotifValue
     (id: string) => {
       setItems((prev) => prev.map((i) => (i.id === id ? { ...i, read: true } : i)));
       if (!role) return;
-      postMock("notifications/read", { role, ids: [id] })
+      markNotificationsRead([id])
         .then(() => undefined)
         .catch(() => reload()); /* server-truth fallback, im lặng */
     },
@@ -170,10 +173,7 @@ export function useShellNotifications(user: SessionUser | null): ShellNotifValue
   const markAllRead = useCallback(() => {
     if (!role) return;
     setItems((prev) => prev.map((i) => ({ ...i, read: true })));
-    postMock<{ role: string; all: boolean }, { updated: number }>("notifications/read", {
-      role,
-      all: true,
-    })
+    markNotificationsRead(undefined, true)
       .then(() => {
         reload();
         toast.success("Đã đánh dấu tất cả là đã đọc");
@@ -187,7 +187,7 @@ export function useShellNotifications(user: SessionUser | null): ShellNotifValue
   const markUnread = useCallback(
     (id: string) => {
       if (!role) return;
-      postMock("notifications/unread", { role, ids: [id] })
+      markNotificationsUnread([id])
         .then(() => reload())
         .catch(() => undefined);
     },

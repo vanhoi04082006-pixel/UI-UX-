@@ -8,7 +8,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useApp } from "@/lib/store";
-import { useMock } from "@/lib/use-mock";
+import { getInternOverview } from "@/lib/api/work";
+import { useApi } from "@/lib/use-api";
 import type { InternOverview, Task } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import {
@@ -77,18 +78,25 @@ function dateLineVN(now: Date): string {
 
 export default function StudentOverview() {
   const user = useApp((s) => s.user);
-  const email = user?.email ?? "";
-  const { data, loading, error, reload } = useMock<InternOverview>(
-    email ? `intern/overview?email=${encodeURIComponent(email)}` : null,
+  const userName = user?.name ?? "";
+  const { data, loading, error, reload } = useApi<InternOverview>(
+    () => getInternOverview(userName),
+    [userName],
   );
+  /* Trạng thái thực tập (active/waiting/finished) xưa do máy chủ tự tính từ
+   * tài khoản; hợp đồng mới không mang theo — đối chiếu từ phiên đăng nhập
+   * (cùng kiểu đối chiếu như userName phía trên). */
+  const overview = data
+    ? { ...data, internState: user?.internState ?? data.internState }
+    : undefined;
 
-  if (loading || (!data && !error)) return <LoadingBlocks label="Đang lật trang tổng quan…" />;
+  if (loading || (!overview && !error)) return <LoadingBlocks label="Đang lật trang tổng quan…" />;
   if (error) return <ErrorNote message={error} onRetry={reload} />;
-  if (!data) return null;
+  if (!overview) return null;
 
-  if (data.internState === "waiting") return <WaitingView data={data} />;
-  if (data.internState === "finished") return <FinishedView data={data} />;
-  return <ActiveView data={data} />;
+  if (overview.internState === "waiting") return <WaitingView data={overview} />;
+  if (overview.internState === "finished") return <FinishedView data={overview} />;
+  return <ActiveView data={overview} />;
 }
 
 /* ============================ ACTIVE ============================ */

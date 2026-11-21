@@ -63,7 +63,16 @@ import {
   initialsOf,
 } from "@/components/staff/instructor-shared";
 import { InkBadge, MarginNote, NoteCard, SketchCard, StampMoc, Tape } from "@/components/notebook/ui";
-import { postMock, useMock } from "@/lib/use-mock";
+import { useApi } from "@/lib/use-api";
+import {
+  createBoardTask,
+  createSprint,
+  listSessions,
+  listSprints,
+  transitionSprintStatus,
+  updateSprint,
+} from "@/lib/api/instructor";
+import { fetchPreviewBoard, staffApiErrorMessage } from "@/components/staff/staff-api";
 import type {
   InstructorSession,
   Priority,
@@ -104,9 +113,17 @@ const INK_TOOLTIP = {
 
 /* ------------------------- Vòng đời sprint ------------------------- */
 
-interface SprintListPayload {
-  sprints: Sprint[];
-  transitions: Record<string, SprintStatus[]>;
+/** Codex sprintTransitions: planned → active; active → completed/cancelled
+ *  (suy ra client-side — rule giống hệt dữ liệu gốc). */
+function sprintTransitionsOf(status: SprintStatus): SprintStatus[] {
+  switch (status) {
+    case "planned":
+      return ["active", "cancelled"];
+    case "active":
+      return ["completed", "cancelled"];
+    default:
+      return [];
+  }
 }
 
 const SPRINT_STATUS_META: Record<SprintStatus, { label: string; tone: string }> = {
@@ -166,19 +183,19 @@ function TaskStatusIcon({ status }: { status: SprintBoardTask["status"] }) {
 }
 
 export default function InstructorSprints() {
-  const { data: board, loading, error, reload: reloadBoard } = useMock<SprintBoard>("instructor/board");
+  const { data: board, loading, error, reload: reloadBoard } = useApi<SprintBoard | null>(fetchPreviewBoard);
   const {
     data: sprintList,
     loading: sprintsLoading,
     error: sprintsError,
     reload: reloadSprints,
-  } = useMock<SprintListPayload>("instructor/sprints");
+  } = useApi<Sprint[]>(listSprints);
   const {
     data: sessions,
     loading: sessionsLoading,
     error: sessionsError,
     reload: reloadSessions,
-  } = useMock<InstructorSession[]>("instructor/sessions");
+  } = useApi<InstructorSession[]>(listSessions);
   const reduced = useReducedMotion();
 
   /* ---------- trạng thái hành động vòng đời ---------- */
@@ -217,8 +234,11 @@ export default function InstructorSprints() {
 
   /* ---------- dữ liệu suy ra ---------- */
 
-  const sprints = sprintList?.sprints ?? [];
-  const transitions = sprintList?.transitions ?? {};
+  const sprints = sprintList ?? [];
+  const transitions = useMemo(
+    () => Object.fromEntries(sprints.map((s) => [s.id, sprintTransitionsOf(s.status)])),
+    [sprints],
+  );
   const openSprints = sprints.filter((s) => s.status === "planned" || s.status === "active");
   const boardTerminal = board?.status === "completed" || board?.status === "cancelled";
 
@@ -290,14 +310,11 @@ export default function InstructorSprints() {
     setBusySprintId(sprint.id);
     setRowError(null);
     try {
-      await postMock<{ sprintId: string; status: SprintStatus }, { sprint: Sprint }>(
-        "instructor/sprint-transition",
-        { sprintId: sprint.id, status: "active" },
-      );
+      await transitionSprintStatus(sprint.id, "active");
       toast.success(`Đã kích hoạt ${sprint.name}.`);
       reloadAll();
     } catch (err) {
-      setRowError({ id: sprint.id, message: (err as Error).message });
+      setRowError({ id: sprint.id, message: staffApiErrorMessage(err, "Không đổi được trạng thái Sprint.") });
     } finally {
       setBusySprintId(null);
     }
@@ -313,10 +330,7 @@ export default function InstructorSprints() {
     setConfirmBusy(true);
     setConfirmError(null);
     try {
-      await postMock<{ sprintId: string; status: SprintStatus }, { sprint: Sprint }>(
-        "instructor/sprint-transition",
-        { sprintId: pending.sprint.id, status: pending.kind },
-      );
+      await transitionSprintStatus(pending.sprint.id, pending.kind);
       toast.success(
         pending.kind === "completed"
           ? `Đã hoàn thành ${pending.sprint.name}.`
@@ -326,7 +340,7 @@ export default function InstructorSprints() {
       reloadAll();
     } catch (err) {
       // Giữ modal mở và nêu rõ lỗi (VD còn nhiệm vụ mở).
-      setConfirmError((err as Error).message);
+      setConfirmError(staffApiErrorMessage(err, "Không đổi được trạng thái Sprint."));
     } finally {
       setConfirmBusy(false);
     }
@@ -353,21 +367,17 @@ export default function InstructorSprints() {
     setEditBusy(true);
     setEditError(null);
     try {
-      await postMock<
-        { sprintId: string; name: string; goal: string; startsAt: string; endsAt: string },
-        { sprint: Sprint }
-      >("instructor/sprint-update", {
-        sprintId: editTarget.id,
+      await updateSprint(editTarget.id, {
         name,
         goal: editForm.goal.trim(),
-        startsAt: editForm.startsAt,
-        endsAt: editForm.endsAt,
+        startDate: editForm.startsAt,
+        endDate: editForm.endsAt,
       });
       toast.success("Đã lưu thay đổi Sprint.");
       setEditTarget(null);
       reloadAll();
     } catch (err) {
-      setEditError((err as Error).message);
+      setEditError(staffApiErrorMessage(err, "Không lưu được thay đổi Sprint."));
     } finally {
       setEditBusy(false);
     }
@@ -398,22 +408,19 @@ export default function InstructorSprints() {
     setCreateBusy(true);
     setCreateError(null);
     try {
-      await postMock<
-        { sessionId: string; name: string; goal: string; startsAt: string; endsAt: string },
-        { sprint: Sprint }
-      >("instructor/sprint-create", {
+      await createSprint({
         sessionId: createForm.sessionId,
         name,
         goal: createForm.goal.trim(),
-        startsAt: createForm.startsAt,
-        endsAt: createForm.endsAt,
+        startDate: createForm.startsAt,
+        endDate: createForm.endsAt,
       });
       toast.success("Đã tạo Sprint.");
       setCreatedNotice("Đã tạo Sprint.");
       setCreateOpen(false);
       reloadAll();
     } catch (err) {
-      setCreateError((err as Error).message);
+      setCreateError(staffApiErrorMessage(err, "Không tạo được Sprint."));
     } finally {
       setCreateBusy(false);
     }
@@ -456,15 +463,12 @@ export default function InstructorSprints() {
     setTaskError(null);
     const targetSprint = sprints.find((s) => s.id === taskForm.sprintId);
     try {
-      await postMock<
-        { sprintId: string; title: string; assignee: string; priority: Priority; points: number },
-        { task: SprintBoardTask }
-      >("instructor/task-create", {
-        sprintId: taskForm.sprintId,
+      await createBoardTask({
         title,
         assignee,
         priority: taskForm.priority,
         points: pts,
+        description: "",
       });
       toast.success("Đã giao nhiệm vụ.");
       if (board && taskForm.sprintId !== board.id) {
@@ -479,7 +483,7 @@ export default function InstructorSprints() {
       setTaskOpen(false);
       reloadSprints();
     } catch (err) {
-      setTaskError((err as Error).message);
+      setTaskError(staffApiErrorMessage(err, "Không tạo được nhiệm vụ."));
     } finally {
       setTaskBusy(false);
     }

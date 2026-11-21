@@ -41,7 +41,9 @@ import {
   initialsOf,
 } from "@/components/staff/instructor-shared";
 import { useApp } from "@/lib/store";
-import { postMock, useMock } from "@/lib/use-mock";
+import { useApi } from "@/lib/use-api";
+import { completeAssignment, listSessions, transitionSessionStatus } from "@/lib/api/instructor";
+import { staffApiErrorMessage } from "@/components/staff/staff-api";
 import { sessionStatusLabel } from "@/lib/mock/data";
 import type { InstructorSession, SessionMember, SessionStatus } from "@/lib/mock/types";
 
@@ -95,7 +97,7 @@ function memberRowsOf(session: InstructorSession): MemberRow[] {
 
 export default function InstructorSessions() {
   const navigate = useApp((s) => s.navigate);
-  const { data, loading, error, reload } = useMock<InstructorSession[]>("instructor/sessions");
+  const { data, loading, error, reload } = useApi<InstructorSession[]>(listSessions);
 
   const [filter, setFilter] = useState<SessionFilter>("all");
   const [creating, setCreating] = useState(false);
@@ -191,15 +193,12 @@ export default function InstructorSessions() {
     }, 700);
   }
 
-  /** Chuyển trạng thái phiên qua mock API — ending đi thẳng, closed/cancelled đã có modal xác nhận. */
+  /** Chuyển trạng thái phiên qua adapter contract — ending đi thẳng, closed/cancelled đã có modal xác nhận. */
   async function runTransition(session: InstructorSession, next: "ending" | "closed" | "cancelled") {
     setBusyAction(next);
     setLifecycleError(null);
     try {
-      await postMock<{ sessionId: string; status: SessionStatus }, { session: InstructorSession }>(
-        "instructor/session-transition",
-        { sessionId: session.id, status: next },
-      );
+      await transitionSessionStatus(session.id, next);
       setConfirmTransition(null);
       reload();
       toast.success(
@@ -210,7 +209,7 @@ export default function InstructorSessions() {
             : `Đã hủy phiên ${session.code} — lịch sử được giữ lại`,
       );
     } catch (err) {
-      setLifecycleError(err instanceof Error ? err.message : "Không đổi được trạng thái phiên.");
+      setLifecycleError(staffApiErrorMessage(err, "Không đổi được trạng thái phiên."));
     } finally {
       setBusyAction(null);
     }
@@ -221,15 +220,12 @@ export default function InstructorSessions() {
     setBusyAction("assignment");
     setAssignmentError(null);
     try {
-      await postMock<
-        { sessionId: string; memberEmail: string },
-        { member: SessionMember }
-      >("instructor/assignment-complete", { sessionId: session.id, memberEmail: member.email });
+      await completeAssignment(session.id);
       setAssignmentTarget(null);
       reload();
       toast.success(`Đã hoàn thành phân công của ${member.name}`);
     } catch (err) {
-      setAssignmentError(err instanceof Error ? err.message : "Không hoàn tất được phân công.");
+      setAssignmentError(staffApiErrorMessage(err, "Không hoàn tất được phân công."));
     } finally {
       setBusyAction(null);
     }

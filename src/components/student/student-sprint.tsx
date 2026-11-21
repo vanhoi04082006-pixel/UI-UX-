@@ -23,9 +23,9 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { motion } from "framer-motion";
-import { useApp } from "@/lib/store";
-import { useMock } from "@/lib/use-mock";
-import type { SprintBoard, Task, TaskStatus } from "@/lib/mock/types";
+import { getMySprintBoard, listMyTasks, type SprintBoardView } from "@/lib/api/work";
+import { useApi } from "@/lib/use-api";
+import type { Task, TaskStatus } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import {
   Eyebrow,
@@ -68,11 +68,7 @@ const COLUMNS: { key: TaskStatus; label: string; tape: "slate" | "blue" | "warm"
 ];
 
 export default function StudentSprint() {
-  const user = useApp((s) => s.user);
-  const email = user?.email ?? "";
-  const { data, loading, error, reload } = useMock<Task[]>(
-    email ? `intern/tasks?email=${encodeURIComponent(email)}` : null,
-  );
+  const { data, loading, error, reload } = useApi<Task[]>(() => listMyTasks(), []);
 
   const [overrides, setOverrides] = useState<Record<string, Partial<Task>>>({});
   const tasks = useMemo<Task[]>(
@@ -82,7 +78,7 @@ export default function StudentSprint() {
 
   /* Trạng thái sprint đọc từ bảng chung (board sinh viên và giảng viên dùng
    * chung một mock) — chỉ cần trường `status` (codex: sprint terminal). */
-  const board = useMock<SprintBoard>("instructor/board");
+  const board = useApi<SprintBoardView>(() => getMySprintBoard(), []);
   const sprintStatus = board.data?.status;
   const boardLocked = sprintStatus === "completed" || sprintStatus === "cancelled";
 

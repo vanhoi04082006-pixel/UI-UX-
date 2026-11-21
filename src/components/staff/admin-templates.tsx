@@ -32,7 +32,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { TemplateRow } from "@/lib/mock/types";
-import { useMock } from "@/lib/use-mock";
+import { useApi } from "@/lib/use-api";
+import { listTemplates } from "@/lib/api/admin";
 import { PencilLines, SectionError, StaffPageHeader } from "./staff-kit";
 
 /* =====================================================================
@@ -133,7 +134,7 @@ function tasksFor(tpl: TemplateRow) {
 }
 
 export default function AdminTemplates() {
-  const { data, loading, error, reload } = useMock<TemplateRow[]>("admin/templates");
+  const { data, loading, error, reload } = useApi<TemplateRow[]>(listTemplates);
 
   /* Ghi đè trạng thái cục bộ (mô phỏng) + mẫu đang mở chi tiết */
   const [overrides, setOverrides] = useState<Record<string, Partial<TemplateRow>>>({});

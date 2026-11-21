@@ -1,15 +1,21 @@
 "use client";
 
 /* =====================================================================
- * STUDENT MENTOR — "AI Mentor": danh sách hội thoại + khung chat gửi
- * thật qua POST intern/mentor (có chỉ báo đang gõ & fallback lỗi).
+ * STUDENT MENTOR — "AI Mentor": danh sách hội thoại + khung chat gửi qua
+ * adapter mentor (máy chủ lưu bền hội thoại hai phía, trả lời kèm theo) —
+ * có chỉ báo đang gõ & fallback lỗi.
  * ===================================================================== */
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
-import { useApp } from "@/lib/store";
-import { postMock, useMock } from "@/lib/use-mock";
+import {
+  createConversation,
+  getConversation,
+  listConversations,
+  sendMentorMessage,
+} from "@/lib/api/mentor";
+import { useApi } from "@/lib/use-api";
 import type { MentorConversation, MentorMessage } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import {
@@ -24,11 +30,6 @@ import { InkButton } from "@/components/notebook/reveal";
 import { VArrowLeft, VBot, VPlus, VSend, VSparkles } from "@/components/icons/v-icons";
 import { ErrorNote, LoadingBlocks, shortTimeVN } from "./student-shared";
 
-type ChatTurn = { role: "user" | "assistant"; content: string };
-
-const GREETING = "Chào bạn! Mình là AI Mentor của V-Intern. Hôm nay mình gắn với task nào rồi?";
-
-/* Câu hỏi nhanh gợi ý sẵn — bấm là gửi ngay cho AI Mentor. */
 const QUICK_PROMPTS = [
   "Giải thích story point là gì?",
   "Review code như nào cho chuẩn?",
@@ -37,15 +38,25 @@ const QUICK_PROMPTS = [
 ];
 
 export default function StudentMentor() {
-  const user = useApp((s) => s.user);
-  const email = user?.email ?? "";
-  const { data, loading, error, reload } = useMock<MentorConversation[]>(
-    email ? `intern/mentor?email=${encodeURIComponent(email)}` : null,
+  const { data, loading, error, reload } = useApi<MentorConversation[]>(
+    () => listConversations(),
+    [],
   );
 
   const [convs, setConvs] = useState<MentorConversation[] | null>(null);
+  /* Danh sách theo hợp đồng không kèm tin nhắn — tải nội dung từng hội thoại
+   * để khung chat và xem trước danh sách giống hệt bản GET cũ. */
   useEffect(() => {
-    if (data) setConvs(data);
+    if (!data) return;
+    let alive = true;
+    Promise.all(
+      data.map((c) => getConversation(c.id).catch(() => c)),
+    ).then((full) => {
+      if (alive) setConvs(full);
+    });
+    return () => {
+      alive = false;
+    };
   }, [data]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -82,22 +93,24 @@ export default function StudentMentor() {
     setConvs((prev) => (prev ?? []).map((c) => (c.id === id ? updater(c) : c)));
   };
 
-  const newConversation = () => {
+  const newConversation = async () => {
     const now = new Date();
-    const conv: MentorConversation = {
-      id: `local-${Date.now()}`,
-      title: `Hội thoại mới · ${now.getHours().toString().padStart(2, "0")}:${now
-        .getMinutes()
-        .toString()
-        .padStart(2, "0")}`,
-      archived: false,
-      messages: [{ id: `ai-${Date.now()}`, from: "ai", text: GREETING, at: now.toISOString() }],
-    };
-    setConvs((prev) => [conv, ...(prev ?? [])]);
-    setActiveId(conv.id);
-    setTab("open");
-    setMobileChatOpen(true);
-    setInput("");
+    const title = `Hội thoại mới · ${now.getHours().toString().padStart(2, "0")}:${now
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}`;
+    try {
+      /* Hợp đồng mới: hội thoại được lưu trên máy chủ (kèm câu chào mở màn) —
+       * thay cho bản tạo thuần local trước đây. */
+      const conv = await createConversation(title);
+      setConvs((prev) => [conv, ...(prev ?? [])]);
+      setActiveId(conv.id);
+      setTab("open");
+      setMobileChatOpen(true);
+      setInput("");
+    } catch {
+      toast.error("Không mở được hội thoại mới — thử lại giúp mình nhé!");
+    }
   };
 
   const autoGrow = () => {
@@ -117,18 +130,16 @@ export default function StudentMentor() {
     if (taRef.current) taRef.current.style.height = "auto";
     setTyping(true);
 
-    const history: ChatTurn[] = [...conv.messages, myMsg].map((m) => ({
-      role: m.from === "me" ? "user" : "assistant",
-      content: m.text,
-    }));
-
     try {
-      const res = await postMock<{ messages: ChatTurn[] }, { reply: string }>("intern/mentor", {
-        messages: history,
-      });
+      /* Hợp đồng mới: máy chủ lưu cả tin của bạn lẫn câu trả lời AI,
+       * trả về kèm `reply` — bản địa chỉ ghép hồi âm như cũ. */
+      const res = await sendMentorMessage(conv.id, text);
       patchConv(conv.id, (c) => ({
         ...c,
-        messages: [...c.messages, { id: `ai-${Date.now()}`, from: "ai", text: res.data.reply, at: new Date().toISOString() }],
+        messages: [
+          ...c.messages,
+          { id: `ai-${Date.now()}`, from: "ai", text: res.reply, at: new Date().toISOString() },
+        ],
       }));
     } catch {
       // Mất kết nối: hoàn tác tin nhắn vừa gửi, trả lại nội dung vào ô nhập để gửi lại.

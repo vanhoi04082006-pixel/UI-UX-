@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useApp } from "@/lib/store";
-import { useMock } from "@/lib/use-mock";
+import { listNotifications, markNotificationsRead, markNotificationsUnread } from "@/lib/api/outcomes";
+import { useApi } from "@/lib/use-api";
 import type { NotificationCategory, NotificationItem } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import { InkBadge, formatDateTimeVN } from "@/components/notebook/ui";
@@ -151,8 +152,9 @@ export default function StudentNotifications() {
   const user = useApp((s) => s.user);
   const role = user?.role ?? "intern";
   /* Dữ liệu + trạng thái tải/lỗi của riêng trang này. */
-  const { data, loading, error, reload } = useMock<NotificationItem[]>(
-    "notifications?role=intern",
+  const { data, loading, error, reload } = useApi<NotificationItem[]>(
+    () => listNotifications(),
+    [],
   );
   /* Hành động đọc/undo ghi lên máy chủ — badge chuông sidebar ăn theo. */
   const shellNotif = useShellNotif();
@@ -193,6 +195,9 @@ export default function StudentNotifications() {
       next.add(id);
       return next;
     });
+    /* Ghi đọc lên máy chủ hợp đồng (fire-and-forget như cũ) — giữ nhánh
+     * shellNotif để badge chuông/sidebar đồng bộ theo nguồn của shell. */
+    markNotificationsRead([id]).catch(() => undefined);
     shellNotif.markRead(id);
   };
 
@@ -207,6 +212,7 @@ export default function StudentNotifications() {
       next.add(id);
       return next;
     });
+    markNotificationsUnread([id]).catch(() => undefined);
     shellNotif.markUnread(id);
     toast.info("Đã hoàn tác — thông báo lại thành chưa đọc");
   };
@@ -218,6 +224,7 @@ export default function StudentNotifications() {
       return next;
     });
     setUnreadIds(new Set());
+    markNotificationsRead(undefined, true).catch(() => undefined);
     shellNotif.markAllRead();
   };
 

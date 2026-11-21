@@ -38,7 +38,8 @@ import {
   InitialDot,
 } from "@/components/staff/instructor-shared";
 import { InkBadge, MarginNote, NoteCard, SketchCard, Tape } from "@/components/notebook/ui";
-import { useMock } from "@/lib/use-mock";
+import { useApi } from "@/lib/use-api";
+import { listReports, listSessions } from "@/lib/api/instructor";
 import type { InstructorSession, ReportRow } from "@/lib/mock/types";
 
 /* =====================================================================
@@ -109,8 +110,8 @@ function downloadReportCsv(rows: ReportRow[]) {
 }
 
 export default function InstructorReports() {
-  const { data, loading, error, reload } = useMock<ReportRow[]>("instructor/reports");
-  const sessions = useMock<InstructorSession[]>("instructor/sessions");
+  const { data, loading, error, reload } = useApi<ReportRow[]>(listReports);
+  const sessions = useApi<InstructorSession[]>(listSessions);
   const reduced = useReducedMotion();
 
   const [detailId, setDetailId] = useState<string | null>(null);

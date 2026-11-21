@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useApp } from "@/lib/store";
-import { useMock } from "@/lib/use-mock";
+import { listMyEvaluations, listMyKpi } from "@/lib/api/outcomes";
+import { listMyTasks } from "@/lib/api/work";
+import { useApi } from "@/lib/use-api";
 import type { Evaluation, InternState, KpiRecord, Task } from "@/lib/mock/types";
 import { InkBadge, NoteCard, SketchCard } from "@/components/notebook/ui";
 import { FadeIn, InkButton } from "@/components/notebook/reveal";
@@ -207,11 +209,9 @@ export default function StudentProfile() {
   };
 
   /* ----- Số liệu nhanh cho hồ sơ năng lực ----- */
-  const evalsQ = useMock<Evaluation[]>(
-    email ? `intern/evaluations?email=${encodeURIComponent(email)}` : null,
-  );
-  const kpiQ = useMock<KpiRecord[]>(email ? `intern/kpi?email=${encodeURIComponent(email)}` : null);
-  const tasksQ = useMock<Task[]>(email ? `intern/tasks?email=${encodeURIComponent(email)}` : null);
+  const evalsQ = useApi<Evaluation[]>(() => listMyEvaluations(), [email]);
+  const kpiQ = useApi<KpiRecord[]>(() => listMyKpi(), [email]);
+  const tasksQ = useApi<Task[]>(() => listMyTasks(), [email]);
   const evals = evalsQ.data ?? [];
   const kpis = kpiQ.data ?? [];
   const tasks = tasksQ.data ?? [];

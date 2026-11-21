@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useApp } from "@/lib/store";
-import { useMock } from "@/lib/use-mock";
+import { listMyCertificates } from "@/lib/api/outcomes";
+import { useApi } from "@/lib/use-api";
 import type { Certificate } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -144,10 +145,7 @@ function CertCard({
 
 export default function StudentCertificates() {
   const user = useApp((s) => s.user);
-  const email = user?.email ?? "";
-  const { data, loading, error, reload } = useMock<Certificate[]>(
-    email ? `intern/certificates?email=${encodeURIComponent(email)}` : null,
-  );
+  const { data, loading, error, reload } = useApi<Certificate[]>(() => listMyCertificates(), []);
   const [preview, setPreview] = useState<Certificate | null>(null);
   const conditionsRef = useRef<HTMLDivElement>(null);
 

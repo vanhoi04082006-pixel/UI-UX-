@@ -10,8 +10,8 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { useApp } from "@/lib/store";
-import { useMock } from "@/lib/use-mock";
+import { listMyEvaluations } from "@/lib/api/outcomes";
+import { useApi } from "@/lib/use-api";
 import type { Evaluation } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import {
@@ -283,11 +283,7 @@ function EvalCard({ ev, defaultOpen }: { ev: Evaluation; defaultOpen: boolean })
 }
 
 export default function StudentEvaluations() {
-  const user = useApp((s) => s.user);
-  const email = user?.email ?? "";
-  const { data, loading, error, reload } = useMock<Evaluation[]>(
-    email ? `intern/evaluations?email=${encodeURIComponent(email)}` : null,
-  );
+  const { data, loading, error, reload } = useApi<Evaluation[]>(() => listMyEvaluations(), []);
 
   return (
     <div>

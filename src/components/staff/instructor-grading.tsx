@@ -31,7 +31,8 @@ import {
   SkeletonBlock,
 } from "@/components/staff/instructor-shared";
 import { InkBadge, MarginNote, SketchCard, StampMoc, formatDateTimeVN } from "@/components/notebook/ui";
-import { useMock } from "@/lib/use-mock";
+import { useApi } from "@/lib/use-api";
+import { listSubmissions, reviewSubmission } from "@/lib/api/instructor";
 import type { GradingItem } from "@/lib/mock/types";
 
 /* =====================================================================
@@ -54,7 +55,7 @@ function aiTone(score: number): string {
 }
 
 export default function InstructorGrading() {
-  const { data, loading, error, reload } = useMock<GradingItem[]>("instructor/grading");
+  const { data, loading, error, reload } = useApi<GradingItem[]>(listSubmissions);
 
   /** Ghi đè cục bộ sau khi chấm — không đụng vào dữ liệu gốc từ API. */
   const [overrides, setOverrides] = useState<Record<string, { status: GradingItem["status"]; finalScore?: number }>>({});
@@ -140,6 +141,8 @@ export default function InstructorGrading() {
       applyStatus(active.id, { status: "approved", finalScore });
       closeDialog();
       toast.success(`Đã chốt ${finalScore.toFixed(1)} cho ${student}`);
+      /* Ghi điểm chốt lên server qua adapter — UI optimistic giữ nguyên như cũ. */
+      reviewSubmission(active.id, "approved", finalScore, comment.trim()).catch(() => undefined);
     }, 700);
   }
 
@@ -162,6 +165,8 @@ export default function InstructorGrading() {
     closeDialog();
     const short = reason.trim().slice(0, 60);
     toast.info(`Đã gửi yêu cầu sửa: ${short}${reason.trim().length > 60 ? "…" : ""}`);
+    /* Ghi yêu cầu sửa lên server qua adapter — fire-and-forget như hành vi cũ. */
+    reviewSubmission(active.id, "changes", active.aiScore, reason.trim()).catch(() => undefined);
   }
 
   if (error) {

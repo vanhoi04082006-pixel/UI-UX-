@@ -10,8 +10,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useApp } from "@/lib/store";
-import { useMock } from "@/lib/use-mock";
+import { listMyKpi, listMySalaryLedger } from "@/lib/api/outcomes";
+import { useApi } from "@/lib/use-api";
 import type { KpiMetric, KpiRecord, SalaryEntry } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 import {
@@ -169,12 +169,8 @@ function MetricRow({
 }
 
 function KpiTab() {
-  const user = useApp((s) => s.user);
-  const email = user?.email ?? "";
   const reduced = usePrefersReducedMotion();
-  const { data, loading, error, reload } = useMock<KpiRecord[]>(
-    email ? `intern/kpi?email=${encodeURIComponent(email)}` : null,
-  );
+  const { data, loading, error, reload } = useApi<KpiRecord[]>(() => listMyKpi(), []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [openMetric, setOpenMetric] = useState<string | null>(null);
 
@@ -401,11 +397,7 @@ function periodChip(active: boolean) {
 }
 
 function SalaryTab() {
-  const user = useApp((s) => s.user);
-  const email = user?.email ?? "";
-  const { data, loading, error, reload } = useMock<SalaryEntry[]>(
-    email ? `intern/salary?email=${encodeURIComponent(email)}` : null,
-  );
+  const { data, loading, error, reload } = useApi<SalaryEntry[]>(() => listMySalaryLedger(), []);
   const [showAll, setShowAll] = useState(false);
   /* Kỳ đang chọn — null nghĩa là "Mọi kỳ" (mặc định). */
   const [period, setPeriod] = useState<string | null>(null);

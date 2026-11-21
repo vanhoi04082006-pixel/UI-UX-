@@ -11,8 +11,9 @@ import {
 } from "@/components/icons/v-icons";
 import { InkBadge, SketchCard, StampMoc } from "@/components/notebook/ui";
 import { InkButton } from "@/components/notebook/reveal";
-import { useMock } from "@/lib/use-mock";
-import type { MockAccount } from "@/lib/mock/types";
+import { listDemoAccounts, type DemoAccount } from "@/lib/api/auth";
+import { useApi } from "@/lib/use-api";
+import type { Role } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 
 /* =====================================================================
@@ -33,8 +34,24 @@ const FILTERS: { key: DemoFilter; label: string }[] = [
 
 const CHIP_CLS = "!gap-1 !px-2 !py-0 !text-[0.64rem] [&_svg]:h-3 [&_svg]:w-3";
 
+/* Mật khẩu demo mặc định theo vai trò — endpoint mới (và BE thật) không trả
+ * password về FE; bản preview gắn lại giá trị mặc định phía client để giữ
+ * nguyên chip mật khẩu hiển thị sẵn + đăng nhập nhanh của dải demo. */
+const DEMO_PASSWORD: Record<Role, string> = {
+  intern: "Sv@2026",
+  instructor: "Gv@2026",
+  admin: "Adm@2026",
+};
+
+/** DemoAccount kèm mật khẩu mặc định — đúng hình dáng dữ liệu cũ của panel. */
+export type DemoAccountRow = DemoAccount & { password: string };
+
+function withDefaultPassword(account: DemoAccount): DemoAccountRow {
+  return { ...account, password: DEMO_PASSWORD[account.role] };
+}
+
 /** Trường hợp đặc biệt: bị khóa HOẶC đang treo cờ phải đổi mật khẩu mặc định. */
-function isSpecial(a: MockAccount) {
+function isSpecial(a: DemoAccountRow) {
   return a.status === "locked" || a.mustChangePassword === true;
 }
 
@@ -57,7 +74,7 @@ function initialsOf(name: string): string {
 }
 
 /** Chip trạng thái nghiệp vụ — tài khoản đặc biệt có thể mang 2 chip cùng lúc. */
-function StateChips({ account }: { account: MockAccount }) {
+function StateChips({ account }: { account: DemoAccountRow }) {
   const chips: ReactNode[] = [];
   if (account.status === "locked") {
     chips.push(
@@ -117,10 +134,10 @@ function AccountRow({
   disabled,
   onPick,
 }: {
-  account: MockAccount;
+  account: DemoAccountRow;
   busy: boolean;
   disabled: boolean;
-  onPick: (account: MockAccount) => void;
+  onPick: (account: DemoAccountRow) => void;
 }) {
   const avatarTone = AVATAR_TONE[account.status === "locked" ? "locked" : account.role];
   /* Băng washi đổi màu theo loại tài khoản: đỏ cho khóa, vàng son cho cần đổi MK. */
@@ -191,10 +208,10 @@ export function DemoAccountPanel({
   onPick,
   pendingId,
 }: {
-  onPick: (account: MockAccount) => void;
+  onPick: (account: DemoAccountRow) => void;
   pendingId: string | null;
 }) {
-  const { data, loading, error, reload } = useMock<MockAccount[]>("demo-accounts");
+  const { data, loading, error, reload } = useApi<DemoAccount[]>(listDemoAccounts, []);
   const [filter, setFilter] = useState<DemoFilter>("all");
   const [open, setOpen] = useState(false);
 
@@ -209,7 +226,7 @@ export function DemoAccountPanel({
     return () => mq.removeEventListener("change", autoOpen);
   }, []);
 
-  const all = data ?? [];
+  const all = (data ?? []).map(withDefaultPassword);
   const countFor = (key: DemoFilter) =>
     key === "all"
       ? all.length

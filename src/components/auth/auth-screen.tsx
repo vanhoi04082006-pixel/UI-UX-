@@ -42,10 +42,11 @@ import {
 } from "@/components/notebook/doodles";
 import { InkButton } from "@/components/notebook/reveal";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
-import { DemoAccountPanel } from "./demo-account-panel";
-import { postMock } from "@/lib/use-mock";
+import { DemoAccountPanel, type DemoAccountRow } from "./demo-account-panel";
+import { ApiError } from "@/lib/api/api-client";
+import { changePassword, login as apiLogin, register } from "@/lib/api/auth";
 import { useApp } from "@/lib/store";
-import type { ApiEnvelope, MockAccount, Role, SessionUser } from "@/lib/mock/types";
+import type { Role, SessionUser } from "@/lib/mock/types";
 import { cn } from "@/lib/utils";
 
 /* =====================================================================
@@ -126,36 +127,40 @@ const ROLE_AVATAR: Record<Role, string> = {
 
 /* ------------------------------ tiện ích ------------------------------ */
 
-/** POST tới mock API kèm mã trạng thái HTTP — để phân biệt 401/403/404. */
-async function postMockStatus<TReq, TRes>(
-  path: string,
-  body: TReq,
-): Promise<{ ok: boolean; status: number; message: string; data: TRes | null }> {
-  let res: Response;
-  try {
-    res = await fetch(`/api/mock/${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    return {
-      ok: false,
-      status: 0,
-      message: "Không kết nối được máy chủ demo — kiểm tra kết nối rồi thử lại nhé.",
-      data: null,
-    };
+/* Ánh xạ ApiError của adapter về ĐÚNG câu chữ mà màn hình cũ từng hiển thị —
+ * microcopy (mẹo tài khoản demo, hộp khóa 403…) giữ nguyên không đổi. */
+
+/** Lỗi POST /auth/login — 401 kèm mẹo demo, 403 kèm dòng liên hệ quản trị. */
+function loginErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    switch (error.statusCode) {
+      case 401:
+        return "Email hoặc mật khẩu không đúng. Mẹo: màn đăng nhập có sẵn tài khoản demo.";
+      case 403:
+        return "Tài khoản đã bị khóa vì vi phạm quy định nộp bài. Liên hệ quản trị viên qua email quan.tri@vintern.edu.vn.";
+      case 0:
+        return "Không kết nối được máy chủ demo — kiểm tra kết nối rồi thử lại nhé.";
+      default:
+        return error.message;
+    }
   }
-  const json = (await res.json().catch(() => null)) as ApiEnvelope<TRes> | null;
-  if (!res.ok || !json || !json.ok) {
-    return {
-      ok: false,
-      status: res.status,
-      message: json?.message ?? `Không hoàn tất được thao tác (lỗi ${res.status}).`,
-      data: null,
-    };
+  return "Không hoàn tất được thao tác. Thử lại nhé.";
+}
+
+/** Lỗi POST /auth/change-password — 401/400 giữ nguyên câu chữ cũ (không
+ * dấu chấm cuối, đúng máy chủ cũ); 401 do phiên (UNAUTHORIZED) thì hiển thị
+ * đúng câu adapter trả về. */
+function changePasswordErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.statusCode === 401) {
+      return error.code === "INVALID_CREDENTIALS" || error.code === "HTTP_ERROR"
+        ? "Mật khẩu hiện tại không đúng"
+        : error.message;
+    }
+    if (error.statusCode === 400) return "Mật khẩu mới cần tối thiểu 8 ký tự";
+    return error.message;
   }
-  return { ok: true, status: res.status, message: "", data: json.data };
+  return error instanceof Error ? error.message : "Không đổi được mật khẩu. Thử lại nhé.";
 }
 
 function prefersReducedMotion(): boolean {
@@ -548,13 +553,10 @@ export default function AuthScreen() {
     setLoginError(null);
     setLoginNotice(null);
     setLockedMsg(null);
-    const out = await postMockStatus<
-      { email: string; password: string },
-      { user: SessionUser; token: string }
-    >("auth/login", { email: nextEmail, password: nextPassword });
-
-    if (out.ok && out.data) {
-      const user = out.data.user;
+    try {
+      /* Adapter tự lưu accessToken vào localStorage — store chỉ cần user. */
+      const result = await apiLogin(nextEmail, nextPassword);
+      const user = result.user;
       /* Đăng nhập đúng nhưng còn mật khẩu mặc định — CHẶN trước của sổ tay,
        * chưa gọi login() vào workspace cho tới khi đổi mật khẩu xong. */
       if (user.mustChangePassword === true) {
@@ -575,16 +577,15 @@ export default function AuthScreen() {
       /* Chờ giữa chừng để dấu tick vẽ mực kịp hoàn tất rồi mới mở sổ tay. */
       await waitMs(560);
       login(user);
-      return;
-    }
-
-    setLoginStatus("error");
-    setErrNonce((n) => n + 1);
-    if (out.status === 403) {
-      setLockedMsg(out.message);
-      toast.error("Tài khoản đã bị khóa");
-    } else {
-      setLoginError(out.message);
+    } catch (error) {
+      setLoginStatus("error");
+      setErrNonce((n) => n + 1);
+      if (error instanceof ApiError && error.statusCode === 403) {
+        setLockedMsg(loginErrorMessage(error));
+        toast.error("Tài khoản đã bị khóa");
+      } else {
+        setLoginError(loginErrorMessage(error));
+      }
     }
   }
 
@@ -601,7 +602,7 @@ export default function AuthScreen() {
     await runLogin(nextEmail, password);
   }
 
-  async function handleDemoPick(account: MockAccount) {
+  async function handleDemoPick(account: DemoAccountRow) {
     if (cpCtx !== null || demoBusyId !== null || loginStatus === "submitting") return;
     setTab("login");
     setEmail(account.email);
@@ -624,15 +625,10 @@ export default function AuthScreen() {
     setRegStatus("submitting");
     setRegError(null);
     try {
-      const res = await postMock<{ name: string; email: string }, { message: string }>(
-        "auth/register",
-        {
-          name: regName.trim(),
-          email: regEmail.trim(),
-        },
-      );
+      /* Adapter trả sẵn câu chào mừng của máy chủ (giữ nguyên như chữ cũ). */
+      const message = await register(regName.trim(), regEmail.trim(), regPass);
       setRegStatus("success");
-      setRegSuccess(res.data.message);
+      setRegSuccess(message);
     } catch (err) {
       setRegStatus("error");
       setRegError(err instanceof Error ? err.message : "Đăng ký không thành công. Thử lại nhé.");
@@ -668,23 +664,16 @@ export default function AuthScreen() {
     setCpStatus("submitting");
     setCpError(null);
     try {
-      const res = await postMock<
-        { email: string; currentPassword: string; newPassword: string },
-        { user: SessionUser }
-      >("auth/change-password", {
-        email: cpCtx.email,
-        currentPassword: cpCurrent,
-        newPassword: cpNew,
-      });
+      const user = await changePassword(cpCtx.email, cpCurrent, cpNew);
       /* Máy chủ đã xóa cờ mustChangePassword — bây giờ mới vào sổ tay được. */
       setCpStatus("success");
       toast.success("Đã đổi mật khẩu — chào mừng!");
       persistRemember(cpCtx.email);
       await waitMs(680);
-      login(res.data.user);
+      login(user);
     } catch (err) {
       setCpStatus("error");
-      setCpError(err instanceof Error ? err.message : "Không đổi được mật khẩu. Thử lại nhé.");
+      setCpError(changePasswordErrorMessage(err));
       triggerCpShake();
     }
   }

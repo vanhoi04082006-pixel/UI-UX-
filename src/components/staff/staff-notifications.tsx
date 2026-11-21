@@ -20,7 +20,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import type { NotificationItem, Role } from "@/lib/mock/types";
 import { routeLabel, useApp } from "@/lib/store";
-import { useMock } from "@/lib/use-mock";
+import { useApi } from "@/lib/use-api";
+import { listNotifications } from "@/lib/api/outcomes";
 import { cn } from "@/lib/utils";
 import { ChipGroup, EmptyState, PencilLines, SectionError, StaffPageHeader } from "./staff-kit";
 
@@ -135,10 +136,11 @@ export default function StaffNotifications() {
   /* Nguồn chung của shell (badge chuông + sidebar) — POST đọc/undo lên server. */
   const shell = useShellNotif();
 
-  /* useMock làm nền: skeleton/lỗi khi vào thẳng trang trong lúc shell chưa tải
-     xong dữ liệu của vai trò này. */
-  const { data, loading, error, reload } = useMock<NotificationItem[]>(
-    `notifications?role=${role}`,
+  /* useApi làm nền: skeleton/lỗi khi vào thẳng trang trong lúc shell chưa tải
+     xong dữ liệu của vai trò này (đổi vai trò → tự tải lại). */
+  const { data, loading, error, reload } = useApi<NotificationItem[]>(
+    () => listNotifications(),
+    [role],
   );
 
   /* Ghi đè hiển thị tức thời — mọi thao tác đều ghi server rồi đồng bộ lại. */
@@ -211,7 +213,7 @@ export default function StaffNotifications() {
     if (route) navigate(route);
   };
 
-  /* Trạng thái chờ — chỉ hiện khi shell chưa kịp tải và useMock cũng chưa có dữ liệu */
+  /* Trạng thái chờ — chỉ hiện khi shell chưa kịp tải và useApi cũng chưa có dữ liệu */
   if (!shellReady && loading && !data) {
     return (
       <div>
