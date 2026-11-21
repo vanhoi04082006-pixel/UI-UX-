@@ -651,8 +651,8 @@ export default function AuthScreen() {
       triggerCpShake();
       return;
     }
-    if (cpNew.length < 8) {
-      setCpError("Mật khẩu mới cần tối thiểu 8 ký tự.");
+    if (cpNew.length < 12) {
+      setCpError("Mật khẩu mới cần tối thiểu 12 ký tự (yêu cầu máy chủ).");
       triggerCpShake();
       return;
     }
@@ -664,13 +664,19 @@ export default function AuthScreen() {
     setCpStatus("submitting");
     setCpError(null);
     try {
-      const user = await changePassword(cpCtx.email, cpCurrent, cpNew);
-      /* Máy chủ đã xóa cờ mustChangePassword — bây giờ mới vào sổ tay được. */
+      /* BE thật: đổi mật khẩu thành công → refresh cookie bị xoá, phiên
+       * hiện tại kết thúc → bắt đăng nhập lại bằng mật khẩu mới. */
+      await changePassword(cpCurrent, cpNew);
       setCpStatus("success");
-      toast.success("Đã đổi mật khẩu — chào mừng!");
+      toast.success("Đã đổi mật khẩu — hãy đăng nhập lại bằng mật khẩu mới.");
       persistRemember(cpCtx.email);
       await waitMs(680);
-      login(user);
+      setCpCtx(null);
+      setCpCurrent("");
+      setCpNew("");
+      setCpConfirm("");
+      switchTab("login", cpCtx.email);
+      setLoginNotice("Mật khẩu đã được đổi — đăng nhập lại bằng mật khẩu mới nhé!");
     } catch (err) {
       setCpStatus("error");
       setCpError(changePasswordErrorMessage(err));
