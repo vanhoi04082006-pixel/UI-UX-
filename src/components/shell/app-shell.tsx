@@ -14,6 +14,7 @@ import {
   VClipboardCheck,
   VColumns,
   VFileText,
+  VGithub,
   VHome,
   VKanban,
   VListTodo,
@@ -25,8 +26,14 @@ import {
   VPanelLeft,
   VPencil,
   VSearch,
+  VSettings,
   VShapes,
   VShield,
+  VSparkles,
+  VStampTool,
+  VTarget,
+  VTrend,
+  VHistory,
   VUser,
   VUsers,
 } from "@/components/icons/v-icons";
@@ -60,6 +67,9 @@ import StudentOverview from "@/components/student/student-overview";
 import StudentWork from "@/components/student/student-work";
 import StudentSprint from "@/components/student/student-sprint";
 import StudentMentor from "@/components/student/student-mentor";
+import StudentGithub from "@/components/student-ext/student-github";
+import StudentRecruitment from "@/components/student-ext/student-recruitment";
+import StudentPerformance from "@/components/student-ext/student-performance";
 import StudentEvaluations from "@/components/student/student-evaluations";
 import StudentKpi from "@/components/student/student-kpi";
 import StudentCertificates from "@/components/student/student-certificates";
@@ -70,10 +80,24 @@ import InstructorSessions from "@/components/staff/instructor-sessions";
 import InstructorSprints from "@/components/staff/instructor-sprints";
 import InstructorGrading from "@/components/staff/instructor-grading";
 import InstructorReports from "@/components/staff/instructor-reports";
+import InstructorOperations from "@/components/staff-ext/instructor-operations";
+import InstructorEvaluation from "@/components/staff-ext/instructor-evaluation";
+import InstructorPerformance from "@/components/staff-ext/instructor-performance";
+import InstructorAiPlan from "@/components/staff-ext/instructor-ai-plan";
+import ProjectsLibrary from "@/components/staff-ext/projects-library";
 import AdminOverview from "@/components/staff/admin-overview";
 import AdminUsers from "@/components/staff/admin-users";
 import AdminQuestions from "@/components/staff/admin-questions";
 import AdminTemplates from "@/components/staff/admin-templates";
+import AdminRecruitment from "@/components/staff-ext/admin-recruitment";
+import AdminEvaluation from "@/components/staff-ext/admin-evaluation";
+import AdminKpi from "@/components/staff-ext/admin-kpi";
+import AdminGroups from "@/components/staff-ext/admin-groups";
+import AdminKnowledge from "@/components/staff-ext/admin-knowledge";
+import AdminCatalogs from "@/components/staff-ext/admin-catalogs";
+import AdminCertificates from "@/components/staff-ext/admin-certificates";
+import AdminSystem from "@/components/staff-ext/admin-system";
+import AdminAudit from "@/components/staff-ext/admin-audit";
 import StaffNotifications from "@/components/staff/staff-notifications";
 import StaffProfile from "@/components/staff/staff-profile";
 
@@ -83,18 +107,30 @@ const ROUTE_ICONS: Record<string, VIconComponent> = {
   work: VListTodo,
   sprint: VKanban,
   mentor: VBot,
+  github: VGithub,
+  recruitment: VSparkles,
   evaluations: VClipboardCheck,
   kpi: VChartColumn,
   certificates: VAward,
+  performance: VTrend,
   notifications: VBell,
   profile: VUser,
   sessions: VUsers,
+  operations: VTarget,
   sprints: VColumns,
+  projects: VShapes,
   grading: VPencil,
   reports: VFileText,
+  "ai-plan": VBot,
   users: VUsers,
+  groups: VUsers,
+  audit: VHistory,
   questions: VBook,
   templates: VShapes,
+  cycles: VClipboardCheck,
+  knowledge: VBook,
+  catalogs: VStampTool,
+  system: VSettings,
 };
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -516,9 +552,12 @@ function PageFor(role: Role, route: string) {
       case "work": return <StudentWork />;
       case "sprint": return <StudentSprint />;
       case "mentor": return <StudentMentor />;
+      case "github": return <StudentGithub />;
+      case "recruitment": return <StudentRecruitment />;
       case "evaluations": return <StudentEvaluations />;
       case "kpi": return <StudentKpi />;
       case "certificates": return <StudentCertificates />;
+      case "performance": return <StudentPerformance />;
       case "notifications": return <StudentNotifications />;
       case "profile": return <StudentProfile />;
       default: return <StudentOverview />;
@@ -527,8 +566,13 @@ function PageFor(role: Role, route: string) {
   if (role === "instructor") {
     switch (route) {
       case "sessions": return <InstructorSessions />;
+      case "operations": return <InstructorOperations />;
       case "sprints": return <InstructorSprints />;
+      case "projects": return <ProjectsLibrary />;
       case "grading": return <InstructorGrading />;
+      case "evaluations": return <InstructorEvaluation />;
+      case "performance": return <InstructorPerformance />;
+      case "ai-plan": return <InstructorAiPlan />;
       case "reports": return <InstructorReports />;
       case "notifications": return <StaffNotifications />;
       case "profile": return <StaffProfile />;
@@ -537,8 +581,18 @@ function PageFor(role: Role, route: string) {
   }
   switch (route) {
     case "users": return <AdminUsers />;
+    case "groups": return <AdminGroups />;
+    case "recruitment": return <AdminRecruitment />;
+    case "audit": return <AdminAudit />;
     case "questions": return <AdminQuestions />;
     case "templates": return <AdminTemplates />;
+    case "projects": return <ProjectsLibrary />;
+    case "cycles": return <AdminEvaluation />;
+    case "kpi": return <AdminKpi />;
+    case "knowledge": return <AdminKnowledge />;
+    case "catalogs": return <AdminCatalogs />;
+    case "certificates": return <AdminCertificates />;
+    case "system": return <AdminSystem />;
     case "notifications": return <StaffNotifications />;
     case "profile": return <StaffProfile />;
     default: return <AdminOverview />;
