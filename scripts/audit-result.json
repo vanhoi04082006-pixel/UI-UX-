@@ -1,0 +1,2269 @@
+{
+  "matched": [
+    {
+      "file": "admin.ts",
+      "line": 89,
+      "raw": "/users?${params.toString()}",
+      "method": "GET",
+      "be_path": "/users"
+    },
+    {
+      "file": "admin.ts",
+      "line": 102,
+      "raw": "/users",
+      "method": "POST",
+      "be_path": "/users"
+    },
+    {
+      "file": "admin.ts",
+      "line": 109,
+      "raw": "/users/${encodeURIComponent(id)}/status",
+      "method": "PATCH",
+      "be_path": "/users/{id}/status"
+    },
+    {
+      "file": "admin.ts",
+      "line": 117,
+      "raw": "/users/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/users/{id}"
+    },
+    {
+      "file": "admin.ts",
+      "line": 142,
+      "raw": "/activity-events?page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/activity-events"
+    },
+    {
+      "file": "admin.ts",
+      "line": 200,
+      "raw": "/dashboard/admin",
+      "method": "GET",
+      "be_path": "/dashboard/admin"
+    },
+    {
+      "file": "admin.ts",
+      "line": 204,
+      "raw": "/dashboard/access",
+      "method": "GET",
+      "be_path": "/dashboard/access"
+    },
+    {
+      "file": "admin.ts",
+      "line": 309,
+      "raw": "/admin/question-bank?page=1&pageSize=100",
+      "method": "GET",
+      "be_path": "/admin/question-bank"
+    },
+    {
+      "file": "admin.ts",
+      "line": 313,
+      "raw": "/admin/question-bank?page=${page}&pageSize=100",
+      "method": "GET",
+      "be_path": "/admin/question-bank"
+    },
+    {
+      "file": "admin.ts",
+      "line": 335,
+      "raw": "/admin/question-bank",
+      "method": "POST",
+      "be_path": "/admin/question-bank"
+    },
+    {
+      "file": "admin.ts",
+      "line": 351,
+      "raw": "/admin/question-bank/${encodeURIComponent(id)}?version=${encodeURIComponent(String(version))}",
+      "method": "PUT",
+      "be_path": "/admin/question-bank/{id}"
+    },
+    {
+      "file": "admin.ts",
+      "line": 360,
+      "raw": "/admin/question-bank/${encodeURIComponent(id)}?version=${encodeURIComponent(String(version))}",
+      "method": "DELETE",
+      "be_path": "/admin/question-bank/{id}"
+    },
+    {
+      "file": "admin.ts",
+      "line": 403,
+      "raw": "/project-templates?page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/project-templates"
+    },
+    {
+      "file": "ai-plan.ts",
+      "line": 177,
+      "raw": "/ai-generations/sprint-plan/draft",
+      "method": "POST",
+      "be_path": "/ai-generations/sprint-plan/draft"
+    },
+    {
+      "file": "ai-plan.ts",
+      "line": 193,
+      "raw": "/ai-generations/sprint-plan/confirm",
+      "method": "POST",
+      "be_path": "/ai-generations/sprint-plan/confirm"
+    },
+    {
+      "file": "ai-plan.ts",
+      "line": 210,
+      "raw": "/ai-generations/plans/generate",
+      "method": "POST",
+      "be_path": "/ai-generations/plans/generate"
+    },
+    {
+      "file": "ai-plan.ts",
+      "line": 217,
+      "raw": "/ai-generations/plans?sessionId=${encodeURIComponent(sessionId)}",
+      "method": "GET",
+      "be_path": "/ai-generations/plans"
+    },
+    {
+      "file": "ai-plan.ts",
+      "line": 224,
+      "raw": "/ai-generations/plans/${encodeURIComponent(planId)}",
+      "method": "GET",
+      "be_path": "/ai-generations/plans/{id}"
+    },
+    {
+      "file": "applications.ts",
+      "line": 51,
+      "raw": "/applications/rounds",
+      "method": "GET",
+      "be_path": "/applications/rounds"
+    },
+    {
+      "file": "applications.ts",
+      "line": 81,
+      "raw": "/applications",
+      "method": "POST",
+      "be_path": "/applications"
+    },
+    {
+      "file": "applications.ts",
+      "line": 166,
+      "raw": "/applications/me",
+      "method": "GET",
+      "be_path": "/applications/me"
+    },
+    {
+      "file": "applications.ts",
+      "line": 208,
+      "raw": "/applications/me/cv",
+      "method": "GET",
+      "be_path": "/applications/me/cv"
+    },
+    {
+      "file": "applications.ts",
+      "line": 217,
+      "raw": "/applications/me/cv",
+      "method": "POST",
+      "be_path": "/applications/me/cv"
+    },
+    {
+      "file": "applications.ts",
+      "line": 222,
+      "raw": "/applications/leave",
+      "method": "POST",
+      "be_path": "/applications/leave"
+    },
+    {
+      "file": "auth.ts",
+      "line": 93,
+      "raw": "/auth/login",
+      "method": "POST",
+      "be_path": "/auth/login"
+    },
+    {
+      "file": "auth.ts",
+      "line": 102,
+      "raw": "/auth/me",
+      "method": "GET",
+      "be_path": "/auth/me"
+    },
+    {
+      "file": "auth.ts",
+      "line": 126,
+      "raw": "/auth/logout",
+      "method": "POST",
+      "be_path": "/auth/logout"
+    },
+    {
+      "file": "auth.ts",
+      "line": 148,
+      "raw": "/auth/me",
+      "method": "GET",
+      "be_path": "/auth/me"
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 49,
+      "raw": "/catalogs/types?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/catalogs/types"
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 61,
+      "raw": "/catalogs/types",
+      "method": "POST",
+      "be_path": "/catalogs/types"
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 101,
+      "raw": "/catalogs/items?${params.toString()}",
+      "method": "GET",
+      "be_path": "/catalogs/items"
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 113,
+      "raw": "/catalogs/items",
+      "method": "POST",
+      "be_path": "/catalogs/items"
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 123,
+      "raw": "/catalogs/items/${encodeURIComponent(id)}",
+      "method": "PATCH",
+      "be_path": "/catalogs/items/{id}"
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 177,
+      "raw": "/admin/career-roles?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/admin/career-roles"
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 199,
+      "raw": "/admin/career-roles",
+      "method": "POST",
+      "be_path": "/admin/career-roles"
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 206,
+      "raw": "/admin/career-roles/${encodeURIComponent(code)}",
+      "method": "GET",
+      "be_path": "/admin/career-roles/{code}"
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 228,
+      "raw": "/admin/career-roles/${encodeURIComponent(code)}",
+      "method": "PUT",
+      "be_path": "/admin/career-roles/{code}"
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 257,
+      "raw": "/admin/career-roles/${encodeURIComponent(code)}/revisions?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/admin/career-roles/{code}/revisions"
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 283,
+      "raw": "/career-roles",
+      "method": "GET",
+      "be_path": "/career-roles"
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 292,
+      "raw": "/career-roles/reference",
+      "method": "GET",
+      "be_path": "/career-roles/reference"
+    },
+    {
+      "file": "certificates-admin.ts",
+      "line": 73,
+      "raw": "/certificates?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/certificates"
+    },
+    {
+      "file": "certificates-admin.ts",
+      "line": 83,
+      "raw": "/certificates/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/certificates/{id}"
+    },
+    {
+      "file": "certificates-admin.ts",
+      "line": 89,
+      "raw": "/certificates/issue",
+      "method": "POST",
+      "be_path": "/certificates/issue"
+    },
+    {
+      "file": "certificates-admin.ts",
+      "line": 100,
+      "raw": "/certificates/${encodeURIComponent(id)}/revoke",
+      "method": "POST",
+      "be_path": "/certificates/{id}/revoke"
+    },
+    {
+      "file": "certificates-admin.ts",
+      "line": 111,
+      "raw": "/certificates/verify/${encodeURIComponent(code)}",
+      "method": "GET",
+      "be_path": "/certificates/verify/{code}"
+    },
+    {
+      "file": "certificates-admin.ts",
+      "line": 119,
+      "raw": "/certificates/${encodeURIComponent(id)}/pdf",
+      "method": "GET",
+      "be_path": "/certificates/{id}/pdf"
+    },
+    {
+      "file": "certificates-admin.ts",
+      "line": 141,
+      "raw": "/users?page=1&pageSize=100",
+      "method": "GET",
+      "be_path": "/users"
+    },
+    {
+      "file": "evaluation-cycles.ts",
+      "line": 119,
+      "raw": "/evaluation-cycles?${params.toString()}",
+      "method": "GET",
+      "be_path": "/evaluation-cycles"
+    },
+    {
+      "file": "evaluation-cycles.ts",
+      "line": 139,
+      "raw": "/evaluation-cycles",
+      "method": "POST",
+      "be_path": "/evaluation-cycles"
+    },
+    {
+      "file": "evaluation-cycles.ts",
+      "line": 144,
+      "raw": "/evaluation-cycles/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/evaluation-cycles/{id}"
+    },
+    {
+      "file": "evaluation-cycles.ts",
+      "line": 159,
+      "raw": "/evaluation-cycles/${encodeURIComponent(id)}",
+      "method": "PATCH",
+      "be_path": "/evaluation-cycles/{id}"
+    },
+    {
+      "file": "evaluation-cycles.ts",
+      "line": 167,
+      "raw": "/evaluation-cycles/${encodeURIComponent(id)}/status",
+      "method": "POST",
+      "be_path": "/evaluation-cycles/{id}/status"
+    },
+    {
+      "file": "evaluation-cycles.ts",
+      "line": 175,
+      "raw": "/evaluation-cycles/${encodeURIComponent(id)}/criteria",
+      "method": "GET",
+      "be_path": "/evaluation-cycles/{id}/criteria"
+    },
+    {
+      "file": "evaluation-cycles.ts",
+      "line": 196,
+      "raw": "/evaluation-cycles/${encodeURIComponent(id)}/criteria",
+      "method": "POST",
+      "be_path": "/evaluation-cycles/{id}/criteria"
+    },
+    {
+      "file": "evaluation-cycles.ts",
+      "line": 209,
+      "raw": "/evaluation-cycles/${encodeURIComponent(id)}/criteria/${encodeURIComponent(criterionId)}",
+      "method": "PATCH",
+      "be_path": "/evaluation-cycles/{id}/criteria/{criterionId}"
+    },
+    {
+      "file": "evaluation-cycles.ts",
+      "line": 218,
+      "raw": "/evaluation-cycles/${encodeURIComponent(id)}/criteria/${encodeURIComponent(criterionId)}",
+      "method": "DELETE",
+      "be_path": "/evaluation-cycles/{id}/criteria/{criterionId}"
+    },
+    {
+      "file": "evaluation-cycles.ts",
+      "line": 229,
+      "raw": "/sessions?page=1&pageSize=100",
+      "method": "GET",
+      "be_path": "/sessions"
+    },
+    {
+      "file": "evaluation-cycles.ts",
+      "line": 240,
+      "raw": "/projects?page=1&pageSize=100",
+      "method": "GET",
+      "be_path": "/projects"
+    },
+    {
+      "file": "github.ts",
+      "line": 65,
+      "raw": "/github/me",
+      "method": "GET",
+      "be_path": "/github/me"
+    },
+    {
+      "file": "github.ts",
+      "line": 76,
+      "raw": "/github/connect",
+      "method": "POST",
+      "be_path": "/github/connect"
+    },
+    {
+      "file": "github.ts",
+      "line": 100,
+      "raw": "/github/me",
+      "method": "DELETE",
+      "be_path": "/github/me"
+    },
+    {
+      "file": "github.ts",
+      "line": 153,
+      "raw": "/github/me/repository-access",
+      "method": "GET",
+      "be_path": "/github/me/repository-access"
+    },
+    {
+      "file": "github.ts",
+      "line": 201,
+      "raw": "/github/repository-account",
+      "method": "GET",
+      "be_path": "/github/repository-account"
+    },
+    {
+      "file": "github.ts",
+      "line": 208,
+      "raw": "/github/repository-account",
+      "method": "POST",
+      "be_path": "/github/repository-account"
+    },
+    {
+      "file": "groups.ts",
+      "line": 131,
+      "raw": "/groups?${params.toString()}",
+      "method": "GET",
+      "be_path": "/groups"
+    },
+    {
+      "file": "groups.ts",
+      "line": 145,
+      "raw": "/groups",
+      "method": "POST",
+      "be_path": "/groups"
+    },
+    {
+      "file": "groups.ts",
+      "line": 155,
+      "raw": "/groups/${encodeURIComponent(id)}",
+      "method": "PATCH",
+      "be_path": "/groups/{id}"
+    },
+    {
+      "file": "groups.ts",
+      "line": 163,
+      "raw": "/groups/${encodeURIComponent(id)}/members",
+      "method": "GET",
+      "be_path": "/groups/{id}/members"
+    },
+    {
+      "file": "groups.ts",
+      "line": 177,
+      "raw": "/groups/${encodeURIComponent(id)}/members",
+      "method": "POST",
+      "be_path": "/groups/{id}/members"
+    },
+    {
+      "file": "groups.ts",
+      "line": 188,
+      "raw": "/groups/${encodeURIComponent(id)}/members/${encodeURIComponent(userId)}",
+      "method": "DELETE",
+      "be_path": "/groups/{id}/members/{userId}"
+    },
+    {
+      "file": "groups.ts",
+      "line": 200,
+      "raw": "/groups/${encodeURIComponent(id)}/roles",
+      "method": "GET",
+      "be_path": "/groups/{id}/roles"
+    },
+    {
+      "file": "groups.ts",
+      "line": 208,
+      "raw": "/groups/${encodeURIComponent(id)}/roles",
+      "method": "PUT",
+      "be_path": "/groups/{id}/roles"
+    },
+    {
+      "file": "groups.ts",
+      "line": 218,
+      "raw": "/roles?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/roles"
+    },
+    {
+      "file": "groups.ts",
+      "line": 229,
+      "raw": "/permissions?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/permissions"
+    },
+    {
+      "file": "groups.ts",
+      "line": 241,
+      "raw": "/roles/${encodeURIComponent(id)}/permissions?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/roles/{id}/permissions"
+    },
+    {
+      "file": "groups.ts",
+      "line": 252,
+      "raw": "/users?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/users"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 47,
+      "raw": "/evaluation-cycles?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/evaluation-cycles"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 54,
+      "raw": "/evaluation-cycles/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/evaluation-cycles/{id}"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 58,
+      "raw": "/evaluation-cycles/${encodeURIComponent(cycleId)}/criteria",
+      "method": "GET",
+      "be_path": "/evaluation-cycles/{id}/criteria"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 187,
+      "raw": "/evaluations?${search.toString()}",
+      "method": "GET",
+      "be_path": "/evaluations"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 198,
+      "raw": "/evaluations",
+      "method": "POST",
+      "be_path": "/evaluations"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 202,
+      "raw": "/evaluations/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/evaluations/{id}"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 219,
+      "raw": "/evaluations/${encodeURIComponent(id)}",
+      "method": "PATCH",
+      "be_path": "/evaluations/{id}"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 226,
+      "raw": "/evaluations/${encodeURIComponent(id)}/submit",
+      "method": "POST",
+      "be_path": "/evaluations/{id}/submit"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 233,
+      "raw": "/evaluations/${encodeURIComponent(id)}/finalize",
+      "method": "POST",
+      "be_path": "/evaluations/{id}/finalize"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 244,
+      "raw": "/evaluations/${encodeURIComponent(id)}/revisions",
+      "method": "POST",
+      "be_path": "/evaluations/{id}/revisions"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 304,
+      "raw": "/evaluations/${encodeURIComponent(id)}/ai-suggestions",
+      "method": "GET",
+      "be_path": "/evaluations/{id}/ai-suggestions"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 312,
+      "raw": "/evaluations/${encodeURIComponent(id)}/ai-suggestions",
+      "method": "POST",
+      "be_path": "/evaluations/{id}/ai-suggestions"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 322,
+      "raw": "/evaluations/${encodeURIComponent(id)}/ai-suggestions/${encodeURIComponent(suggestionId)}",
+      "method": "GET",
+      "be_path": "/evaluations/{id}/ai-suggestions/{suggestionId}"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 417,
+      "raw": "/tasks/${encodeURIComponent(taskId)}/submissions",
+      "method": "GET",
+      "be_path": "/tasks/{id}/submissions"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 421,
+      "raw": "/submissions/${encodeURIComponent(submissionId)}/code-reviews",
+      "method": "GET",
+      "be_path": "/submissions/{id}/code-reviews"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 428,
+      "raw": "/submissions/${encodeURIComponent(submissionId)}/code-reviews",
+      "method": "POST",
+      "be_path": "/submissions/{id}/code-reviews"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 443,
+      "raw": "/imported-reviews",
+      "method": "GET",
+      "be_path": "/imported-reviews"
+    },
+    {
+      "file": "instructor-eval.ts",
+      "line": 456,
+      "raw": "/imported-reviews/${encodeURIComponent(id)}",
+      "method": "PATCH",
+      "be_path": "/imported-reviews/{id}"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 80,
+      "raw": "/dashboard/instructor",
+      "method": "GET",
+      "be_path": "/dashboard/instructor"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 99,
+      "raw": "/sessions?page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/sessions"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 109,
+      "raw": "/sessions/${encodeURIComponent(id)}",
+      "method": "PATCH",
+      "be_path": "/sessions/{id}"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 135,
+      "raw": "/sprints${query}",
+      "method": "GET",
+      "be_path": "/sprints"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 148,
+      "raw": "/sprints",
+      "method": "POST",
+      "be_path": "/sprints"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 166,
+      "raw": "/sprints/${encodeURIComponent(id)}",
+      "method": "PATCH",
+      "be_path": "/sprints/{id}"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 173,
+      "raw": "/sprints/${encodeURIComponent(id)}/status",
+      "method": "POST",
+      "be_path": "/sprints/{id}/status"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 233,
+      "raw": "/sprints/${encodeURIComponent(sprintId)}/board",
+      "method": "GET",
+      "be_path": "/sprints/{id}/board"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 240,
+      "raw": "/sprints/${encodeURIComponent(target.id)}/board",
+      "method": "GET",
+      "be_path": "/sprints/{id}/board"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 253,
+      "raw": "/tasks",
+      "method": "POST",
+      "be_path": "/tasks"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 281,
+      "raw": "/tasks?page=${page}&pageSize=100",
+      "method": "GET",
+      "be_path": "/tasks"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 297,
+      "raw": "/tasks/${encodeURIComponent(task.id)}/submissions",
+      "method": "GET",
+      "be_path": "/tasks/{id}/submissions"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 361,
+      "raw": "/assignments/${encodeURIComponent(id)}/complete",
+      "method": "POST",
+      "be_path": "/assignments/{id}/complete"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 382,
+      "raw": "/reports/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/reports/{id}"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 416,
+      "raw": "/reports",
+      "method": "GET",
+      "be_path": "/reports"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 424,
+      "raw": "/reports/${encodeURIComponent(id)}/pdf",
+      "method": "GET",
+      "be_path": "/reports/{id}/pdf"
+    },
+    {
+      "file": "instructor.ts",
+      "line": 431,
+      "raw": "/reports/${encodeURIComponent(id)}/xlsx",
+      "method": "GET",
+      "be_path": "/reports/{id}/xlsx"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 252,
+      "raw": "/admin/knowledge?${params.toString()}",
+      "method": "GET",
+      "be_path": "/admin/knowledge"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 264,
+      "raw": "/admin/knowledge/${encodeURIComponent(code)}",
+      "method": "GET",
+      "be_path": "/admin/knowledge/{code}"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 273,
+      "raw": "/admin/knowledge",
+      "method": "POST",
+      "be_path": "/admin/knowledge"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 284,
+      "raw": "/admin/knowledge/${encodeURIComponent(code)}",
+      "method": "PUT",
+      "be_path": "/admin/knowledge/{code}"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 296,
+      "raw": "/admin/knowledge/${encodeURIComponent(code)}/revisions?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/admin/knowledge/{code}/revisions"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 311,
+      "raw": "/admin/knowledge/${encodeURIComponent(code)}/publication-check",
+      "method": "GET",
+      "be_path": "/admin/knowledge/{code}/publication-check"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 321,
+      "raw": "/admin/knowledge/${encodeURIComponent(code)}/publish",
+      "method": "POST",
+      "be_path": "/admin/knowledge/{code}/publish"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 332,
+      "raw": "/admin/knowledge/${encodeURIComponent(code)}/archive",
+      "method": "POST",
+      "be_path": "/admin/knowledge/{code}/archive"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 343,
+      "raw": "/admin/knowledge/${encodeURIComponent(code)}/restore",
+      "method": "POST",
+      "be_path": "/admin/knowledge/{code}/restore"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 354,
+      "raw": "/admin/knowledge/import/dry-run",
+      "method": "POST",
+      "be_path": "/admin/knowledge/import/dry-run"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 382,
+      "raw": "/admin/agents/knowledge-runs",
+      "method": "POST",
+      "be_path": "/admin/agents/knowledge-runs"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 390,
+      "raw": "/admin/agents/knowledge-runs/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/admin/agents/knowledge-runs/{id}"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 399,
+      "raw": "/admin/agents/knowledge-runs/${encodeURIComponent(id)}/cancel",
+      "method": "POST",
+      "be_path": "/admin/agents/knowledge-runs/{id}/cancel"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 409,
+      "raw": "/admin/agents/knowledge-runs/${encodeURIComponent(id)}/resume",
+      "method": "POST",
+      "be_path": "/admin/agents/knowledge-runs/{id}/resume"
+    },
+    {
+      "file": "knowledge.ts",
+      "line": 514,
+      "raw": "/admin/agents/business-runs?${params.toString()}",
+      "method": "GET",
+      "be_path": "/admin/agents/business-runs"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 175,
+      "raw": "/kpi-periods?${params.toString()}",
+      "method": "GET",
+      "be_path": "/kpi-periods"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 190,
+      "raw": "/kpi-periods",
+      "method": "POST",
+      "be_path": "/kpi-periods"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 195,
+      "raw": "/kpi-periods/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/kpi-periods/{id}"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 210,
+      "raw": "/kpi-periods/${encodeURIComponent(id)}",
+      "method": "PATCH",
+      "be_path": "/kpi-periods/{id}"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 218,
+      "raw": "/kpi-periods/${encodeURIComponent(id)}/calculate",
+      "method": "POST",
+      "be_path": "/kpi-periods/{id}/calculate"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 225,
+      "raw": "/kpi-periods/${encodeURIComponent(id)}/finalize",
+      "method": "POST",
+      "be_path": "/kpi-periods/{id}/finalize"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 236,
+      "raw": "/kpi-periods/${encodeURIComponent(id)}/results?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/kpi-periods/{id}/results"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 250,
+      "raw": "/kpi-periods/${encodeURIComponent(id)}/status",
+      "method": "POST",
+      "be_path": "/kpi-periods/{id}/status"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 260,
+      "raw": "/kpi-results/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/kpi-results/{id}"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 289,
+      "raw": "/virtual-salary?${params.toString()}",
+      "method": "GET",
+      "be_path": "/virtual-salary"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 305,
+      "raw": "/virtual-salary/adjustments",
+      "method": "POST",
+      "be_path": "/virtual-salary/adjustments"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 310,
+      "raw": "/virtual-salary/generate/${encodeURIComponent(kpiPeriodId)}",
+      "method": "POST",
+      "be_path": "/virtual-salary/generate/{kpiPeriodId}"
+    },
+    {
+      "file": "kpi-admin.ts",
+      "line": 321,
+      "raw": "/virtual-salary/users/${encodeURIComponent(userId)}/balance${query}",
+      "method": "GET",
+      "be_path": "/virtual-salary/users/{userId}/balance"
+    },
+    {
+      "file": "mentor.ts",
+      "line": 63,
+      "raw": "/intern/me/ai-mentor/conversations?page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/intern/me/ai-mentor/conversations"
+    },
+    {
+      "file": "mentor.ts",
+      "line": 71,
+      "raw": "/intern/me/ai-mentor/conversations/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/intern/me/ai-mentor/conversations/{id}"
+    },
+    {
+      "file": "mentor.ts",
+      "line": 83,
+      "raw": "/intern/me/ai-mentor/conversations/${encodeURIComponent(id)}/messages",
+      "method": "POST",
+      "be_path": "/intern/me/ai-mentor/conversations/{id}/messages"
+    },
+    {
+      "file": "mentor.ts",
+      "line": 108,
+      "raw": "/intern/me/ai-mentor/conversations",
+      "method": "POST",
+      "be_path": "/intern/me/ai-mentor/conversations"
+    },
+    {
+      "file": "mentor.ts",
+      "line": 117,
+      "raw": "/intern/me/ai-mentor/conversations/${encodeURIComponent(id)}/archive",
+      "method": "POST",
+      "be_path": "/intern/me/ai-mentor/conversations/{id}/archive"
+    },
+    {
+      "file": "operations.ts",
+      "line": 372,
+      "raw": "/sessions?${search.toString()}",
+      "method": "GET",
+      "be_path": "/sessions"
+    },
+    {
+      "file": "operations.ts",
+      "line": 377,
+      "raw": "/sessions/overview?page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/sessions/overview"
+    },
+    {
+      "file": "operations.ts",
+      "line": 384,
+      "raw": "/sessions/instructor-options?page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/sessions/instructor-options"
+    },
+    {
+      "file": "operations.ts",
+      "line": 391,
+      "raw": "/sessions/member-options?page=1&pageSize=100",
+      "method": "GET",
+      "be_path": "/sessions/member-options"
+    },
+    {
+      "file": "operations.ts",
+      "line": 410,
+      "raw": "/sessions",
+      "method": "POST",
+      "be_path": "/sessions"
+    },
+    {
+      "file": "operations.ts",
+      "line": 416,
+      "raw": "/sessions/${encodeURIComponent(id)}",
+      "method": "PATCH",
+      "be_path": "/sessions/{id}"
+    },
+    {
+      "file": "operations.ts",
+      "line": 423,
+      "raw": "/sessions/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/sessions/{id}"
+    },
+    {
+      "file": "operations.ts",
+      "line": 436,
+      "raw": "/sessions/${encodeURIComponent(id)}/timeline?page=1&pageSize=30",
+      "method": "GET",
+      "be_path": "/sessions/{id}/timeline"
+    },
+    {
+      "file": "operations.ts",
+      "line": 444,
+      "raw": "/sessions/${encodeURIComponent(id)}/work?page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/sessions/{id}/work"
+    },
+    {
+      "file": "operations.ts",
+      "line": 454,
+      "raw": "/sessions/${encodeURIComponent(id)}/members",
+      "method": "GET",
+      "be_path": "/sessions/{id}/members"
+    },
+    {
+      "file": "operations.ts",
+      "line": 461,
+      "raw": "/sessions/${encodeURIComponent(id)}/members",
+      "method": "POST",
+      "be_path": "/sessions/{id}/members"
+    },
+    {
+      "file": "operations.ts",
+      "line": 468,
+      "raw": "/sessions/${encodeURIComponent(id)}/members/${encodeURIComponent(userId)}",
+      "method": "DELETE",
+      "be_path": "/sessions/{id}/members/{userId}"
+    },
+    {
+      "file": "operations.ts",
+      "line": 476,
+      "raw": "/sessions/${encodeURIComponent(id)}/instructors",
+      "method": "GET",
+      "be_path": "/sessions/{id}/instructors"
+    },
+    {
+      "file": "operations.ts",
+      "line": 486,
+      "raw": "/sessions/${encodeURIComponent(id)}/instructors",
+      "method": "POST",
+      "be_path": "/sessions/{id}/instructors"
+    },
+    {
+      "file": "operations.ts",
+      "line": 493,
+      "raw": "/sessions/${encodeURIComponent(id)}/instructors/${encodeURIComponent(userId)}",
+      "method": "DELETE",
+      "be_path": "/sessions/{id}/instructors/{userId}"
+    },
+    {
+      "file": "operations.ts",
+      "line": 503,
+      "raw": "/sessions/${encodeURIComponent(id)}/milestones",
+      "method": "GET",
+      "be_path": "/sessions/{id}/milestones"
+    },
+    {
+      "file": "operations.ts",
+      "line": 518,
+      "raw": "/sessions/${encodeURIComponent(id)}/milestones",
+      "method": "POST",
+      "be_path": "/sessions/{id}/milestones"
+    },
+    {
+      "file": "operations.ts",
+      "line": 529,
+      "raw": "/sessions/${encodeURIComponent(id)}/milestones/${encodeURIComponent(milestoneId)}",
+      "method": "PATCH",
+      "be_path": "/sessions/{id}/milestones/{milestoneId}"
+    },
+    {
+      "file": "operations.ts",
+      "line": 537,
+      "raw": "/sessions/${encodeURIComponent(id)}/milestones/${encodeURIComponent(milestoneId)}",
+      "method": "DELETE",
+      "be_path": "/sessions/{id}/milestones/{milestoneId}"
+    },
+    {
+      "file": "operations.ts",
+      "line": 551,
+      "raw": "/sessions/${encodeURIComponent(id)}/participation?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/sessions/{id}/participation"
+    },
+    {
+      "file": "operations.ts",
+      "line": 581,
+      "raw": "/sessions/${encodeURIComponent(id)}/participation/policy",
+      "method": "POST",
+      "be_path": "/sessions/{id}/participation/policy"
+    },
+    {
+      "file": "operations.ts",
+      "line": 590,
+      "raw": "/sessions/${encodeURIComponent(id)}/participation/refresh",
+      "method": "POST",
+      "be_path": "/sessions/{id}/participation/refresh"
+    },
+    {
+      "file": "operations.ts",
+      "line": 604,
+      "raw": "/sessions/${encodeURIComponent(id)}/participation/tasks/${encodeURIComponent(taskId)}/extend",
+      "method": "POST",
+      "be_path": "/sessions/{id}/participation/tasks/{taskId}/extend"
+    },
+    {
+      "file": "operations.ts",
+      "line": 616,
+      "raw": "/sessions/${encodeURIComponent(id)}/participation/incidents/${encodeURIComponent(incidentId)}/resolve",
+      "method": "POST",
+      "be_path": "/sessions/{id}/participation/incidents/{incidentId}/resolve"
+    },
+    {
+      "file": "operations.ts",
+      "line": 628,
+      "raw": "/sessions/${encodeURIComponent(id)}/participation/incidents/${encodeURIComponent(incidentId)}/replacement-advice",
+      "method": "POST",
+      "be_path": "/sessions/{id}/participation/incidents/{incidentId}/replacement-advice"
+    },
+    {
+      "file": "operations.ts",
+      "line": 642,
+      "raw": "/sessions/${encodeURIComponent(id)}/participation/incidents/${encodeURIComponent(incidentId)}/replacement-preview",
+      "method": "POST",
+      "be_path": "/sessions/{id}/participation/incidents/{incidentId}/replacement-preview"
+    },
+    {
+      "file": "operations.ts",
+      "line": 653,
+      "raw": "/sessions/${encodeURIComponent(id)}/participation/replacements/${encodeURIComponent(commandId)}",
+      "method": "GET",
+      "be_path": "/sessions/{id}/participation/replacements/{commandId}"
+    },
+    {
+      "file": "operations.ts",
+      "line": 664,
+      "raw": "/sessions/${encodeURIComponent(id)}/participation/replacements/${encodeURIComponent(commandId)}/approve",
+      "method": "POST",
+      "be_path": "/sessions/{id}/participation/replacements/{commandId}/approve"
+    },
+    {
+      "file": "operations.ts",
+      "line": 676,
+      "raw": "/sessions/${encodeURIComponent(id)}/participation/repository-access-jobs",
+      "method": "GET",
+      "be_path": "/sessions/{id}/participation/repository-access-jobs"
+    },
+    {
+      "file": "operations.ts",
+      "line": 693,
+      "raw": "/sessions/${encodeURIComponent(id)}/participation/repository-access-jobs/${encodeURIComponent(jobId)}/retry",
+      "method": "POST",
+      "be_path": "/sessions/{id}/participation/repository-access-jobs/{jobId}/retry"
+    },
+    {
+      "file": "operations.ts",
+      "line": 703,
+      "raw": "/sessions/${encodeURIComponent(id)}/github",
+      "method": "GET",
+      "be_path": "/sessions/{id}/github"
+    },
+    {
+      "file": "operations.ts",
+      "line": 725,
+      "raw": "/sessions/${encodeURIComponent(id)}/github/provision",
+      "method": "POST",
+      "be_path": "/sessions/{id}/github/provision"
+    },
+    {
+      "file": "operations.ts",
+      "line": 732,
+      "raw": "/sessions/${encodeURIComponent(id)}/github/invite",
+      "method": "POST",
+      "be_path": "/sessions/{id}/github/invite"
+    },
+    {
+      "file": "operations.ts",
+      "line": 742,
+      "raw": "/sessions/${encodeURIComponent(id)}/github/members/${encodeURIComponent(userId)}/invite",
+      "method": "POST",
+      "be_path": "/sessions/{id}/github/members/{userId}/invite"
+    },
+    {
+      "file": "operations.ts",
+      "line": 750,
+      "raw": "/sessions/${encodeURIComponent(id)}/github/reconcile",
+      "method": "POST",
+      "be_path": "/sessions/{id}/github/reconcile"
+    },
+    {
+      "file": "operations.ts",
+      "line": 757,
+      "raw": "/sessions/${encodeURIComponent(id)}/github/webhook",
+      "method": "POST",
+      "be_path": "/sessions/{id}/github/webhook"
+    },
+    {
+      "file": "operations.ts",
+      "line": 766,
+      "raw": "/sessions/${encodeURIComponent(id)}/github/activity?page=1&pageSize=30",
+      "method": "GET",
+      "be_path": "/sessions/{id}/github/activity"
+    },
+    {
+      "file": "outcomes.ts",
+      "line": 80,
+      "raw": "/intern/me/evaluations",
+      "method": "GET",
+      "be_path": "/intern/me/evaluations"
+    },
+    {
+      "file": "outcomes.ts",
+      "line": 110,
+      "raw": "/intern/me/kpi",
+      "method": "GET",
+      "be_path": "/intern/me/kpi"
+    },
+    {
+      "file": "outcomes.ts",
+      "line": 126,
+      "raw": "/intern/me/virtual-salary",
+      "method": "GET",
+      "be_path": "/intern/me/virtual-salary"
+    },
+    {
+      "file": "outcomes.ts",
+      "line": 156,
+      "raw": "/intern/me/virtual-salary/ledger?page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/intern/me/virtual-salary/ledger"
+    },
+    {
+      "file": "outcomes.ts",
+      "line": 174,
+      "raw": "/intern/me/certificates",
+      "method": "GET",
+      "be_path": "/intern/me/certificates"
+    },
+    {
+      "file": "outcomes.ts",
+      "line": 193,
+      "raw": "/intern/me/certificates/${encodeURIComponent(id)}/pdf",
+      "method": "GET",
+      "be_path": "/intern/me/certificates/{id}/pdf"
+    },
+    {
+      "file": "outcomes.ts",
+      "line": 239,
+      "raw": "/notifications?page=1&pageSize=50${unread ? \"&unread=true\" : \"\"}",
+      "method": "GET",
+      "be_path": "/notifications"
+    },
+    {
+      "file": "outcomes.ts",
+      "line": 256,
+      "raw": "/notifications/read-all",
+      "method": "POST",
+      "be_path": "/notifications/read-all"
+    },
+    {
+      "file": "outcomes.ts",
+      "line": 261,
+      "raw": "/notifications/${encodeURIComponent(id)}/read",
+      "method": "POST",
+      "be_path": "/notifications/{id}/read"
+    },
+    {
+      "file": "outcomes.ts",
+      "line": 277,
+      "raw": "/notifications/unread-count",
+      "method": "GET",
+      "be_path": "/notifications/unread-count"
+    },
+    {
+      "file": "outcomes.ts",
+      "line": 291,
+      "raw": "/notifications/preferences",
+      "method": "GET",
+      "be_path": "/notifications/preferences"
+    },
+    {
+      "file": "outcomes.ts",
+      "line": 308,
+      "raw": "/notifications/preferences",
+      "method": "PUT",
+      "be_path": "/notifications/preferences"
+    },
+    {
+      "file": "performance.ts",
+      "line": 178,
+      "raw": "/performance/interns?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/performance/interns"
+    },
+    {
+      "file": "performance.ts",
+      "line": 189,
+      "raw": "/performance/interns/${encodeURIComponent(userId)}",
+      "method": "GET",
+      "be_path": "/performance/interns/{userId}"
+    },
+    {
+      "file": "performance.ts",
+      "line": 206,
+      "raw": "/performance/interns/${encodeURIComponent(userId)}/detail?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/performance/interns/{userId}/detail"
+    },
+    {
+      "file": "performance.ts",
+      "line": 282,
+      "raw": "/performance/interns/${encodeURIComponent(userId)}/ai-recommendations",
+      "method": "GET",
+      "be_path": "/performance/interns/{userId}/ai-recommendations"
+    },
+    {
+      "file": "projects.ts",
+      "line": 374,
+      "raw": "/projects?${search.toString()}",
+      "method": "GET",
+      "be_path": "/projects"
+    },
+    {
+      "file": "projects.ts",
+      "line": 379,
+      "raw": "/projects/filter-options",
+      "method": "GET",
+      "be_path": "/projects/filter-options"
+    },
+    {
+      "file": "projects.ts",
+      "line": 386,
+      "raw": "/projects/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/projects/{id}"
+    },
+    {
+      "file": "projects.ts",
+      "line": 404,
+      "raw": "/projects",
+      "method": "POST",
+      "be_path": "/projects"
+    },
+    {
+      "file": "projects.ts",
+      "line": 410,
+      "raw": "/projects/${encodeURIComponent(id)}",
+      "method": "PATCH",
+      "be_path": "/projects/{id}"
+    },
+    {
+      "file": "projects.ts",
+      "line": 415,
+      "raw": "/projects/${encodeURIComponent(id)}/claim",
+      "method": "POST",
+      "be_path": "/projects/{id}/claim"
+    },
+    {
+      "file": "projects.ts",
+      "line": 419,
+      "raw": "/projects/${encodeURIComponent(id)}/members",
+      "method": "GET",
+      "be_path": "/projects/{id}/members"
+    },
+    {
+      "file": "projects.ts",
+      "line": 434,
+      "raw": "/projects/${encodeURIComponent(id)}/slots",
+      "method": "GET",
+      "be_path": "/projects/{id}/slots"
+    },
+    {
+      "file": "projects.ts",
+      "line": 442,
+      "raw": "/projects/${encodeURIComponent(id)}/slots",
+      "method": "PUT",
+      "be_path": "/projects/{id}/slots"
+    },
+    {
+      "file": "projects.ts",
+      "line": 453,
+      "raw": "/projects/${encodeURIComponent(id)}/template-context",
+      "method": "GET",
+      "be_path": "/projects/{id}/template-context"
+    },
+    {
+      "file": "projects.ts",
+      "line": 463,
+      "raw": "/projects/${encodeURIComponent(id)}/template-assessment",
+      "method": "GET",
+      "be_path": "/projects/{id}/template-assessment"
+    },
+    {
+      "file": "projects.ts",
+      "line": 469,
+      "raw": "/projects/${encodeURIComponent(id)}/changes",
+      "method": "GET",
+      "be_path": "/projects/{id}/changes"
+    },
+    {
+      "file": "projects.ts",
+      "line": 476,
+      "raw": "/projects/${encodeURIComponent(id)}/changes",
+      "method": "POST",
+      "be_path": "/projects/{id}/changes"
+    },
+    {
+      "file": "projects.ts",
+      "line": 483,
+      "raw": "/project-changes/${encodeURIComponent(changeId)}/apply",
+      "method": "POST",
+      "be_path": "/project-changes/{id}/apply"
+    },
+    {
+      "file": "projects.ts",
+      "line": 495,
+      "raw": "/project-templates?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/project-templates"
+    },
+    {
+      "file": "projects.ts",
+      "line": 503,
+      "raw": "/project-templates/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/project-templates/{id}"
+    },
+    {
+      "file": "projects.ts",
+      "line": 507,
+      "raw": "/project-templates/${encodeURIComponent(id)}/assessment",
+      "method": "GET",
+      "be_path": "/project-templates/{id}/assessment"
+    },
+    {
+      "file": "projects.ts",
+      "line": 515,
+      "raw": "/project-templates/${encodeURIComponent(id)}/revisions?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/project-templates/{id}/revisions"
+    },
+    {
+      "file": "projects.ts",
+      "line": 525,
+      "raw": "/project-templates/${encodeURIComponent(id)}/revisions/${encodeURIComponent(version)}",
+      "method": "GET",
+      "be_path": "/project-templates/{id}/revisions/{version}"
+    },
+    {
+      "file": "projects.ts",
+      "line": 535,
+      "raw": "/project-templates/${encodeURIComponent(id)}/revisions/${encodeURIComponent(version)}/assessment",
+      "method": "GET",
+      "be_path": "/project-templates/{id}/revisions/{version}/assessment"
+    },
+    {
+      "file": "projects.ts",
+      "line": 543,
+      "raw": "/project-templates/${encodeURIComponent(id)}/start",
+      "method": "POST",
+      "be_path": "/project-templates/{id}/start"
+    },
+    {
+      "file": "projects.ts",
+      "line": 555,
+      "raw": "/project-templates",
+      "method": "POST",
+      "be_path": "/project-templates"
+    },
+    {
+      "file": "projects.ts",
+      "line": 561,
+      "raw": "/tasks/${encodeURIComponent(taskId)}/spec",
+      "method": "GET",
+      "be_path": "/tasks/{id}/spec"
+    },
+    {
+      "file": "projects.ts",
+      "line": 565,
+      "raw": "/tasks/${encodeURIComponent(taskId)}/spec/source",
+      "method": "GET",
+      "be_path": "/tasks/{id}/spec/source"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 346,
+      "raw": "/recruitment/me",
+      "method": "GET",
+      "be_path": "/recruitment/me"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 351,
+      "raw": "/recruitment/me/role",
+      "method": "PATCH",
+      "be_path": "/recruitment/me/role"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 362,
+      "raw": "/recruitment/me/interviews?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/recruitment/me/interviews"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 373,
+      "raw": "/recruitment/me/interviews",
+      "method": "POST",
+      "be_path": "/recruitment/me/interviews"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 378,
+      "raw": "/recruitment/me/interviews/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/recruitment/me/interviews/{id}"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 383,
+      "raw": "/recruitment/me/interviews/${encodeURIComponent(id)}/questions",
+      "method": "GET",
+      "be_path": "/recruitment/me/interviews/{id}/questions"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 398,
+      "raw": "/recruitment/me/interviews/${encodeURIComponent(id)}/conversation",
+      "method": "GET",
+      "be_path": "/recruitment/me/interviews/{id}/conversation"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 409,
+      "raw": "/recruitment/me/interviews/${encodeURIComponent(id)}/conversation/clarify",
+      "method": "POST",
+      "be_path": "/recruitment/me/interviews/{id}/conversation/clarify"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 418,
+      "raw": "/recruitment/me/interviews/${encodeURIComponent(id)}/conversation/next",
+      "method": "POST",
+      "be_path": "/recruitment/me/interviews/{id}/conversation/next"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 431,
+      "raw": "/recruitment/me/interviews/${encodeURIComponent(id)}/answers/${encodeURIComponent(questionId)}",
+      "method": "PUT",
+      "be_path": "/recruitment/me/interviews/{id}/answers/{questionId}"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 444,
+      "raw": "/recruitment/me/interviews/${encodeURIComponent(id)}/follow-ups/${encodeURIComponent(questionId)}",
+      "method": "PUT",
+      "be_path": "/recruitment/me/interviews/{id}/follow-ups/{questionId}"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 453,
+      "raw": "/recruitment/me/interviews/${encodeURIComponent(id)}/submit",
+      "method": "POST",
+      "be_path": "/recruitment/me/interviews/{id}/submit"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 468,
+      "raw": "/recruitment/me/interviews/${encodeURIComponent(id)}/retry-evaluation",
+      "method": "POST",
+      "be_path": "/recruitment/me/interviews/{id}/retry-evaluation"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 483,
+      "raw": "/recruitment/me/result",
+      "method": "GET",
+      "be_path": "/recruitment/me/result"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 494,
+      "raw": "/career-roles",
+      "method": "GET",
+      "be_path": "/career-roles"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 507,
+      "raw": "/recruitment/candidates?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/recruitment/candidates"
+    },
+    {
+      "file": "recruitment-interview.ts",
+      "line": 518,
+      "raw": "/recruitment/candidates/${encodeURIComponent(userId)}",
+      "method": "GET",
+      "be_path": "/recruitment/candidates/{userId}"
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 110,
+      "raw": "/recruitment-rounds",
+      "method": "GET",
+      "be_path": "/recruitment-rounds"
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 143,
+      "raw": "/recruitment-rounds/${encodeURIComponent(id)}",
+      "method": "GET",
+      "be_path": "/recruitment-rounds/{id}"
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 180,
+      "raw": "/recruitment-rounds/${encodeURIComponent(roundId)}/slots/${encodeURIComponent(slotId)}/close",
+      "method": "POST",
+      "be_path": "/recruitment-rounds/{id}/slots/{slotId}/close"
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 304,
+      "raw": "/recruitment-rounds/${encodeURIComponent(roundId)}/applications/${encodeURIComponent(applicationId)}",
+      "method": "GET",
+      "be_path": "/recruitment-rounds/{id}/applications/{applicationId}"
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 312,
+      "raw": "/recruitment-rounds/${encodeURIComponent(roundId)}/applications/${encodeURIComponent(applicationId)}/cv",
+      "method": "GET",
+      "be_path": "/recruitment-rounds/{id}/applications/{applicationId}/cv"
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 332,
+      "raw": "/recruitment-rounds/${encodeURIComponent(roundId)}/applications/${encodeURIComponent(applicationId)}/retry",
+      "method": "POST",
+      "be_path": "/recruitment-rounds/{id}/applications/{applicationId}/retry"
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 345,
+      "raw": "/recruitment-rounds/${encodeURIComponent(roundId)}/applications/${encodeURIComponent(applicationId)}/cancel",
+      "method": "POST",
+      "be_path": "/recruitment-rounds/{id}/applications/{applicationId}/cancel"
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 385,
+      "raw": "/recruitment-rounds/${encodeURIComponent(roundId)}/applications/${encodeURIComponent(applicationId)}",
+      "method": "GET",
+      "be_path": "/recruitment-rounds/{id}/applications/{applicationId}"
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 443,
+      "raw": "/career-roles",
+      "method": "GET",
+      "be_path": "/career-roles"
+    },
+    {
+      "file": "student-extra.ts",
+      "line": 86,
+      "raw": "/intern/me/performance",
+      "method": "GET",
+      "be_path": "/intern/me/performance"
+    },
+    {
+      "file": "student-extra.ts",
+      "line": 165,
+      "raw": "/intern/me/ai-recommendations",
+      "method": "GET",
+      "be_path": "/intern/me/ai-recommendations"
+    },
+    {
+      "file": "student-extra.ts",
+      "line": 174,
+      "raw": "/intern/me/ai-recommendations/refresh",
+      "method": "POST",
+      "be_path": "/intern/me/ai-recommendations/refresh"
+    },
+    {
+      "file": "student-extra.ts",
+      "line": 241,
+      "raw": "/participation/me?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/participation/me"
+    },
+    {
+      "file": "system.ts",
+      "line": 76,
+      "raw": "/admin/system/status",
+      "method": "GET",
+      "be_path": "/admin/system/status"
+    },
+    {
+      "file": "system.ts",
+      "line": 174,
+      "raw": "/health",
+      "method": "GET",
+      "be_path": "/health"
+    },
+    {
+      "file": "system.ts",
+      "line": 226,
+      "raw": "/admin/system/repositories?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/admin/system/repositories"
+    },
+    {
+      "file": "system.ts",
+      "line": 288,
+      "raw": "/admin/system/contracts",
+      "method": "GET",
+      "be_path": "/admin/system/contracts"
+    },
+    {
+      "file": "system.ts",
+      "line": 336,
+      "raw": "/admin/ai-configuration",
+      "method": "GET",
+      "be_path": "/admin/ai-configuration"
+    },
+    {
+      "file": "system.ts",
+      "line": 397,
+      "raw": "/settings",
+      "method": "GET",
+      "be_path": "/settings"
+    },
+    {
+      "file": "system.ts",
+      "line": 407,
+      "raw": "/settings",
+      "method": "PATCH",
+      "be_path": "/settings"
+    },
+    {
+      "file": "system.ts",
+      "line": 454,
+      "raw": "/admin/communications${suffix}",
+      "method": "GET",
+      "be_path": "/admin/communications"
+    },
+    {
+      "file": "system.ts",
+      "line": 476,
+      "raw": "/admin/communications/${encodeURIComponent(id)}/preview",
+      "method": "GET",
+      "be_path": "/admin/communications/{id}/preview"
+    },
+    {
+      "file": "system.ts",
+      "line": 494,
+      "raw": "/admin/communications/${encodeURIComponent(id)}/resend",
+      "method": "POST",
+      "be_path": "/admin/communications/{id}/resend"
+    },
+    {
+      "file": "system.ts",
+      "line": 560,
+      "raw": "/audit-logs?${params.toString()}",
+      "method": "GET",
+      "be_path": "/audit-logs"
+    },
+    {
+      "file": "system.ts",
+      "line": 587,
+      "raw": "/activity-events?${params.toString()}",
+      "method": "GET",
+      "be_path": "/activity-events"
+    },
+    {
+      "file": "work.ts",
+      "line": 87,
+      "raw": "/tasks?mine=true&page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/tasks"
+    },
+    {
+      "file": "work.ts",
+      "line": 98,
+      "raw": "/tasks/${encodeURIComponent(id)}/my",
+      "method": "PATCH",
+      "be_path": "/tasks/{id}/my"
+    },
+    {
+      "file": "work.ts",
+      "line": 133,
+      "raw": "/tasks/${encodeURIComponent(taskId)}/submissions",
+      "method": "GET",
+      "be_path": "/tasks/{id}/submissions"
+    },
+    {
+      "file": "work.ts",
+      "line": 143,
+      "raw": "/tasks/${encodeURIComponent(taskId)}/submissions",
+      "method": "POST",
+      "be_path": "/tasks/{id}/submissions"
+    },
+    {
+      "file": "work.ts",
+      "line": 151,
+      "raw": "/submissions/${encodeURIComponent(submissionId)}/withdraw",
+      "method": "POST",
+      "be_path": "/submissions/{id}/withdraw"
+    },
+    {
+      "file": "work.ts",
+      "line": 177,
+      "raw": "/intern/me/project",
+      "method": "GET",
+      "be_path": "/intern/me/project"
+    },
+    {
+      "file": "work.ts",
+      "line": 209,
+      "raw": "/intern/me/workspace",
+      "method": "GET",
+      "be_path": "/intern/me/workspace"
+    },
+    {
+      "file": "work.ts",
+      "line": 425,
+      "raw": "/intern/me/sprint/board?page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/intern/me/sprint/board"
+    },
+    {
+      "file": "work.ts",
+      "line": 434,
+      "raw": "/intern/me/sprints/${encodeURIComponent(sprintId)}/board?page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/intern/me/sprints/{id}/board"
+    },
+    {
+      "file": "work.ts",
+      "line": 445,
+      "raw": "/intern/me/sprints?page=${page}&pageSize=${pageSize}",
+      "method": "GET",
+      "be_path": "/intern/me/sprints"
+    }
+  ],
+  "mismatch": [
+    {
+      "file": "applications.ts",
+      "line": 112,
+      "raw": "/applications/verify",
+      "method": "POST",
+      "be_path": "/applications/verify",
+      "issues": [
+        {
+          "type": "BODY_SCHEMA_UNKNOWN",
+          "detail": "BE không khai báo JSON body"
+        }
+      ]
+    },
+    {
+      "file": "applications.ts",
+      "line": 122,
+      "raw": "/applications/request-access",
+      "method": "POST",
+      "be_path": "/applications/request-access",
+      "issues": [
+        {
+          "type": "BODY_SCHEMA_UNKNOWN",
+          "detail": "BE không khai báo JSON body"
+        }
+      ]
+    },
+    {
+      "file": "auth.ts",
+      "line": 112,
+      "raw": "/auth/register",
+      "method": "POST",
+      "be_path": "/auth/register",
+      "issues": [
+        {
+          "type": "BODY_SCHEMA_UNKNOWN",
+          "detail": "BE không khai báo JSON body"
+        }
+      ]
+    },
+    {
+      "file": "auth.ts",
+      "line": 138,
+      "raw": "/auth/change-password",
+      "method": "POST",
+      "be_path": "/auth/change-password",
+      "issues": [
+        {
+          "type": "BODY_SCHEMA_UNKNOWN",
+          "detail": "BE không khai báo JSON body"
+        }
+      ]
+    },
+    {
+      "file": "catalogs.ts",
+      "line": 238,
+      "raw": "/admin/career-roles/${encodeURIComponent(code)}/archive",
+      "method": "POST",
+      "be_path": "/admin/career-roles/{code}/archive",
+      "issues": [
+        {
+          "type": "BODY_SCHEMA_UNKNOWN",
+          "detail": "BE không khai báo JSON body"
+        }
+      ]
+    },
+    {
+      "file": "instructor.ts",
+      "line": 350,
+      "raw": "/submissions/${encodeURIComponent(id)}/review",
+      "method": "POST",
+      "be_path": "/submissions/{id}/review",
+      "issues": [
+        {
+          "type": "BODY_SCHEMA_UNKNOWN",
+          "detail": "BE không khai báo JSON body"
+        }
+      ]
+    },
+    {
+      "file": "instructor.ts",
+      "line": 457,
+      "raw": "/reports",
+      "method": "POST",
+      "be_path": "/reports",
+      "issues": [
+        {
+          "type": "BODY_SCHEMA_UNKNOWN",
+          "detail": "BE không khai báo JSON body"
+        }
+      ]
+    },
+    {
+      "file": "projects.ts",
+      "line": 426,
+      "raw": "/projects/${encodeURIComponent(id)}/sessions?page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/projects/{id}/sessions",
+      "issues": [
+        {
+          "type": "QUERY_EXTRA",
+          "detail": [
+            "page",
+            "pageSize"
+          ],
+          "be_allows": []
+        }
+      ]
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 135,
+      "raw": "/recruitment-rounds",
+      "method": "POST",
+      "be_path": "/recruitment-rounds",
+      "issues": [
+        {
+          "type": "BODY_SCHEMA_UNKNOWN",
+          "detail": "BE không khai báo JSON body"
+        }
+      ]
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 148,
+      "raw": "/recruitment-rounds/${encodeURIComponent(id)}/status",
+      "method": "POST",
+      "be_path": "/recruitment-rounds/{id}/status",
+      "issues": [
+        {
+          "type": "BODY_SCHEMA_UNKNOWN",
+          "detail": "BE không khai báo JSON body"
+        }
+      ]
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 166,
+      "raw": "/recruitment-rounds/${encodeURIComponent(roundId)}/slots",
+      "method": "POST",
+      "be_path": "/recruitment-rounds/{id}/slots",
+      "issues": [
+        {
+          "type": "BODY_SCHEMA_UNKNOWN",
+          "detail": "BE không khai báo JSON body"
+        }
+      ]
+    },
+    {
+      "file": "recruitment.ts",
+      "line": 280,
+      "raw": "/recruitment-rounds/${encodeURIComponent(roundId)}/applications?page=1&pageSize=50",
+      "method": "GET",
+      "be_path": "/recruitment-rounds/{id}/applications",
+      "issues": [
+        {
+          "type": "QUERY_EXTRA",
+          "detail": [
+            "page",
+            "pageSize"
+          ],
+          "be_allows": []
+        }
+      ]
+    },
+    {
+      "file": "system.ts",
+      "line": 308,
+      "raw": "/admin/system/contracts/validate",
+      "method": "POST",
+      "be_path": "/admin/system/contracts/validate",
+      "issues": [
+        {
+          "type": "BODY_SCHEMA_UNKNOWN",
+          "detail": "BE không khai báo JSON body"
+        }
+      ]
+    },
+    {
+      "file": "system.ts",
+      "line": 358,
+      "raw": "/admin/ai-configuration",
+      "method": "PUT",
+      "be_path": "/admin/ai-configuration",
+      "issues": [
+        {
+          "type": "BODY_SCHEMA_UNKNOWN",
+          "detail": "BE không khai báo JSON body"
+        }
+      ]
+    }
+  ],
+  "dynamic": [
+    {
+      "file": "admin.ts",
+      "raw": "${path}?page=1&pageSize=1",
+      "dynamic": true,
+      "method": "GET",
+      "query": [],
+      "bodyKeys": null,
+      "formFields": []
+    },
+    {
+      "file": "recruitment.ts",
+      "raw": "POST",
+      "dynamic": true,
+      "method": "GET",
+      "query": [],
+      "bodyKeys": null,
+      "formFields": []
+    }
+  ],
+  "coverage_missing": [
+    {
+      "method": "DELETE",
+      "path": "/tasks/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/question-bank/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/assignments"
+    },
+    {
+      "method": "GET",
+      "path": "/assignments/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/dashboard/academic"
+    },
+    {
+      "method": "GET",
+      "path": "/dashboard/academic-overview"
+    },
+    {
+      "method": "GET",
+      "path": "/dashboard/catalogs"
+    },
+    {
+      "method": "GET",
+      "path": "/dashboard/sprints/{id}/burndown"
+    },
+    {
+      "method": "GET",
+      "path": "/dashboard/user-roles"
+    },
+    {
+      "method": "GET",
+      "path": "/github/callback"
+    },
+    {
+      "method": "GET",
+      "path": "/intern/me/certificates/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/intern/me/evaluations/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/intern/me/kpi/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/intern/me/projects/{id}/learning-package"
+    },
+    {
+      "method": "GET",
+      "path": "/participation/me/replacements"
+    },
+    {
+      "method": "GET",
+      "path": "/recruitment-rounds/{id}/applications/{applicationId}/credential-recovery"
+    },
+    {
+      "method": "GET",
+      "path": "/reference-screens"
+    },
+    {
+      "method": "GET",
+      "path": "/reference-screens/{key}"
+    },
+    {
+      "method": "GET",
+      "path": "/sprints/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/sprints/{id}/completion"
+    },
+    {
+      "method": "GET",
+      "path": "/tasks/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/tasks/{id}/comments"
+    },
+    {
+      "method": "GET",
+      "path": "/tasks/{id}/history"
+    },
+    {
+      "method": "PATCH",
+      "path": "/project-templates/{id}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/tasks/{id}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/users/{id}"
+    },
+    {
+      "method": "POST",
+      "path": "/assignments"
+    },
+    {
+      "method": "POST",
+      "path": "/assignments/{id}/cancel"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/refresh"
+    },
+    {
+      "method": "POST",
+      "path": "/github/webhook"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment-rounds/{id}/applications/{applicationId}/recover-credentials"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment-rounds/{id}/applications/{applicationId}/reschedule"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment-rounds/{id}/applications/{applicationId}/resend-credentials"
+    },
+    {
+      "method": "POST",
+      "path": "/recruitment-rounds/{id}/applications/{applicationId}/retake"
+    },
+    {
+      "method": "POST",
+      "path": "/tasks/{id}/comments"
+    }
+  ]
+}

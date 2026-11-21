@@ -1,7 +1,8 @@
 # V-Intern FE — UI/UX hoàn chỉnh khớp BE (100% API coverage)
 
-> **20 màn hình mới** phủ kín 302 operations / 248 paths của BE V-Intern QA API
-> (đặc tả đầy đủ trong `docs/api-specs/`).
+> **272/302 operations** của BE V-Intern QA API đã có adapter + UI FE gọi thật
+> (30 ops còn lại: endpoint chi tiết/by-design + BE-side — phân loại đầy đủ trong
+> `AUDIT-REPORT.md`; đặc tả contract trong `docs/api-specs/`).
 
 ## Chạy thử
 
