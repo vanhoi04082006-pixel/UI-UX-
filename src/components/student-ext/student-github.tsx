@@ -11,7 +11,7 @@
  *  · POST   /github/repository-account     — chọn tài khoản repo dùng chung
  * ===================================================================== */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   connectGithub,
@@ -25,6 +25,7 @@ import {
 } from "@/lib/api/github";
 import { errorMessage } from "@/lib/api/api-client";
 import { useApi } from "@/lib/use-api";
+import { useApp } from "@/lib/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   InkBadge,
@@ -328,12 +329,28 @@ function AccessTable({ view }: { view: RepoAccessView }) {
 /* ------------------------------ màn hình ------------------------------ */
 
 export default function StudentGithub() {
+  const githubCallback = useApp((s) => s.githubCallback);
+  const clearGithubCallback = useApp((s) => s.clearGithubCallback);
   const statusQ = useApi<GithubStatus>(() => getGithubStatus(), []);
   const accessQ = useApi<RepoAccessView>(() => getRepositoryAccess(), []);
   const accountQ = useApi(() => getRepositoryAccount(), []);
 
   const [busy, setBusy] = useState<"connect" | "disconnect" | "account" | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  /* BE redirect về /intern/github?connected=1 → hydrate đọc param, đưa về
+   * màn này — toast kết quả rồi tải lại trạng thái liên kết + quyền repo. */
+  useEffect(() => {
+    if (!githubCallback) return;
+    if (githubCallback === "connected") {
+      toast.success("Đã kết nối GitHub — trạng thái được tải lại từ hệ thống.");
+      statusQ.reload();
+      accessQ.reload();
+    } else {
+      toast.error("Liên kết GitHub chưa thành công — vui lòng thử lại.");
+    }
+    clearGithubCallback();
+  }, [githubCallback, clearGithubCallback]);
 
   const connect = async () => {
     setBusy("connect");

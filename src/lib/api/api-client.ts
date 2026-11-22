@@ -56,16 +56,22 @@ export async function apiFetch(
       "NEXT_PUBLIC_API_BASE_URL chưa được cấu hình.",
     );
   const url = `${base}${path}`;
+  /* Direct mode (base http(s) tuyệt đối) gửi kèm skip header để ngrok free-tier
+   * không chèn interstitial HTML. Proxy mode (base relative "/api/v1") là
+   * same-origin — không cần (và tránh làm request thành non-simple). */
+  const directApi = /^https?:\/\//i.test(base);
   let response: Response;
   try {
     response = await fetch(url, {
       method,
       cache: "no-store",
       signal,
-      /* Cross-site tới BE (tunnel/domain): refresh cookie HttpOnly cần credentials
-       * (BE đã bật SameSite=None + Secure + CORS allow-credentials). */
+      /* Same-origin: cookie refresh HttpOnly đi kèm tự động. Direct mode qua
+       * BE tunnel/domain cũng cần credentials (BE SameSite=None + Secure +
+       * CORS allow-credentials). */
       credentials: "include",
       headers: {
+        ...(directApi ? { "ngrok-skip-browser-warning": "true" } : {}),
         ...(formData || body === undefined ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },

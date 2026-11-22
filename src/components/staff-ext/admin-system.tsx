@@ -52,6 +52,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useApi } from "@/lib/use-api";
+import { useApp } from "@/lib/store";
 import { ApiError, errorMessage } from "@/lib/api/api-client";
 import {
   getAiConfiguration,
@@ -180,6 +181,8 @@ function FieldLabel({ htmlFor, children }: { htmlFor?: string; children: React.R
 
 export default function AdminSystem() {
   const [sysTab, setSysTab] = useState<"status" | "infra" | "config" | "mail">("status");
+  const githubCallback = useApp((s) => s.githubCallback);
+  const clearGithubCallback = useApp((s) => s.clearGithubCallback);
 
   /* ============================ TAB: TRẠNG THÁI =========================== */
 
@@ -189,6 +192,20 @@ export default function AdminSystem() {
     [sysTab, statusVersion],
   );
   const status = statusQ.data ?? null;
+
+  /* BE redirect sau OAuth GitHub về /admin/settings?github=connected →
+   * hydrate đưa về route "system" — toast rồi tải lại trạng thái tích hợp. */
+  useEffect(() => {
+    if (!githubCallback) return;
+    if (githubCallback === "connected") {
+      toast.success("Đã kết nối GitHub — trạng thái tích hợp được tải lại.");
+    } else {
+      toast.error("Liên kết GitHub chưa thành công — kiểm tra cấu hình OAuth.");
+    }
+    setStatusVersion((v) => v + 1);
+    setSysTab("status");
+    clearGithubCallback();
+  }, [githubCallback, clearGithubCallback]);
 
   const healthQ = useApi(
     () => (sysTab === "status" ? getHealth() : Promise.resolve(null)),

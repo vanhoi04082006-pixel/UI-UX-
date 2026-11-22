@@ -81,6 +81,7 @@ import InstructorSprints from "@/components/staff/instructor-sprints";
 import InstructorGrading from "@/components/staff/instructor-grading";
 import InstructorReports from "@/components/staff/instructor-reports";
 import InstructorOperations from "@/components/staff-ext/instructor-operations";
+import StaffGithub from "@/components/staff-ext/staff-github";
 import InstructorEvaluation from "@/components/staff-ext/instructor-evaluation";
 import InstructorPerformance from "@/components/staff-ext/instructor-performance";
 import InstructorAiPlan from "@/components/staff-ext/instructor-ai-plan";
@@ -575,6 +576,7 @@ function PageFor(role: Role, route: string) {
       case "ai-plan": return <InstructorAiPlan />;
       case "reports": return <InstructorReports />;
       case "notifications": return <StaffNotifications />;
+      case "github": return <StaffGithub />;
       case "profile": return <StaffProfile />;
       default: return <InstructorOverview />;
     }

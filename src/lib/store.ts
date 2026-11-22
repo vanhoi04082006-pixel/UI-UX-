@@ -86,6 +86,7 @@ export const NAV_CONFIG: Record<
         label: "Cá nhân",
         items: [
           { key: "notifications", label: "Thông báo" },
+          { key: "github", label: "GitHub" },
           { key: "profile", label: "Hồ sơ" },
         ],
       },
@@ -180,11 +181,52 @@ function buildHash(view: AppView, user: SessionUser | null, route: string): stri
   return "#/landing";
 }
 
+/* --------------------- GitHub OAuth callback (BE redirect) --------------------- */
+
+/** Kết quả OAuth GitHub mà BE gắn trên URL khi redirect về FE. */
+export type GithubCallback = "connected" | "error" | null;
+
+/** Đọc ?github=connected / ?connected=1 (BE dùng 2 dạng theo role). */
+function parseGithubCallback(): GithubCallback {
+  if (typeof window === "undefined") return null;
+  const search = new URLSearchParams(window.location.search);
+  if (search.get("github") === "connected" || search.get("connected") === "1")
+    return "connected";
+  if (
+    search.get("github") === "error" ||
+    search.get("connected") === "0" ||
+    search.get("error")
+  )
+    return "error";
+  return null;
+}
+
+/** Map path BE redirect → route trong NAV_CONFIG của role đó:
+ *  /admin/settings?github=connected  → admin "system" (Vận hành & Cấu hình)
+ *  /instructor/github?connected=1    → instructor "github"
+ *  /intern/github?connected=1        → intern "github" */
+function oauthRouteFor(role: Role, pathname: string): string | null {
+  const p = pathname.replace(/\/+$/, "").toLowerCase();
+  if (p.endsWith("/admin/settings") || p.endsWith("/admin/github"))
+    return "system";
+  if (p.endsWith("/instructor/github") || p.endsWith("/instructor/settings"))
+    return "github";
+  if (p.endsWith("/intern/github") || p.endsWith("/intern/settings"))
+    return "github";
+  // Path lạ nhưng role rõ — vẫn đưa về màn GitHub tương ứng
+  if (p.includes("/admin/")) return "system";
+  if (p.includes("/instructor/") || p.includes("/intern/")) return "github";
+  return null;
+}
+
 interface AppState {
   view: AppView;
   user: SessionUser | null;
   route: string;
   sidebarOpen: boolean;
+  /** Kết quả OAuth GitHub từ BE redirect (?github=connected / ?connected=1) —
+   *  màn đích tiêu thụ (toast + reload status) rồi gọi clearGithubCallback. */
+  githubCallback: GithubCallback;
   /** Khởi động lại phiên từ localStorage + hash (chỉ gọi 1 lần sau mount). */
   hydrate: () => void;
   /** Vào màn đăng nhập */
@@ -201,6 +243,8 @@ interface AppState {
   /** Điều hướng trong workspace */
   navigate: (route: string) => void;
   setSidebarOpen: (open: boolean) => void;
+  /** Xóa cờ OAuth GitHub sau khi màn đích đã hiển thị toast. */
+  clearGithubCallback: () => void;
 }
 
 /* Cờ giữ trạng thái nội bộ (không phản ánh vào store để tránh render thừa). */
@@ -212,6 +256,7 @@ export const useApp = create<AppState>((set, get) => ({
   user: null,
   route: "overview",
   sidebarOpen: false,
+  githubCallback: null,
 
   hydrate: () => {
     if (hydrated) return;
@@ -227,8 +272,28 @@ export const useApp = create<AppState>((set, get) => ({
     } catch {
       user = null;
     }
+    /* BE redirect về path + query (?github=connected / ?connected=1) — đọc
+     * TRƯỚC khi dọn URL; dọn cả path lẫn search về gốc "/" của SPA để
+     * refresh/chia sẻ không dính param và hash đẩy về đúng #/{role}/{route}. */
+    const ghCallback = parseGithubCallback();
+    const ghRoute =
+      ghCallback && user ? oauthRouteFor(user.role, window.location.pathname) : null;
+    if (ghCallback) {
+      window.history.replaceState({}, "", "/");
+    }
     const hash = parseHash();
-    if (user) {
+    if (ghCallback && user) {
+      set({
+        view: "app",
+        user,
+        route: ghRoute && canNavigate(user.role, ghRoute) ? ghRoute : "overview",
+        sidebarOpen: false,
+        githubCallback: ghCallback,
+      });
+    } else if (ghCallback) {
+      /* Phiên hết hạn giữa chừng OAuth — về đăng nhập, giữ cờ để auth toast. */
+      set({ view: "auth", user: null, route: "overview", githubCallback: ghCallback });
+    } else if (user) {
       const h = hash?.view === "app" ? hash : null;
       const route = h && canNavigate(user.role, h.route) ? h.route : "overview";
       if (hash?.view === "apply" || hash?.view === "verify") {
@@ -286,6 +351,8 @@ export const useApp = create<AppState>((set, get) => ({
   navigate: (route) => set({ route, sidebarOpen: false }),
 
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
+
+  clearGithubCallback: () => set({ githubCallback: null }),
 }));
 
 /* --------------------------- persistence utils -------------------------- */

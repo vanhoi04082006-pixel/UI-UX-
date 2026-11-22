@@ -462,6 +462,8 @@ export default function AuthScreen() {
   const goLanding = useApp((s) => s.goLanding);
   const goApply = useApp((s) => s.goApply);
   const login = useApp((s) => s.login);
+  const githubCallback = useApp((s) => s.githubCallback);
+  const clearGithubCallback = useApp((s) => s.clearGithubCallback);
 
   const [tab, setTab] = useState<TabKey>("login");
 
@@ -530,6 +532,18 @@ export default function AuthScreen() {
     const id = window.setInterval(() => setTIdx((i) => (i + 1) % TESTIMONIALS.length), 5000);
     return () => window.clearInterval(id);
   }, []);
+
+  /* OAuth GitHub về nhưng phiên đã hết hạn — thông báo để người dùng đăng nhập
+   * lại; kết nối đã được BE ghi nhận, trạng thái sẽ hiện đúng sau đăng nhập. */
+  useEffect(() => {
+    if (!githubCallback) return;
+    if (githubCallback === "connected") {
+      toast.success("GitHub đã được liên kết — đăng nhập để tiếp tục.");
+    } else {
+      toast.error("Liên kết GitHub chưa thành công — thử lại sau khi đăng nhập.");
+    }
+    clearGithubCallback();
+  }, [githubCallback, clearGithubCallback]);
 
   /* ------------------------------ luồng ------------------------------ */
 
