@@ -56,10 +56,15 @@ export async function apiFetch(
       "NEXT_PUBLIC_API_BASE_URL chưa được cấu hình.",
     );
   const url = `${base}${path}`;
-  /* Direct mode (base http(s) tuyệt đối) gửi kèm skip header để ngrok free-tier
-   * không chèn interstitial HTML. Proxy mode (base relative "/api/v1") là
-   * same-origin — không cần (và tránh làm request thành non-simple). */
+  /* Base http(s) tuyệt đối = direct mode (gọi thẳng BE cross-origin);
+   * base relative "/api/v1" = proxy mode (route handler forward sang BE —
+   * xem src/app/api/v1/[...path]/route.ts, dự phòng cho ngrok free-tier). */
   const directApi = /^https?:\/\//i.test(base);
+  /* Skip header CHỈ dành cho tunnel ngrok free-tier (chống interstitial HTML
+   * chèn vào GET). Cloudflare Quick Tunnel không có interstitial — và BE CORS
+   * allowHeaders chỉ có Content-Type,Authorization nên gửi header này qua
+   * trycloudflare sẽ làm preflight FAIL. Chỉ gửi khi base là domain ngrok. */
+  const ngrokTunnel = directApi && /ngrok/i.test(base);
   let response: Response;
   try {
     response = await fetch(url, {
@@ -71,7 +76,7 @@ export async function apiFetch(
        * CORS allow-credentials). */
       credentials: "include",
       headers: {
-        ...(directApi ? { "ngrok-skip-browser-warning": "true" } : {}),
+        ...(ngrokTunnel ? { "ngrok-skip-browser-warning": "true" } : {}),
         ...(formData || body === undefined ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
